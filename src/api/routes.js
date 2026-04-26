@@ -499,6 +499,50 @@ router.delete('/passes/:id', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/passes/:id/regenerate - Clear cache and regenerate .pkpass
+ */
+router.post('/passes/:id/regenerate', async (req, res) => {
+  try {
+    const pass = await getPassInstance(req.params.id);
+    if (!pass) {
+      return res.status(404).json({ error: 'Pass not found' });
+    }
+
+    // Delete cached .pkpass
+    const cacheDir = ensureCacheDir();
+    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
+    if (fs.existsSync(pkpassPath)) {
+      fs.unlinkSync(pkpassPath);
+      console.log(`🗑️ Deleted cached pkpass: ${req.params.id}`);
+    }
+
+    // Regenerate
+    const template = await getTemplate(pass.template_id);
+    const brand = await getBrand(pass.brand_id);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const pkpassBuffer = await createPkpass(template, pass, brand, { baseUrl });
+    fs.writeFileSync(pkpassPath, pkpassBuffer);
+    console.log(`✓ Regenerated pkpass: ${req.params.id}`);
+
+    await logEvent({
+      pass_id: pass.id,
+      brand_id: brand.id,
+      event_type: 'pass_regenerated',
+      metadata: {}
+    });
+
+    res.json({
+      success: true,
+      message: 'Pass regenerated',
+      download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`
+    });
+  } catch (err) {
+    console.error('Error regenerating pass:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * GET /api/v1/passes - List passes (optional ?brand_id=&status=)
  */
 router.get('/passes', async (req, res) => {
