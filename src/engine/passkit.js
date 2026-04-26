@@ -76,11 +76,11 @@ function generatePassJson(template, instance, brand, options = {}) {
           case 'back': backFields.push(fieldObj); break;
         }
       } else {
-        // Auto-distribute: first field = primary (big center), next 2 = secondary, rest = auxiliary
-        // Do NOT auto-assign headerFields — they overlap with logoText on small screens.
-        // Use field.type = 'header' explicitly if needed.
-        if (index === 0) primaryFields.push(fieldObj);
-        else if (index <= 2) secondaryFields.push(fieldObj);
+        // Auto-distribute: first field = header (top-right), second = primary (center),
+        // next 2 = secondary, rest = auxiliary
+        if (index === 0) headerFields.push(fieldObj);
+        else if (index === 1) primaryFields.push(fieldObj);
+        else if (index <= 3) secondaryFields.push(fieldObj);
         else auxiliaryFields.push(fieldObj);
       }
     });
@@ -127,7 +127,11 @@ function generatePassJson(template, instance, brand, options = {}) {
     foregroundColor,
     backgroundColor,
     labelColor,
-    logoText: brand.config?.logoText || brand.name,
+    // Truncate logoText to avoid overlap with headerFields on small screens
+    logoText: (() => {
+      const raw = brand.config?.logoText || brand.name;
+      return raw.length > 18 ? raw.substring(0, 18).trim() : raw;
+    })(),
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api/v1`,
     [structureKey]: passStructure,
