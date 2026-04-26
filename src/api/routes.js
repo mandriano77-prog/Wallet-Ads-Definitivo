@@ -1423,6 +1423,7 @@ router.post('/push/send', async (req, res) => {
         total_devices: devices.length,
         sent: sentCount,
         failed: failCount,
+        results: results,
         note: devices.length === 0
           ? 'No devices registered yet. Passes must be added to Apple Wallet first.'
           : undefined

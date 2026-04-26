@@ -6,8 +6,8 @@ const path = require('path');
 const APNS_PRODUCTION = 'https://api.push.apple.com';
 const APNS_SANDBOX = 'https://api.sandbox.push.apple.com';
 
-// Use sandbox for development, production for live
-const APNS_HOST = process.env.APNS_ENV === 'production' ? APNS_PRODUCTION : APNS_SANDBOX;
+// Default to production — Apple Wallet passes with Distribution certs use production APNs
+const APNS_HOST = process.env.APNS_ENV === 'sandbox' ? APNS_SANDBOX : APNS_PRODUCTION;
 
 /**
  * Send a push notification to an Apple Wallet pass device.
@@ -22,7 +22,7 @@ async function sendPushUpdate(pushToken, options = {}) {
   const {
     certPath = process.env.CERT_PATH || path.join(__dirname, '../../certs/signerCert.pem'),
     keyPath = process.env.KEY_PATH || path.join(__dirname, '../../certs/signerKey.pem'),
-    passTypeIdentifier = process.env.PASS_TYPE_ID || 'pass.com.nudj.loyalty',
+    passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
     host = APNS_HOST
   } = options;
 

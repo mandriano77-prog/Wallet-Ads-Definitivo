@@ -957,9 +957,12 @@ async function sendPush() {
         if (data.delivery) {
             const d = data.delivery;
             if (d.total_devices === 0) {
-                toast('Nessun dispositivo registrato. I pass devono essere aggiunti al Wallet prima di ricevere push.', 'warning');
+                toast('Nessun dispositivo registrato. I pass devono essere aggiunti al Wallet prima di ricevere push.');
+            } else if (d.sent > 0) {
+                toast(`Push inviata a ${d.sent}/${d.total_devices} dispositivi`);
             } else {
-                toast(`Push inviata a ${d.sent}/${d.total_devices} dispositivi${d.failed > 0 ? ` (${d.failed} fallite)` : ''}`);
+                const reason = d.results?.[0]?.reason || 'sconosciuto';
+                toast(`Invio fallito (0/${d.total_devices}). Motivo: ${reason}`);
             }
         } else {
             toast('Push registrata');
@@ -987,8 +990,9 @@ async function loadPushHistory() {
         pushes.map(p => `<div class="card" style="padding:14px 18px;">
             <div style="display:flex;justify-content:space-between;align-items:start;">
                 <div style="flex:1;"><div style="font-weight:600;font-size:14px;">${p.title}</div><div style="font-size:12px;color:var(--text2);margin-top:2px;">${p.message}</div></div>
-                <div style="display:flex;align-items:center;gap:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
                     <div style="text-align:right;"><div class="badge active">${p.target}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">${new Date(p.created_at).toLocaleDateString('it-IT')}</div></div>
+                    <button class="btn small" style="font-size:11px;padding:4px 8px;" onclick="resendPush('${p.title.replace(/'/g,"\\'")}','${p.message.replace(/'/g,"\\'")}','${p.target}')">↻</button>
                     <button class="btn small sec" style="font-size:11px;padding:4px 8px;" onclick="deleteSinglePush(${p.id})">✕</button>
                 </div>
             </div>
@@ -999,6 +1003,24 @@ async function deleteSinglePush(id) {
     await fetch(`${API}/push/${id}`, {method:'DELETE'});
     toast('Notifica eliminata');
     loadPushHistory();
+}
+
+async function resendPush(title, message, target) {
+    try {
+        const res = await fetch(`${API}/push/send`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({brand_id: brandId, title, message, target})});
+        const data = await res.json();
+        if (data.delivery) {
+            const d = data.delivery;
+            if (d.total_devices === 0) {
+                toast('Nessun dispositivo registrato.');
+            } else if (d.sent > 0) {
+                toast(`Reinviata a ${d.sent}/${d.total_devices} dispositivi`);
+            } else {
+                toast(`Invio fallito (0/${d.total_devices}). Dettagli nei log server.`);
+            }
+        }
+        loadPushHistory();
+    } catch(e) { toast('Errore: ' + e.message); }
 }
 
 async function clearAllPush() {
