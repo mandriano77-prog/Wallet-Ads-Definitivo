@@ -7,6 +7,146 @@ const forge = require('node-forge');
 const { Transform } = require('stream');
 
 /**
+ * Generate SVG path for a letter using geometric shapes (no font dependency).
+ * Returns SVG elements string for the given letter, sized to fit within (w, h).
+ */
+function letterToSvgPaths(letter, x, y, w, h, fillColor) {
+  const l = letter.toUpperCase();
+  const t = Math.max(1, Math.round(w * 0.18)); // stroke thickness
+
+  // Each letter is drawn with rect elements only
+  switch (l) {
+    case 'A': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'B': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>`;
+    case 'C': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'D': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${Math.round(w*0.7)}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${Math.round(w*0.7)}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y+t}" width="${t}" height="${h-t*2}" fill="${fillColor}"/>`;
+    case 'E': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${Math.round(w*0.7)}" height="${t}" fill="${fillColor}"/>`;
+    case 'F': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${Math.round(w*0.7)}" height="${t}" fill="${fillColor}"/>`;
+    case 'G': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5)}" y="${y + Math.round(h*0.45)}" width="${Math.round(w*0.5)}" height="${t}" fill="${fillColor}"/>`;
+    case 'H': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'I': return `
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>`;
+    case 'J': return `
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.6)}" width="${t}" height="${Math.round(h*0.4)}" fill="${fillColor}"/>`;
+    case 'K': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>
+      <rect x="${x+t}" y="${y + Math.round(h*0.4)}" width="${w-t*2}" height="${t}" fill="${fillColor}"/>`;
+    case 'L': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'M': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>`;
+    case 'N': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'O': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'P': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>`;
+    case 'Q': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.6)}" y="${y + Math.round(h*0.6)}" width="${t}" height="${Math.round(h*0.4)}" fill="${fillColor}"/>`;
+    case 'R': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>`;
+    case 'S': return `
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'T': return `
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>`;
+    case 'U': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    case 'V': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y+h-t}" width="${t}" height="${t}" fill="${fillColor}"/>`;
+    case 'W': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${h}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y + Math.round(h*0.5)}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>`;
+    case 'X': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${Math.round(h*0.45)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.45)}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.4)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.5)}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y + Math.round(h*0.5)}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>`;
+    case 'Y': return `
+      <rect x="${x}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x+w-t}" y="${y}" width="${t}" height="${Math.round(h*0.5)}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.45)}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x + Math.round(w*0.5) - Math.round(t*0.5)}" y="${y + Math.round(h*0.45)}" width="${t}" height="${Math.round(h*0.55)}" fill="${fillColor}"/>`;
+    case 'Z': return `
+      <rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y+h-t}" width="${w}" height="${t}" fill="${fillColor}"/>
+      <rect x="${x}" y="${y + Math.round(h*0.4)}" width="${w}" height="${t}" fill="${fillColor}"/>`;
+    default: // fallback: simple block
+      return `<rect x="${x+Math.round(w*0.2)}" y="${y+Math.round(h*0.2)}" width="${Math.round(w*0.6)}" height="${Math.round(h*0.6)}" rx="${Math.round(w*0.1)}" fill="${fillColor}" opacity="0.6"/>`;
+  }
+}
+
+/**
  * Parse hex color string to {r, g, b} object
  * Supports #RGB, #RRGGBB, and rgb(r,g,b) formats
  */
@@ -153,179 +293,83 @@ function generatePassJson(template, instance, brand, options = {}) {
 }
 
 /**
- * Generate icon PNG files with brand initial
+ * Generate icon PNG files with brand initial (geometric paths, no font needed)
  */
 async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
   const initial = brandName.charAt(0).toUpperCase();
   const bg = parseColor(bgColor);
 
-  // Create a 29x29 icon with the initial
-  const icon29 = await sharp({
-    create: {
-      width: 29,
-      height: 29,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="29" height="29" xmlns="http://www.w3.org/2000/svg">
-            <rect width="29" height="29" fill="${bgColor}"/>
-            <text x="14.5" y="20" font-family="sans-serif" font-size="18" font-weight="bold" fill="${fgColor}" text-anchor="middle">${initial}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  // 29x29 icon — letter drawn with geometric rects
+  const letter29 = letterToSvgPaths(initial, 7, 6, 15, 17, fgColor);
+  const icon29 = await sharp(Buffer.from(
+    `<svg width="29" height="29" xmlns="http://www.w3.org/2000/svg">
+      <rect width="29" height="29" fill="${bgColor}"/>${letter29}
+    </svg>`
+  )).png().toBuffer();
 
-  // Create a 58x58 icon (2x density)
-  const icon58 = await sharp({
-    create: {
-      width: 58,
-      height: 58,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="58" height="58" xmlns="http://www.w3.org/2000/svg">
-            <rect width="58" height="58" fill="${bgColor}"/>
-            <text x="29" y="42" font-family="sans-serif" font-size="36" font-weight="bold" fill="${fgColor}" text-anchor="middle">${initial}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  // 58x58 icon (2x)
+  const letter58 = letterToSvgPaths(initial, 14, 12, 30, 34, fgColor);
+  const icon58 = await sharp(Buffer.from(
+    `<svg width="58" height="58" xmlns="http://www.w3.org/2000/svg">
+      <rect width="58" height="58" fill="${bgColor}"/>${letter58}
+    </svg>`
+  )).png().toBuffer();
 
   return { icon: icon29, icon2x: icon58 };
 }
 
 /**
- * Generate logo PNG files — shows brand initial only.
+ * Generate logo PNG files — shows brand initial in a rounded badge.
  * The full brand name is displayed via logoText in pass.json.
- * Using only geometric shapes + initial avoids font rendering issues on Linux servers.
+ * Uses geometric SVG paths — NO font/text dependency.
  */
 async function generateLogo(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
-  const bg = parseColor(bgColor);
-  const fg = parseColor(fgColor);
   const initial = brandName.charAt(0).toUpperCase();
 
-  // 160x50 logo — initial letter in a rounded rect
-  const logo160 = await sharp({
-    create: {
-      width: 160,
-      height: 50,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="160" height="50" xmlns="http://www.w3.org/2000/svg">
-            <rect width="160" height="50" fill="${bgColor}"/>
-            <rect x="55" y="3" width="44" height="44" rx="10" fill="${fgColor}" opacity="0.15"/>
-            <text x="77" y="36" font-family="sans-serif" font-size="28" font-weight="bold" fill="${fgColor}" text-anchor="middle">${initial}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  // 160x50 logo — initial letter in a rounded rect badge
+  const letter160 = letterToSvgPaths(initial, 62, 10, 20, 30, fgColor);
+  const logo160 = await sharp(Buffer.from(
+    `<svg width="160" height="50" xmlns="http://www.w3.org/2000/svg">
+      <rect width="160" height="50" fill="${bgColor}"/>
+      <rect x="52" y="3" width="44" height="44" rx="10" fill="${fgColor}" opacity="0.15"/>${letter160}
+    </svg>`
+  )).png().toBuffer();
 
   // 320x100 logo (2x)
-  const logo320 = await sharp({
-    create: {
-      width: 320,
-      height: 100,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="320" height="100" xmlns="http://www.w3.org/2000/svg">
-            <rect width="320" height="100" fill="${bgColor}"/>
-            <rect x="110" y="6" width="88" height="88" rx="20" fill="${fgColor}" opacity="0.15"/>
-            <text x="154" y="72" font-family="sans-serif" font-size="56" font-weight="bold" fill="${fgColor}" text-anchor="middle">${initial}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  const letter320 = letterToSvgPaths(initial, 124, 20, 40, 60, fgColor);
+  const logo320 = await sharp(Buffer.from(
+    `<svg width="320" height="100" xmlns="http://www.w3.org/2000/svg">
+      <rect width="320" height="100" fill="${bgColor}"/>
+      <rect x="104" y="6" width="88" height="88" rx="20" fill="${fgColor}" opacity="0.15"/>${letter320}
+    </svg>`
+  )).png().toBuffer();
 
   return { logo: logo160, logo2x: logo320 };
 }
 
 /**
- * Generate strip image (for coupon/storeCard)
+ * Generate strip image (for coupon/storeCard) — geometric initial, no font
  */
 async function generateStrip(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
-  const bg = parseColor(bgColor);
+  const initial = brandName.charAt(0).toUpperCase();
 
-  // 375x123 strip
-  const strip375 = await sharp({
-    create: {
-      width: 375,
-      height: 123,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="375" height="123" xmlns="http://www.w3.org/2000/svg">
-            <rect width="375" height="123" fill="${bgColor}"/>
-            <text x="187.5" y="75" font-family="sans-serif" font-size="32" font-weight="bold" fill="${fgColor}" text-anchor="middle">${brandName}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  // 375x123 strip — large initial centered
+  const letter375 = letterToSvgPaths(initial, 162, 22, 50, 80, fgColor);
+  const strip375 = await sharp(Buffer.from(
+    `<svg width="375" height="123" xmlns="http://www.w3.org/2000/svg">
+      <rect width="375" height="123" fill="${bgColor}"/>
+      <rect x="147" y="12" width="80" height="100" rx="16" fill="${fgColor}" opacity="0.1"/>${letter375}
+    </svg>`
+  )).png().toBuffer();
 
   // 750x246 strip (2x)
-  const strip750 = await sharp({
-    create: {
-      width: 750,
-      height: 246,
-      channels: 4,
-      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
-    }
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="750" height="246" xmlns="http://www.w3.org/2000/svg">
-            <rect width="750" height="246" fill="${bgColor}"/>
-            <text x="375" y="150" font-family="sans-serif" font-size="64" font-weight="bold" fill="${fgColor}" text-anchor="middle">${brandName}</text>
-          </svg>`
-        ),
-        top: 0,
-        left: 0
-      }
-    ])
-    .png()
-    .toBuffer();
+  const letter750 = letterToSvgPaths(initial, 325, 43, 100, 160, fgColor);
+  const strip750 = await sharp(Buffer.from(
+    `<svg width="750" height="246" xmlns="http://www.w3.org/2000/svg">
+      <rect width="750" height="246" fill="${bgColor}"/>
+      <rect x="295" y="23" width="160" height="200" rx="32" fill="${fgColor}" opacity="0.1"/>${letter750}
+    </svg>`
+  )).png().toBuffer();
 
   return { strip: strip375, strip2x: strip750 };
 }
