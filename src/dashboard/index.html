@@ -268,6 +268,11 @@
                         <div id="locationsContainer"></div>
                         <button class="btn small sec" onclick="addLocationRow()" style="margin-top:8px;">+ Aggiungi punto vendita</button>
                     </div>
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                        <div class="sec-title" style="font-size:15px;">Notifica programmata</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Il pass appare sulla lock screen in questa data/ora (utile per eventi, promo a tempo).</p>
+                        <div class="form-group"><label class="form-label">Data e ora</label><input type="datetime-local" id="bsRelevantDate"></div>
+                    </div>
                     <button class="btn" onclick="saveBrandSettings()" style="margin-top:20px;">Salva Modifiche</button>
                 </div>
                 <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
@@ -532,6 +537,11 @@ async function saveBrandSettings() {
     const fg = document.getElementById('bsFg').value; if (fg) config.foregroundColor = fg;
     const lbl = document.getElementById('bsLbl').value; if (lbl) config.labelColor = lbl;
 
+    // Save relevant date
+    const rd = document.getElementById('bsRelevantDate').value;
+    if (rd) config.relevantDate = new Date(rd).toISOString();
+    else config.relevantDate = null;
+
     // Save geofencing locations
     const validLocations = locationRows.filter(l => l.latitude && l.longitude);
     if (validLocations.length > 0) {
@@ -571,6 +581,14 @@ async function loadBrandSettings() {
     // Load geofencing locations
     locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || ''}));
     renderLocations();
+
+    // Load relevant date
+    if (c.relevantDate) {
+        const d = new Date(c.relevantDate);
+        document.getElementById('bsRelevantDate').value = d.toISOString().slice(0,16);
+    } else {
+        document.getElementById('bsRelevantDate').value = '';
+    }
 
     // Show current logo if exists
     const preview = document.getElementById('logoPreview');
