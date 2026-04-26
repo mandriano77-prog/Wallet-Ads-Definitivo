@@ -1077,7 +1077,7 @@
                 const passes = await res.json();
 
                 // Filter only passes that have a member field
-                currentMembers = passes.filter(p => p.field_values && p.field_values.member);
+                currentMembers = passes.filter(p => p.field_values && p.field_values.nome);
 
                 if (currentMembers.length === 0) {
                     document.getElementById('membersContent').innerHTML = '<p style="color: var(--text-secondary);">Nessun membro trovato per questa brand.</p>';
@@ -1085,7 +1085,7 @@
                 }
 
                 const membersHtml = currentMembers.map(p => {
-                    const name = p.field_values.member || 'Senza Nome';
+                    const name = p.field_values.nome || 'Senza Nome';
                     const livello = (p.field_values.livello || 'Socio').toLowerCase();
                     const punti = parseInt(p.field_values.punti) || 0;
                     const initial = name.charAt(0).toUpperCase();
@@ -1199,9 +1199,10 @@
         }
 
         function showToast(message) {
-            let toast = document.querySelector('.toast');
+            let toast = document.getElementById('toast');
             if (!toast) {
                 toast = document.createElement('div');
+                toast.id = 'toast';
                 toast.className = 'toast';
                 document.body.appendChild(toast);
             }
