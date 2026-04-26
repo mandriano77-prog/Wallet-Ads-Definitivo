@@ -4,18 +4,38 @@ const path = require('path');
 const sharp = require('sharp');
 const archiver = require('archiver');
 const forge = require('node-forge');
-const { execSync } = require('child_process');
-const os = require('os');
 const { Transform } = require('stream');
+
+/**
+ * Parse hex color string to {r, g, b} object
+ * Supports #RGB, #RRGGBB, and rgb(r,g,b) formats
+ */
+function parseColor(color) {
+  // Handle rgb(r,g,b) format
+  const rgbMatch = color.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (rgbMatch) {
+    return { r: parseInt(rgbMatch[1]), g: parseInt(rgbMatch[2]), b: parseInt(rgbMatch[3]) };
+  }
+  // Handle hex format
+  let hex = color.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  return {
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16)
+  };
+}
 
 /**
  * Generate the pass.json content for Apple Wallet
  */
 function generatePassJson(template, instance, brand, options = {}) {
   const {
-    baseUrl = process.env.BASE_URL || 'http://localhost:3000',
-    passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
-    teamIdentifier = process.env.TEAM_IDENTIFIER || '9Y847NT854'
+    baseUrl = 'http://localhost:3000',
+    passTypeIdentifier = `pass.com.nudj.${brand.slug}`,
+    teamIdentifier = 'XXXXXXXXXX'
   } = options;
 
   const foregroundColor = template.style?.foregroundColor || 'rgb(255, 255, 255)';
@@ -102,7 +122,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     foregroundColor,
     backgroundColor,
     labelColor,
-    logoText: brand.name,
+    logoText: brand.config?.logoText || brand.name,
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api/v1`,
     [structureKey]: passStructure,
@@ -128,6 +148,7 @@ function generatePassJson(template, instance, brand, options = {}) {
  */
 async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
   const initial = brandName.charAt(0).toUpperCase();
+  const bg = parseColor(bgColor);
 
   // Create a 29x29 icon with the initial
   const icon29 = await sharp({
@@ -135,7 +156,7 @@ async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
       width: 29,
       height: 29,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -159,7 +180,7 @@ async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
       width: 58,
       height: 58,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -184,13 +205,15 @@ async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
  * Generate logo PNG files
  */
 async function generateLogo(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
+  const bg = parseColor(bgColor);
+
   // 160x50 logo
   const logo160 = await sharp({
     create: {
       width: 160,
       height: 50,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -214,7 +237,7 @@ async function generateLogo(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
       width: 320,
       height: 100,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -239,13 +262,15 @@ async function generateLogo(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
  * Generate strip image (for coupon/storeCard)
  */
 async function generateStrip(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
+  const bg = parseColor(bgColor);
+
   // 375x123 strip
   const strip375 = await sharp({
     create: {
       width: 375,
       height: 123,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -269,7 +294,7 @@ async function generateStrip(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF'
       width: 750,
       height: 246,
       channels: 4,
-      background: { r: 13, g: 11, b: 26, alpha: 1 }
+      background: { r: bg.r, g: bg.g, b: bg.b, alpha: 1 }
     }
   })
     .composite([
@@ -306,140 +331,68 @@ function generateManifest(files) {
 }
 
 /**
- * Strip Bag Attributes and other non-PEM content from certificate/key files.
- * Keychain exports include metadata that can confuse some parsers.
- */
-function cleanPem(pemString) {
-  const matches = pemString.match(/-----BEGIN [^-]+-----[\s\S]+?-----END [^-]+-----/g);
-  return matches ? matches.join('\n') : pemString;
-}
-
-/**
- * Sign the manifest with cascading methods:
- * 1. openssl cms  (modern, works on OpenSSL 3.x)
- * 2. openssl smime (legacy fallback)
- * 3. node-forge   (pure JS, last resort)
- *
- * IMPORTANT: All methods now use cleanPem() to strip Bag Attributes
- * from Keychain-exported PEM files, which can cause openssl to fail.
+ * Sign the manifest using PKCS7 (mock mode if no certificates)
  */
 function signManifest(manifestJson, certPath, keyPath, wwdrPath) {
+  // Check if certificate files exist
   const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
   if (!hasCerts) {
     console.warn('⚠️ MOCK MODE: pass not signed (install Apple certificate to enable)');
+    // Return a fake signature
     return Buffer.from('UNSIGNED_MOCK_SIGNATURE');
   }
 
-  // Pre-clean all PEM content (strip Bag Attributes from Keychain exports)
-  const cleanCertPem = cleanPem(fs.readFileSync(certPath, 'utf8'));
-  const cleanKeyPem = cleanPem(fs.readFileSync(keyPath, 'utf8'));
-  const cleanWwdrPem = (wwdrPath && fs.existsSync(wwdrPath))
-    ? cleanPem(fs.readFileSync(wwdrPath, 'utf8'))
-    : null;
-
-  console.log(`[signing] cert: ${cleanCertPem.length} chars, key: ${cleanKeyPem.length} chars, wwdr: ${cleanWwdrPem ? cleanWwdrPem.length : 'N/A'} chars`);
-
-  // --- Method 1: openssl cms (preferred on OpenSSL 3.x) ---
   try {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkpass-'));
-    const mPath = path.join(tmpDir, 'manifest.json');
-    const sPath = path.join(tmpDir, 'signature.der');
-    const cPath = path.join(tmpDir, 'signer.pem');
-    const kPath = path.join(tmpDir, 'key.pem');
-    fs.writeFileSync(mPath, manifestJson, 'utf8');
-    fs.writeFileSync(cPath, cleanCertPem, 'utf8');
-    fs.writeFileSync(kPath, cleanKeyPem, { mode: 0o600 });
+    // Read certificate and key
+    const certPem = fs.readFileSync(certPath, 'utf8');
+    const keyPem = fs.readFileSync(keyPath, 'utf8');
+    let wwdrPem = null;
 
-    let cmd = `openssl cms -sign -binary -in "${mPath}" -out "${sPath}" -outform DER -signer "${cPath}" -inkey "${kPath}"`;
-    if (cleanWwdrPem) {
-      const wPath = path.join(tmpDir, 'wwdr.pem');
-      fs.writeFileSync(wPath, cleanWwdrPem, 'utf8');
-      cmd += ` -certfile "${wPath}"`;
+    if (wwdrPath && fs.existsSync(wwdrPath)) {
+      wwdrPem = fs.readFileSync(wwdrPath, 'utf8');
     }
 
-    console.log('[signing] Trying openssl cms...');
-    execSync(cmd, { stdio: 'pipe', timeout: 15000 });
+    // Convert PEM to forge objects
+    const cert = forge.pki.certificateFromPem(certPem);
+    const privateKey = forge.pki.privateKeyFromPem(keyPem);
 
-    if (fs.existsSync(sPath)) {
-      const sig = fs.readFileSync(sPath);
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
-      console.log(`✓ Pass signed with openssl cms (${sig.length} bytes)`);
-      return sig;
-    }
-  } catch (e) {
-    const errMsg = e.stderr ? e.stderr.toString().trim() : e.message;
-    console.warn('openssl cms failed:', errMsg);
-  }
-
-  // --- Method 2: openssl smime (legacy) ---
-  try {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkpass-'));
-    const mPath = path.join(tmpDir, 'manifest.json');
-    const sPath = path.join(tmpDir, 'signature.der');
-    const cPath = path.join(tmpDir, 'signer.pem');
-    const kPath = path.join(tmpDir, 'key.pem');
-    fs.writeFileSync(mPath, manifestJson, 'utf8');
-    fs.writeFileSync(cPath, cleanCertPem, 'utf8');
-    fs.writeFileSync(kPath, cleanKeyPem, { mode: 0o600 });
-
-    let cmd = `openssl smime -sign -binary -in "${mPath}" -out "${sPath}" -outform DER -signer "${cPath}" -inkey "${kPath}" -passin pass:`;
-    if (cleanWwdrPem) {
-      const wPath = path.join(tmpDir, 'wwdr.pem');
-      fs.writeFileSync(wPath, cleanWwdrPem, 'utf8');
-      cmd += ` -certfile "${wPath}"`;
-    }
-
-    console.log('[signing] Trying openssl smime...');
-    execSync(cmd, { stdio: 'pipe', timeout: 15000 });
-
-    if (fs.existsSync(sPath)) {
-      const sig = fs.readFileSync(sPath);
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
-      console.log(`✓ Pass signed with openssl smime (${sig.length} bytes)`);
-      return sig;
-    }
-  } catch (e) {
-    const errMsg = e.stderr ? e.stderr.toString().trim() : e.message;
-    console.warn('openssl smime failed:', errMsg);
-  }
-
-  // --- Method 3: node-forge pure JavaScript ---
-  try {
-    console.log('[signing] Trying node-forge...');
-    const signerCert = forge.pki.certificateFromPem(cleanCertPem);
-    const signerKey = forge.pki.privateKeyFromPem(cleanKeyPem);
-
+    // Create PKCS7 signed data
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(manifestJson, 'utf8');
-    p7.addCertificate(signerCert);
 
-    if (cleanWwdrPem) {
-      const wwdrCert = forge.pki.certificateFromPem(cleanWwdrPem);
+    // Add signers
+    p7.addCertificate(cert);
+    if (wwdrPem) {
+      const wwdrCert = forge.pki.certificateFromPem(wwdrPem);
       p7.addCertificate(wwdrCert);
     }
 
+    // Sign
     p7.addSigner({
-      key: signerKey,
-      certificate: signerCert,
-      digestAlgorithm: forge.pki.oids.sha1,
+      key: privateKey,
+      certificate: cert,
+      digestAlgorithm: forge.pki.oids.sha256,
       authenticatedAttributes: [
-        { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
-        { type: forge.pki.oids.messageDigest },
-        { type: forge.pki.oids.signingTime, value: new Date() }
+        {
+          type: forge.pki.oids.contentType,
+          value: forge.pki.oids.data
+        },
+        {
+          type: forge.pki.oids.messageDigest
+        },
+        {
+          type: forge.pki.oids.signingTime,
+          value: new Date()
+        }
       ]
     });
 
-    p7.sign({ detached: true });
-    const asn1 = p7.toAsn1();
-    const der = forge.asn1.toDer(asn1);
-    const signature = Buffer.from(der.getBytes(), 'binary');
-
-    console.log(`✓ Pass signed with node-forge (${signature.length} bytes)`);
-    return signature;
+    // Get DER encoded signature
+    const signature = forge.asn1.toDer(p7.toAsn1()).bytes();
+    return Buffer.from(signature, 'binary');
   } catch (error) {
-    console.error('All signing methods failed. Last error:', error.message);
-    console.warn('⚠️ MOCK MODE: pass not signed (signing error)');
+    console.warn('⚠️ MOCK MODE: pass not signed (certificate error):', error.message);
     return Buffer.from('UNSIGNED_MOCK_SIGNATURE');
   }
 }
@@ -462,17 +415,41 @@ async function createPkpass(template, instance, brand, options = {}) {
   const bgColor = template.style?.backgroundColor || '#0D0B1A';
   const fgColor = template.style?.foregroundColor || '#FFFFFF';
 
-  const icons = await generateIcon(brand.name, bgColor, fgColor);
-  const logos = await generateLogo(brand.name, bgColor, fgColor);
+  let iconBuffers, logoBuffers;
+
+  // Check if brand has custom logo images (base64 in config)
+  if (brand.config?.logos) {
+    const brandLogos = brand.config.logos;
+    iconBuffers = {
+      icon: brandLogos['icon'] ? Buffer.from(brandLogos['icon'], 'base64') : null,
+      icon2x: brandLogos['icon@2x'] ? Buffer.from(brandLogos['icon@2x'], 'base64') : null
+    };
+    logoBuffers = {
+      logo: brandLogos['logo'] ? Buffer.from(brandLogos['logo'], 'base64') : null,
+      logo2x: brandLogos['logo@2x'] ? Buffer.from(brandLogos['logo@2x'], 'base64') : null
+    };
+    console.log('✓ Using custom brand logos');
+  }
+
+  // Fall back to generated images if no custom logos
+  if (!iconBuffers?.icon) {
+    const icons = await generateIcon(brand.name, bgColor, fgColor);
+    iconBuffers = icons;
+  }
+  if (!logoBuffers?.logo) {
+    const logos = await generateLogo(brand.name, bgColor, fgColor);
+    logoBuffers = logos;
+  }
+
   const strips = await generateStrip(brand.name, bgColor, fgColor);
 
   // Build file map
   const files = {
     'pass.json': Buffer.from(JSON.stringify(passJson, null, 2)),
-    'icon.png': icons.icon,
-    'icon@2x.png': icons.icon2x,
-    'logo.png': logos.logo,
-    'logo@2x.png': logos.logo2x
+    'icon.png': iconBuffers.icon,
+    'icon@2x.png': iconBuffers.icon2x || iconBuffers.icon,
+    'logo.png': logoBuffers.logo,
+    'logo@2x.png': logoBuffers.logo2x || logoBuffers.logo
   };
 
   // Add strip images for coupon/storeCard
@@ -493,7 +470,7 @@ async function createPkpass(template, instance, brand, options = {}) {
   // Create ZIP archive
   return new Promise((resolve, reject) => {
     const buffers = [];
-    const archive = archiver('zip', { store: true });
+    const archive = archiver('zip', { zlib: { level: 9 } });
 
     archive.on('data', (chunk) => {
       buffers.push(chunk);
