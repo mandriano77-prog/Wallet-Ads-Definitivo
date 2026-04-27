@@ -201,15 +201,15 @@ function generatePassJson(template, instance, brand, options = {}) {
     value: '... ↗'
   });
 
-  // PRIMARY: NOME (big, prominent — only eventTicket supports this)
+  // No primaryFields — they overlay the strip image on eventTicket
   const primaryFields = [];
-  primaryFields.push({
+
+  // SECONDARY: NOME + PUNTI + LIVELLO
+  secondaryFields.push({
     key: 'member_name',
     label: 'NOME',
     value: instance.field_values?.nome || instance.field_values?.name || ''
   });
-
-  // SECONDARY: PUNTI + LIVELLO
   if (template.fields && Array.isArray(template.fields)) {
     template.fields.forEach((field) => {
       const fieldObj = {
