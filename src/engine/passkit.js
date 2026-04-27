@@ -230,8 +230,11 @@ function generatePassJson(template, instance, brand, options = {}) {
   // CRITICAL: changeMessage is what triggers the VISIBLE notification on iOS.
   // Without it, the pass updates silently. With it, iOS shows the message
   // on the lock screen / notification center when the field value changes.
+  //
+  // IMPORTANT: Only ONE field should have changeMessage to avoid iOS
+  // falling back to the generic "biglietto modificato" text.
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
-    // FRONT: short announcement visible immediately when pass is opened
+    // FRONT: short announcement with changeMessage (this drives the notification)
     const shortMsg = brandConfig.pushAnnouncement.message.length > 40
       ? brandConfig.pushAnnouncement.message.substring(0, 37) + '...'
       : brandConfig.pushAnnouncement.message;
@@ -239,16 +242,15 @@ function generatePassJson(template, instance, brand, options = {}) {
       key: 'announcement',
       label: '📢 ' + (brandConfig.pushAnnouncement.title || 'NOVITÀ'),
       value: shortMsg,
-      // This is what iOS shows as the notification text! %@ = field value
-      changeMessage: '%@'
+      // iOS notification text: "📢 [titolo]: [messaggio breve]"
+      changeMessage: '📢 ' + (brandConfig.pushAnnouncement.title || 'Novità') + ': %@'
     });
 
-    // BACK: full message with details (also with changeMessage)
+    // BACK: full message (NO changeMessage — only front drives notification)
     backFields.unshift({
       key: 'announcement_full',
       label: brandConfig.pushAnnouncement.title || 'NOVITÀ',
-      value: brandConfig.pushAnnouncement.message,
-      changeMessage: brandConfig.pushAnnouncement.title + ': %@'
+      value: brandConfig.pushAnnouncement.message
     });
     if (brandConfig.pushAnnouncement.date) {
       backFields.splice(1, 0, {
