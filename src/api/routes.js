@@ -62,7 +62,13 @@ const {
   listPushes,
   deletePush,
   clearPushHistory,
-  getDevicesForBrand
+  getDevicesForBrand,
+  // Members
+  createMember,
+  getMember,
+  listMembers,
+  updateMember,
+  deleteMember
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
@@ -355,7 +361,7 @@ router.delete('/templates/:id', async (req, res) => {
  */
 router.post('/passes', async (req, res) => {
   try {
-    const { template_id, customer_data, field_values } = req.body;
+    const { template_id, customer_data, field_values, member_id } = req.body;
 
     if (!template_id) {
       return res.status(400).json({
@@ -378,7 +384,8 @@ router.post('/passes', async (req, res) => {
       template_id,
       brand_id: brand.id,
       customer_data: customer_data || {},
-      field_values: field_values || {}
+      field_values: field_values || {},
+      member_id: member_id || null
     });
 
     // Generate .pkpass file
@@ -1635,6 +1642,93 @@ router.delete('/push/clear/:brand_id', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error clearing push history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== MEMBERS ====================
+
+/**
+ * GET /api/v1/members?brand_id= - List all members for a brand
+ */
+router.get('/members', async (req, res) => {
+  try {
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
+    const members = await listMembers(brand_id);
+    res.json(members);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/members/export?brand_id= - Export members as CSV
+ */
+router.get('/members/export', async (req, res) => {
+  try {
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
+    const members = await listMembers(brand_id);
+    const header = 'Nome,Email,Telefono,Note,Pass,Punti,Data Iscrizione\n';
+    const rows = members.map(m => {
+      const date = new Date(m.created_at).toLocaleDateString('it-IT');
+      return `"${(m.name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
+    }).join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=membri.csv');
+    res.send('﻿' + header + rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/members - Create a new member
+ */
+router.post('/members', async (req, res) => {
+  try {
+    const member = await createMember(req.body);
+    res.status(201).json(member);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/members/:id - Get a single member
+ */
+router.get('/members/:id', async (req, res) => {
+  try {
+    const member = await getMember(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+    res.json(member);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/v1/members/:id - Update a member
+ */
+router.put('/members/:id', async (req, res) => {
+  try {
+    const member = await updateMember(req.params.id, req.body);
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+    res.json(member);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/members/:id - Delete a member
+ */
+router.delete('/members/:id', async (req, res) => {
+  try {
+    await deleteMember(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

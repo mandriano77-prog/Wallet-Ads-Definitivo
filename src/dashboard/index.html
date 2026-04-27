@@ -138,14 +138,44 @@
 
             <!-- MEMBERS -->
             <div id="members" class="section">
-                <div class="sec-title">Membri</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                    <div class="sec-title" style="margin-bottom:0">Membri</div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn" onclick="openMemberModal()">+ Nuovo Membro</button>
+                        <a class="btn sec" id="exportCsvBtn" style="text-decoration:none;">Esporta CSV</a>
+                    </div>
+                </div>
+                <div id="membersStats"></div>
                 <div id="membersContent" style="color:var(--text2)">Caricamento...</div>
+            </div>
+
+            <!-- MEMBER MODAL -->
+            <div class="modal" id="memberModal">
+                <div class="modal-box">
+                    <div class="modal-header">
+                        <span id="memberModalTitle">Nuovo Membro</span>
+                        <button class="modal-close" onclick="closeModal('memberModal')">&times;</button>
+                    </div>
+                    <input type="hidden" id="memberEditId">
+                    <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="memberName" placeholder="Nome e Cognome"></div>
+                    <div class="form-group"><label class="form-label">Email</label><input type="email" id="memberEmail" placeholder="email@example.com"></div>
+                    <div class="form-group"><label class="form-label">Telefono</label><input type="text" id="memberPhone" placeholder="+39 333..."></div>
+                    <div class="form-group"><label class="form-label">Note</label><textarea id="memberNotes" rows="2" placeholder="Note libere..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text1);font-size:14px;resize:vertical;"></textarea></div>
+                    <div class="form-row">
+                        <button class="btn" onclick="saveMember()">Salva</button>
+                        <button class="btn sec" onclick="closeModal('memberModal')">Annulla</button>
+                    </div>
+                </div>
             </div>
 
             <!-- CREATE PASS -->
             <div id="create-pass" class="section">
                 <div class="sec-title">Genera Nuovo Pass</div>
                 <div id="successMessage"></div>
+                <div class="form-group">
+                    <label class="form-label">Membro (opzionale)</label>
+                    <select id="memberSelect" onchange="onMemberSelect()"><option value="">-- Nuovo contatto --</option></select>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Template</label>
                     <select id="templateSelect" onchange="loadTemplateFields()"><option value="">Seleziona template</option></select>
@@ -763,47 +793,150 @@ async function refreshOverview() {
 }
 
 // ==================== MEMBERS ====================
+let membersData = [];
+
 async function loadMembers() {
     if (!brandId) return;
-    const res = await fetch(`${API}/passes?brand_id=${brandId}`);
-    const passes = await res.json();
-    membersCache = passes.filter(p => p.field_values?.nome);
+    // Load members from members table
+    const res = await fetch(`${API}/members?brand_id=${brandId}`);
+    membersData = await res.json();
 
-    if (membersCache.length === 0) {
-        document.getElementById('membersContent').innerHTML = '<p style="color:var(--text2)">Nessun membro.</p>';
+    // Also load passes for linking (membersCache for points modal etc.)
+    const passRes = await fetch(`${API}/passes?brand_id=${brandId}`);
+    const allPasses = await passRes.json();
+    membersCache = allPasses.filter(p => p.field_values?.nome);
+
+    // Update export CSV link
+    const csvBtn = document.getElementById('exportCsvBtn');
+    if (csvBtn) csvBtn.href = `${API}/members/export?brand_id=${brandId}`;
+
+    if (membersData.length === 0) {
+        document.getElementById('membersStats').innerHTML = '';
+        document.getElementById('membersContent').innerHTML = '<p style="color:var(--text2)">Nessun membro. Clicca "+ Nuovo Membro" per aggiungerne uno.</p>';
         return;
     }
 
-    const totalPts = membersCache.reduce((s,p) => s + (parseInt(p.field_values?.punti)||0), 0);
-    const html = `
+    const totalPts = membersData.reduce((s,m) => s + (parseInt(m.punti)||0), 0);
+    const withPass = membersData.filter(m => parseInt(m.pass_count) > 0).length;
+
+    document.getElementById('membersStats').innerHTML = `
         <div class="stats-grid" style="margin-bottom:20px;">
-            <div class="stat-card"><div class="stat-label">Membri</div><div class="stat-value">${membersCache.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Membri</div><div class="stat-value">${membersData.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Con Pass</div><div class="stat-value">${withPass}</div></div>
             <div class="stat-card"><div class="stat-label">Punti Totali</div><div class="stat-value">${totalPts.toLocaleString()}</div></div>
-            <div class="stat-card"><div class="stat-label">Media</div><div class="stat-value">${Math.round(totalPts/membersCache.length)}</div></div>
-        </div>
-        ${membersCache.map(p => {
-            const name = p.field_values.nome || 'N/A';
-            const lvl = p.field_values.livello || 'Socio';
-            const pts = parseInt(p.field_values.punti) || 0;
-            return `<div class="card member-card">
-                <div style="display:flex;align-items:center;gap:14px;">
-                    <div class="member-avatar">${name[0]}</div>
-                    <div><div class="member-name">${name}</div><div class="member-level">${lvl}</div></div>
+            <div class="stat-card"><div class="stat-label">Media</div><div class="stat-value">${membersData.length ? Math.round(totalPts/membersData.length) : 0}</div></div>
+        </div>`;
+
+    document.getElementById('membersContent').innerHTML = membersData.map(m => {
+        const name = m.name || 'N/A';
+        const pts = parseInt(m.punti) || 0;
+        const hasPass = parseInt(m.pass_count) > 0;
+        const passInfo = hasPass ? `<span style="color:var(--teal);font-size:11px;">&#x2713; Pass attivo</span>` : `<span style="color:var(--text2);font-size:11px;">Nessun pass</span>`;
+        const contact = [m.email, m.phone].filter(Boolean).join(' · ') || '';
+        // Find linked pass for points/QR
+        const linkedPass = allPasses.find(p => p.member_id === m.id) || allPasses.find(p => p.field_values?.nome === m.name);
+
+        return `<div class="card member-card">
+            <div style="display:flex;align-items:center;gap:14px;flex:1;">
+                <div class="member-avatar">${name[0]}</div>
+                <div style="flex:1;">
+                    <div class="member-name">${name}</div>
+                    <div style="font-size:12px;color:var(--text2);">${contact}</div>
+                    <div>${passInfo}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:14px;">
-                    <div style="text-align:right"><div class="points-value">${pts}</div><div class="points-label">punti</div></div>
-                    <div class="card-actions">
-                        <button class="btn small" onclick="openPointsModal('${p.id}','${name.replace(/'/g,"\\'")}',${pts})">+ Punti</button>
-                        <button class="btn small sec" onclick="openBackEditModal('${p.id}','${name.replace(/'/g,"\\'")}')">Retro</button>
-                        <button class="btn small sec" onclick="showQR('${p.landing_url}')">QR</button>
-                        <button class="btn small sec" onclick="regeneratePass('${p.id}')">↻</button>
-                        <button class="btn small" style="background:var(--red)" onclick="deletePassAction('${p.id}')">X</button>
-                    </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                ${linkedPass ? `<div style="text-align:right"><div class="points-value">${pts}</div><div class="points-label">punti</div></div>` : ''}
+                <div class="card-actions">
+                    ${linkedPass ? `
+                        <button class="btn small" onclick="openPointsModal('${linkedPass.id}','${name.replace(/'/g,"\\'")}',${pts})">+ Punti</button>
+                        <button class="btn small sec" onclick="openBackEditModal('${linkedPass.id}','${name.replace(/'/g,"\\'")}')">Retro</button>
+                        <button class="btn small sec" onclick="showQR('${linkedPass.landing_url}')">QR</button>
+                    ` : `
+                        <button class="btn small" onclick="generatePassForMember('${m.id}','${name.replace(/'/g,"\\'")}','${(m.email||'').replace(/'/g,"\\'")}')">Genera Pass</button>
+                    `}
+                    <button class="btn small sec" onclick="openMemberModal('${m.id}')">Modifica</button>
+                    <button class="btn small" style="background:#e74c3c;border-color:#e74c3c;" onclick="deleteMemberAction('${m.id}','${name.replace(/'/g,"\\'")}')">X</button>
                 </div>
-            </div>`;
-        }).join('')}
-    `;
-    document.getElementById('membersContent').innerHTML = html;
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openMemberModal(editId) {
+    document.getElementById('memberEditId').value = editId || '';
+    if (editId) {
+        const m = membersData.find(x => x.id === editId);
+        if (m) {
+            document.getElementById('memberModalTitle').textContent = 'Modifica Membro';
+            document.getElementById('memberName').value = m.name || '';
+            document.getElementById('memberEmail').value = m.email || '';
+            document.getElementById('memberPhone').value = m.phone || '';
+            document.getElementById('memberNotes').value = m.notes || '';
+        }
+    } else {
+        document.getElementById('memberModalTitle').textContent = 'Nuovo Membro';
+        document.getElementById('memberName').value = '';
+        document.getElementById('memberEmail').value = '';
+        document.getElementById('memberPhone').value = '';
+        document.getElementById('memberNotes').value = '';
+    }
+    document.getElementById('memberModal').classList.add('active');
+}
+
+async function saveMember() {
+    const name = document.getElementById('memberName').value.trim();
+    if (!name) return alert('Il nome è obbligatorio');
+    const data = {
+        brand_id: brandId,
+        name,
+        email: document.getElementById('memberEmail').value.trim() || null,
+        phone: document.getElementById('memberPhone').value.trim() || null,
+        notes: document.getElementById('memberNotes').value.trim() || null
+    };
+    const editId = document.getElementById('memberEditId').value;
+    if (editId) {
+        await fetch(`${API}/members/${editId}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+        toast('Membro aggiornato');
+    } else {
+        await fetch(`${API}/members`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+        toast('Membro creato');
+    }
+    closeModal('memberModal');
+    loadMembers();
+}
+
+async function deleteMemberAction(id, name) {
+    if (!confirm(`Eliminare il membro "${name}"? I pass associati NON verranno eliminati.`)) return;
+    await fetch(`${API}/members/${id}`, {method:'DELETE'});
+    toast('Membro eliminato');
+    loadMembers();
+}
+
+async function generatePassForMember(memberId, name, email) {
+    // Find first available template
+    const tplRes = await fetch(`${API}/templates?brand_id=${brandId}`);
+    const templates = await tplRes.json();
+    if (templates.length === 0) return alert('Nessun template disponibile. Crea prima un template.');
+    const tpl = templates[0];
+    const fv = { nome: name };
+    // Set default field values from template
+    (tpl.fields || []).forEach(f => { if (f.value && !fv[f.key]) fv[f.key] = f.value; });
+    const res = await fetch(`${API}/passes`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            template_id: tpl.id,
+            field_values: fv,
+            customer_data: { email: email || '' },
+            member_id: memberId
+        })
+    });
+    if (!res.ok) return alert('Errore generazione pass');
+    const pass = await res.json();
+    toast(`Pass generato per ${name}!`);
+    loadMembers();
+    loadCreatedPasses();
 }
 
 // ==================== POINTS ====================
@@ -1209,6 +1342,34 @@ async function loadTemplateSelect() {
     const sel = document.getElementById('templateSelect');
     sel.innerHTML = '<option value="">Seleziona template</option>';
     tpls.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; o.dataset.template = JSON.stringify(t); sel.appendChild(o); });
+    // Also load member dropdown
+    loadMemberSelect();
+}
+
+async function loadMemberSelect() {
+    if (!brandId) return;
+    const res = await fetch(`${API}/members?brand_id=${brandId}`);
+    const members = await res.json();
+    const sel = document.getElementById('memberSelect');
+    sel.innerHTML = '<option value="">-- Nuovo contatto --</option>';
+    members.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.name + (m.email ? ` (${m.email})` : '');
+        o.dataset.member = JSON.stringify(m);
+        sel.appendChild(o);
+    });
+}
+
+function onMemberSelect() {
+    const sel = document.getElementById('memberSelect');
+    const json = sel.options[sel.selectedIndex]?.dataset.member;
+    if (!json) return; // "Nuovo contatto" selected
+    const m = JSON.parse(json);
+    const nomeInput = document.getElementById('passNome');
+    const emailInput = document.getElementById('customerEmail');
+    if (nomeInput) nomeInput.value = m.name || '';
+    if (emailInput) emailInput.value = m.email || '';
 }
 
 async function loadTemplates() {
@@ -1256,7 +1417,10 @@ async function generatePass() {
     const tplId = document.getElementById('templateSelect').value;
     if (!tplId) return alert('Seleziona un template');
     const fv = {}; const nomeVal = document.getElementById('passNome')?.value || ''; if (nomeVal) fv.nome = nomeVal; document.querySelectorAll('.field-input').forEach(i => { fv[i.dataset.key] = i.value; });
-    const res = await fetch(`${API}/passes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({template_id: tplId, field_values: fv, customer_data: {email: document.getElementById('customerEmail')?.value || ''}})});
+    const memberId = document.getElementById('memberSelect')?.value || null;
+    const payload = {template_id: tplId, field_values: fv, customer_data: {email: document.getElementById('customerEmail')?.value || ''}};
+    if (memberId) payload.member_id = memberId;
+    const res = await fetch(`${API}/passes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     if (!res.ok) return alert('Errore generazione pass');
     const pass = await res.json();
     document.getElementById('successMessage').innerHTML = `<div style="background:rgba(0,212,170,0.1);border:1px solid var(--teal);color:var(--teal);padding:14px;border-radius:8px;margin-bottom:14px;">Pass generato! Serial: ${pass.serial_number}</div>`;

@@ -129,6 +129,17 @@ CREATE TABLE IF NOT EXISTS challenge_completions (
   completed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS members (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id),
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS push_log (
   id SERIAL PRIMARY KEY,
   brand_id TEXT NOT NULL,
@@ -207,6 +218,11 @@ async function getDb() {
       console.log('✓ Default strip image loaded for brands');
     }
 
+    // Add member_id column to pass_instances if not exists
+    await pool.query(`
+      ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id)
+    `);
+
   } catch (error) {
     console.error('Error initializing schema:', error);
     throw error;
@@ -282,7 +298,7 @@ async function createTemplate(data) {
 async function createPassInstance(data) {
   const id = data.id || uuidv4();
   const serial_number = data.serial_number || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  const { template_id, brand_id, customer_data = {}, field_values = {}, device_token = null } = data;
+  const { template_id, brand_id, customer_data = {}, field_values = {}, device_token = null, member_id = null } = data;
   const auth_token = data.auth_token || uuidv4();
 
   if (!template_id || !brand_id) {
@@ -294,15 +310,15 @@ async function createPassInstance(data) {
 
   try {
     await pool.query(
-      `INSERT INTO pass_instances (id, serial_number, template_id, brand_id, customer_data, field_values, device_token, auth_token)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [id, serial_number, template_id, brand_id, JSON.stringify(customerObj), JSON.stringify(fieldObj), device_token, auth_token]
+      `INSERT INTO pass_instances (id, serial_number, template_id, brand_id, customer_data, field_values, device_token, auth_token, member_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [id, serial_number, template_id, brand_id, JSON.stringify(customerObj), JSON.stringify(fieldObj), device_token, auth_token, member_id]
     );
     return {
       id, serial_number, template_id, brand_id,
       customer_data: customerObj,
       field_values: fieldObj,
-      device_token, auth_token,
+      device_token, auth_token, member_id,
       status: 'active'
     };
   } catch (error) {
@@ -1514,6 +1530,51 @@ async function deletePass(id) {
   }
 }
 
+// ==================== MEMBERS ====================
+
+async function createMember(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, name, email = null, phone = null, notes = null } = data;
+  if (!brand_id || !name) throw new Error('Brand ID and name are required');
+  await pool.query(
+    `INSERT INTO members (id, brand_id, name, email, phone, notes) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, brand_id, name, email, phone, notes]
+  );
+  return { id, brand_id, name, email, phone, notes, created_at: new Date() };
+}
+
+async function getMember(id) {
+  const result = await pool.query(`SELECT * FROM members WHERE id = $1`, [id]);
+  return result.rows[0] || null;
+}
+
+async function listMembers(brand_id) {
+  const result = await pool.query(
+    `SELECT m.*,
+      (SELECT COUNT(*) FROM pass_instances p WHERE p.member_id = m.id) as pass_count,
+      (SELECT COALESCE((p.field_values->>'punti')::int, 0) FROM pass_instances p WHERE p.member_id = m.id AND p.status = 'active' ORDER BY p.created_at DESC LIMIT 1) as punti
+    FROM members m WHERE m.brand_id = $1 ORDER BY m.created_at DESC`,
+    [brand_id]
+  );
+  return result.rows;
+}
+
+async function updateMember(id, data) {
+  const { name, email, phone, notes } = data;
+  await pool.query(
+    `UPDATE members SET name = COALESCE($2, name), email = COALESCE($3, email), phone = COALESCE($4, phone), notes = COALESCE($5, notes), updated_at = NOW() WHERE id = $1`,
+    [id, name, email, phone, notes]
+  );
+  return getMember(id);
+}
+
+async function deleteMember(id) {
+  // Unlink passes from member (don't delete them)
+  await pool.query(`UPDATE pass_instances SET member_id = NULL WHERE member_id = $1`, [id]);
+  await pool.query(`DELETE FROM members WHERE id = $1`, [id]);
+  return { success: true };
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -1577,5 +1638,11 @@ module.exports = {
   listPushes,
   deletePush,
   clearPushHistory,
+  // Members
+  createMember,
+  getMember,
+  listMembers,
+  updateMember,
+  deleteMember,
   pool
 };
