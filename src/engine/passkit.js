@@ -226,6 +226,13 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
+  // Hint to user: tap "..." or "ⓘ" for details (shows on front, bottom area)
+  auxiliaryFields.push({
+    key: 'hint',
+    label: '',
+    value: 'Tocca ··· per novità e dettagli'
+  });
+
   // Push announcement — when brand sends a manual push with pass update
   // CRITICAL: changeMessage is what triggers the VISIBLE notification on iOS.
   // Without it, the pass updates silently. With it, iOS shows the message
@@ -305,19 +312,8 @@ function generatePassJson(template, instance, brand, options = {}) {
     // logoText omitted — brand identity comes from the logo image only
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api`,
-    [structureKey]: passStructure,
-    barcode: {
-      format: 'PKBarcodeFormatQR',
-      message: `${baseUrl}/pass/${instance.id}`,
-      messageEncoding: 'iso-8859-1'
-    },
-    barcodes: [
-      {
-        format: 'PKBarcodeFormatQR',
-        message: `${baseUrl}/pass/${instance.id}`,
-        messageEncoding: 'iso-8859-1'
-      }
-    ]
+    [structureKey]: passStructure
+    // No barcode/QR — pass is used for notifications and loyalty, not scanning
   };
 
   // Geofencing locations — triggers lock screen notification when nearby
@@ -378,21 +374,21 @@ async function generateIcon(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF')
 async function generateLogo(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF') {
   const initial = brandName.charAt(0).toUpperCase();
 
-  // 160x50 logo — initial letter in a rounded rect badge
-  const letter160 = letterToSvgPaths(initial, 62, 10, 20, 30, fgColor);
+  // 160x50 logo — initial letter in a rounded rect badge, aligned LEFT
+  const letter160 = letterToSvgPaths(initial, 16, 10, 20, 30, fgColor);
   const logo160 = await sharp(Buffer.from(
     `<svg width="160" height="50" xmlns="http://www.w3.org/2000/svg">
       <rect width="160" height="50" fill="${bgColor}"/>
-      <rect x="52" y="3" width="44" height="44" rx="10" fill="${fgColor}" opacity="0.15"/>${letter160}
+      <rect x="6" y="3" width="44" height="44" rx="10" fill="${fgColor}" opacity="0.15"/>${letter160}
     </svg>`
   )).png().toBuffer();
 
-  // 320x100 logo (2x)
-  const letter320 = letterToSvgPaths(initial, 124, 20, 40, 60, fgColor);
+  // 320x100 logo (2x) — aligned LEFT
+  const letter320 = letterToSvgPaths(initial, 32, 20, 40, 60, fgColor);
   const logo320 = await sharp(Buffer.from(
     `<svg width="320" height="100" xmlns="http://www.w3.org/2000/svg">
       <rect width="320" height="100" fill="${bgColor}"/>
-      <rect x="104" y="6" width="88" height="88" rx="20" fill="${fgColor}" opacity="0.15"/>${letter320}
+      <rect x="12" y="6" width="88" height="88" rx="20" fill="${fgColor}" opacity="0.15"/>${letter320}
     </svg>`
   )).png().toBuffer();
 
