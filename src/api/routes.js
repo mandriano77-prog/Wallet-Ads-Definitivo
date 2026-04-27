@@ -68,11 +68,13 @@ const {
   getMember,
   listMembers,
   updateMember,
-  deleteMember
+  deleteMember,
+  bulkCreateMembers
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
 const sharp = require('sharp');
+const XLSX = require('xlsx');
 
 const router = express.Router();
 
@@ -1670,15 +1672,96 @@ router.get('/members/export', async (req, res) => {
     const { brand_id } = req.query;
     if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
     const members = await listMembers(brand_id);
-    const header = 'Nome,Email,Telefono,Note,Pass,Punti,Data Iscrizione\n';
+    const header = 'Nome,Cognome,Email,Telefono,Note,Pass,Punti,Data Iscrizione\n';
     const rows = members.map(m => {
       const date = new Date(m.created_at).toLocaleDateString('it-IT');
-      return `"${(m.name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
+      return `"${(m.first_name||'').replace(/"/g,'""')}","${(m.last_name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
     }).join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=membri.csv');
     res.send('﻿' + header + rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/members/import - Import members from CSV or Excel
+ * Expects JSON body: { brand_id, file_data (base64), file_name }
+ */
+router.post('/members/import', async (req, res) => {
+  try {
+    const { brand_id, file_data, file_name } = req.body;
+    if (!brand_id || !file_data) return res.status(400).json({ error: 'brand_id and file_data are required' });
+
+    const buffer = Buffer.from(file_data, 'base64');
+    let rows = [];
+
+    // Parse file based on extension
+    const ext = (file_name || '').toLowerCase().split('.').pop();
+    if (ext === 'csv') {
+      // Parse CSV
+      const text = buffer.toString('utf-8');
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return res.status(400).json({ error: 'File vuoto o senza dati' });
+      const headers = lines[0].split(/[,;]/).map(h => h.replace(/"/g, '').trim().toLowerCase());
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(/[,;]/).map(v => v.replace(/"/g, '').trim());
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = vals[idx] || ''; });
+        rows.push(obj);
+      }
+    } else {
+      // Parse Excel
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      rows = data.map(r => {
+        const obj = {};
+        Object.keys(r).forEach(k => { obj[k.toLowerCase().trim()] = String(r[k]).trim(); });
+        return obj;
+      });
+    }
+
+    if (rows.length === 0) return res.status(400).json({ error: 'Nessuna riga trovata nel file' });
+
+    // Column mapping — recognize common header names
+    const NOME_KEYS = ['nome', 'first_name', 'firstname', 'first name', 'name', 'prenom'];
+    const COGNOME_KEYS = ['cognome', 'last_name', 'lastname', 'last name', 'surname', 'family name', 'nom'];
+    const EMAIL_KEYS = ['email', 'e-mail', 'mail', 'indirizzo email'];
+    const PHONE_KEYS = ['telefono', 'phone', 'tel', 'cellulare', 'mobile', 'cell'];
+    const NOTES_KEYS = ['note', 'notes', 'commento', 'commenti', 'osservazioni'];
+
+    function findKey(obj, candidates) {
+      for (const c of candidates) { if (obj[c] !== undefined && obj[c] !== '') return obj[c]; }
+      return '';
+    }
+
+    // If there's only a "nome" or "name" field with spaces, try to split
+    const members = rows.map(r => {
+      let firstName = findKey(r, NOME_KEYS);
+      let lastName = findKey(r, COGNOME_KEYS);
+
+      // If no separate cognome but nome contains space, split
+      if (!lastName && firstName && firstName.includes(' ')) {
+        const parts = firstName.split(' ');
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+      }
+
+      return {
+        first_name: firstName,
+        last_name: lastName || null,
+        email: findKey(r, EMAIL_KEYS) || null,
+        phone: findKey(r, PHONE_KEYS) || null,
+        notes: findKey(r, NOTES_KEYS) || null
+      };
+    }).filter(m => m.first_name); // Skip rows without name
+
+    const result = await bulkCreateMembers(brand_id, members);
+    res.json({ ...result, total_rows: rows.length, parsed: members.length });
+  } catch (error) {
+    console.error('Import error:', error);
     res.status(500).json({ error: error.message });
   }
 });

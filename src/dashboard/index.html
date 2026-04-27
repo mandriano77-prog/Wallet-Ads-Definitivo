@@ -142,6 +142,7 @@
                     <div class="sec-title" style="margin-bottom:0">Membri</div>
                     <div style="display:flex;gap:8px;">
                         <button class="btn" onclick="openMemberModal()">+ Nuovo Membro</button>
+                        <button class="btn sec" onclick="openImportModal()">Importa CSV/Excel</button>
                         <a class="btn sec" id="exportCsvBtn" style="text-decoration:none;">Esporta CSV</a>
                     </div>
                 </div>
@@ -157,13 +158,40 @@
                         <button class="modal-close" onclick="closeModal('memberModal')">&times;</button>
                     </div>
                     <input type="hidden" id="memberEditId">
-                    <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="memberName" placeholder="Nome e Cognome"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="memberFirstName" placeholder="Nome"></div>
+                        <div class="form-group"><label class="form-label">Cognome</label><input type="text" id="memberLastName" placeholder="Cognome"></div>
+                    </div>
                     <div class="form-group"><label class="form-label">Email</label><input type="email" id="memberEmail" placeholder="email@example.com"></div>
                     <div class="form-group"><label class="form-label">Telefono</label><input type="text" id="memberPhone" placeholder="+39 333..."></div>
                     <div class="form-group"><label class="form-label">Note</label><textarea id="memberNotes" rows="2" placeholder="Note libere..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text1);font-size:14px;resize:vertical;"></textarea></div>
                     <div class="form-row">
                         <button class="btn" onclick="saveMember()">Salva</button>
                         <button class="btn sec" onclick="closeModal('memberModal')">Annulla</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMPORT MODAL -->
+            <div class="modal" id="importModal">
+                <div class="modal-box" style="max-width:560px;">
+                    <div class="modal-header">
+                        <span>Importa Membri da File</span>
+                        <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+                    </div>
+                    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Carica un file <strong>CSV</strong> o <strong>Excel (.xlsx)</strong>. Le colonne vengono riconosciute automaticamente: nome, cognome, email, telefono, note.</p>
+                    <div class="form-group">
+                        <label class="form-label">Seleziona file</label>
+                        <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text1);width:100%;" onchange="previewImport()">
+                    </div>
+                    <div id="importPreview" style="display:none;margin-bottom:16px;">
+                        <div style="font-weight:600;margin-bottom:8px;color:var(--text1);">Anteprima</div>
+                        <div id="importPreviewContent" style="max-height:200px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;"></div>
+                    </div>
+                    <div id="importResult" style="display:none;margin-bottom:16px;"></div>
+                    <div class="form-row">
+                        <button class="btn" id="importBtn" onclick="executeImport()" disabled>Importa</button>
+                        <button class="btn sec" onclick="closeModal('importModal')">Chiudi</button>
                     </div>
                 </div>
             </div>
@@ -828,17 +856,18 @@ async function loadMembers() {
         </div>`;
 
     document.getElementById('membersContent').innerHTML = membersData.map(m => {
-        const name = m.name || 'N/A';
+        const name = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ') || 'N/A';
         const pts = parseInt(m.punti) || 0;
         const hasPass = parseInt(m.pass_count) > 0;
         const passInfo = hasPass ? `<span style="color:var(--teal);font-size:11px;">&#x2713; Pass attivo</span>` : `<span style="color:var(--text2);font-size:11px;">Nessun pass</span>`;
-        const contact = [m.email, m.phone].filter(Boolean).join(' · ') || '';
+        const contact = [m.email, m.phone].filter(Boolean).join(' &middot; ') || '';
         // Find linked pass for points/QR
-        const linkedPass = allPasses.find(p => p.member_id === m.id) || allPasses.find(p => p.field_values?.nome === m.name);
+        const linkedPass = allPasses.find(p => p.member_id === m.id) || allPasses.find(p => p.field_values?.nome === name);
+        const safeName = name.replace(/'/g,"\\'");
 
         return `<div class="card member-card">
             <div style="display:flex;align-items:center;gap:14px;flex:1;">
-                <div class="member-avatar">${name[0]}</div>
+                <div class="member-avatar">${(m.first_name||'?')[0]}</div>
                 <div style="flex:1;">
                     <div class="member-name">${name}</div>
                     <div style="font-size:12px;color:var(--text2);">${contact}</div>
@@ -849,14 +878,14 @@ async function loadMembers() {
                 ${linkedPass ? `<div style="text-align:right"><div class="points-value">${pts}</div><div class="points-label">punti</div></div>` : ''}
                 <div class="card-actions">
                     ${linkedPass ? `
-                        <button class="btn small" onclick="openPointsModal('${linkedPass.id}','${name.replace(/'/g,"\\'")}',${pts})">+ Punti</button>
-                        <button class="btn small sec" onclick="openBackEditModal('${linkedPass.id}','${name.replace(/'/g,"\\'")}')">Retro</button>
+                        <button class="btn small" onclick="openPointsModal('${linkedPass.id}','${safeName}',${pts})">+ Punti</button>
+                        <button class="btn small sec" onclick="openBackEditModal('${linkedPass.id}','${safeName}')">Retro</button>
                         <button class="btn small sec" onclick="showQR('${linkedPass.landing_url}')">QR</button>
                     ` : `
-                        <button class="btn small" onclick="generatePassForMember('${m.id}','${name.replace(/'/g,"\\'")}','${(m.email||'').replace(/'/g,"\\'")}')">Genera Pass</button>
+                        <button class="btn small" onclick="generatePassForMember('${m.id}','${safeName}','${(m.email||'').replace(/'/g,"\\'")}')">Genera Pass</button>
                     `}
                     <button class="btn small sec" onclick="openMemberModal('${m.id}')">Modifica</button>
-                    <button class="btn small" style="background:#e74c3c;border-color:#e74c3c;" onclick="deleteMemberAction('${m.id}','${name.replace(/'/g,"\\'")}')">X</button>
+                    <button class="btn small" style="background:#e74c3c;border-color:#e74c3c;" onclick="deleteMemberAction('${m.id}','${safeName}')">X</button>
                 </div>
             </div>
         </div>`;
@@ -869,14 +898,16 @@ function openMemberModal(editId) {
         const m = membersData.find(x => x.id === editId);
         if (m) {
             document.getElementById('memberModalTitle').textContent = 'Modifica Membro';
-            document.getElementById('memberName').value = m.name || '';
+            document.getElementById('memberFirstName').value = m.first_name || '';
+            document.getElementById('memberLastName').value = m.last_name || '';
             document.getElementById('memberEmail').value = m.email || '';
             document.getElementById('memberPhone').value = m.phone || '';
             document.getElementById('memberNotes').value = m.notes || '';
         }
     } else {
         document.getElementById('memberModalTitle').textContent = 'Nuovo Membro';
-        document.getElementById('memberName').value = '';
+        document.getElementById('memberFirstName').value = '';
+        document.getElementById('memberLastName').value = '';
         document.getElementById('memberEmail').value = '';
         document.getElementById('memberPhone').value = '';
         document.getElementById('memberNotes').value = '';
@@ -885,11 +916,12 @@ function openMemberModal(editId) {
 }
 
 async function saveMember() {
-    const name = document.getElementById('memberName').value.trim();
-    if (!name) return alert('Il nome è obbligatorio');
+    const firstName = document.getElementById('memberFirstName').value.trim();
+    if (!firstName) return alert('Il nome è obbligatorio');
     const data = {
         brand_id: brandId,
-        name,
+        first_name: firstName,
+        last_name: document.getElementById('memberLastName').value.trim() || null,
         email: document.getElementById('memberEmail').value.trim() || null,
         phone: document.getElementById('memberPhone').value.trim() || null,
         notes: document.getElementById('memberNotes').value.trim() || null
@@ -911,6 +943,85 @@ async function deleteMemberAction(id, name) {
     await fetch(`${API}/members/${id}`, {method:'DELETE'});
     toast('Membro eliminato');
     loadMembers();
+}
+
+// ==================== IMPORT ====================
+let importFileData = null;
+let importFileName = '';
+
+function openImportModal() {
+    document.getElementById('importFile').value = '';
+    document.getElementById('importPreview').style.display = 'none';
+    document.getElementById('importResult').style.display = 'none';
+    document.getElementById('importBtn').disabled = true;
+    importFileData = null;
+    importFileName = '';
+    document.getElementById('importModal').classList.add('active');
+}
+
+function previewImport() {
+    const file = document.getElementById('importFile').files[0];
+    if (!file) return;
+    importFileName = file.name;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        importFileData = btoa(new Uint8Array(e.target.result).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        // Parse preview client-side for CSV
+        const ext = file.name.toLowerCase().split('.').pop();
+        let previewHtml = '';
+        if (ext === 'csv') {
+            const text = new TextDecoder().decode(e.target.result);
+            const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 6);
+            if (lines.length > 0) {
+                const headers = lines[0].split(/[,;]/).map(h => h.replace(/"/g,'').trim());
+                previewHtml = `<table style="width:100%;border-collapse:collapse;font-size:11px;"><tr>${headers.map(h => `<th style="border-bottom:1px solid var(--border);padding:4px 6px;text-align:left;color:var(--teal);">${h}</th>`).join('')}</tr>`;
+                for (let i = 1; i < lines.length; i++) {
+                    const vals = lines[i].split(/[,;]/).map(v => v.replace(/"/g,'').trim());
+                    previewHtml += `<tr>${vals.map(v => `<td style="border-bottom:1px solid var(--border);padding:4px 6px;color:var(--text1);">${v}</td>`).join('')}</tr>`;
+                }
+                previewHtml += '</table>';
+                if (lines.length > 5) previewHtml += `<div style="color:var(--text2);margin-top:6px;font-size:11px;">... e altre righe</div>`;
+            }
+        } else {
+            previewHtml = `<div style="color:var(--text1);">File Excel: <strong>${file.name}</strong> (${(file.size/1024).toFixed(1)} KB)</div><div style="color:var(--text2);margin-top:4px;font-size:11px;">L'anteprima dettagliata viene mostrata per i CSV. I file Excel vengono processati al momento dell'import.</div>`;
+        }
+        document.getElementById('importPreviewContent').innerHTML = previewHtml;
+        document.getElementById('importPreview').style.display = 'block';
+        document.getElementById('importBtn').disabled = false;
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+async function executeImport() {
+    if (!importFileData || !brandId) return;
+    document.getElementById('importBtn').disabled = true;
+    document.getElementById('importBtn').textContent = 'Importando...';
+    try {
+        const res = await fetch(`${API}/members/import`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ brand_id: brandId, file_data: importFileData, file_name: importFileName })
+        });
+        const result = await res.json();
+        if (res.ok) {
+            let msg = `<div style="background:rgba(0,212,170,0.1);border:1px solid var(--teal);color:var(--teal);padding:12px;border-radius:8px;">`;
+            msg += `<strong>${result.created}</strong> membri importati`;
+            if (result.skipped > 0) msg += ` &middot; ${result.skipped} righe saltate (senza nome)`;
+            if (result.errors && result.errors.length > 0) msg += `<br><span style="color:#e74c3c;font-size:12px;">Errori: ${result.errors.slice(0,3).join(', ')}</span>`;
+            msg += `</div>`;
+            document.getElementById('importResult').innerHTML = msg;
+            document.getElementById('importResult').style.display = 'block';
+            loadMembers();
+            toast(`${result.created} membri importati!`);
+        } else {
+            document.getElementById('importResult').innerHTML = `<div style="background:rgba(231,76,60,0.1);border:1px solid #e74c3c;color:#e74c3c;padding:12px;border-radius:8px;">${result.error}</div>`;
+            document.getElementById('importResult').style.display = 'block';
+        }
+    } catch(e) {
+        toast('Errore import: ' + e.message, 'error');
+    }
+    document.getElementById('importBtn').disabled = false;
+    document.getElementById('importBtn').textContent = 'Importa';
 }
 
 async function generatePassForMember(memberId, name, email) {
@@ -1355,7 +1466,8 @@ async function loadMemberSelect() {
     members.forEach(m => {
         const o = document.createElement('option');
         o.value = m.id;
-        o.textContent = m.name + (m.email ? ` (${m.email})` : '');
+        const fullName = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ');
+        o.textContent = fullName + (m.email ? ` (${m.email})` : '');
         o.dataset.member = JSON.stringify(m);
         sel.appendChild(o);
     });
@@ -1366,9 +1478,10 @@ function onMemberSelect() {
     const json = sel.options[sel.selectedIndex]?.dataset.member;
     if (!json) return; // "Nuovo contatto" selected
     const m = JSON.parse(json);
+    const fullName = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ');
     const nomeInput = document.getElementById('passNome');
     const emailInput = document.getElementById('customerEmail');
-    if (nomeInput) nomeInput.value = m.name || '';
+    if (nomeInput) nomeInput.value = fullName || '';
     if (emailInput) emailInput.value = m.email || '';
 }
 

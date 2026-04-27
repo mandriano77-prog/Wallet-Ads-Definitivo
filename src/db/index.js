@@ -132,7 +132,8 @@ CREATE TABLE IF NOT EXISTS challenge_completions (
 CREATE TABLE IF NOT EXISTS members (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL REFERENCES brands(id),
-  name TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT,
   email TEXT,
   phone TEXT,
   notes TEXT,
@@ -222,6 +223,19 @@ async function getDb() {
     await pool.query(`
       ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id)
     `);
+
+    // Migrate members: split name → first_name + last_name
+    try {
+      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS first_name TEXT`);
+      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS last_name TEXT`);
+      // Copy data from name to first_name/last_name if name column exists
+      const colCheck = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'name'`);
+      if (colCheck.rows.length > 0) {
+        await pool.query(`UPDATE members SET first_name = split_part(name, ' ', 1), last_name = NULLIF(substr(name, position(' ' in name) + 1), name) WHERE first_name IS NULL AND name IS NOT NULL`);
+        await pool.query(`ALTER TABLE members DROP COLUMN IF EXISTS name`);
+        console.log('✓ Migrated members name → first_name + last_name');
+      }
+    } catch(e) { console.log('Members migration note:', e.message); }
 
   } catch (error) {
     console.error('Error initializing schema:', error);
@@ -1534,13 +1548,13 @@ async function deletePass(id) {
 
 async function createMember(data) {
   const id = data.id || uuidv4();
-  const { brand_id, name, email = null, phone = null, notes = null } = data;
-  if (!brand_id || !name) throw new Error('Brand ID and name are required');
+  const { brand_id, first_name, last_name = null, email = null, phone = null, notes = null } = data;
+  if (!brand_id || !first_name) throw new Error('Brand ID and first_name are required');
   await pool.query(
-    `INSERT INTO members (id, brand_id, name, email, phone, notes) VALUES ($1, $2, $3, $4, $5, $6)`,
-    [id, brand_id, name, email, phone, notes]
+    `INSERT INTO members (id, brand_id, first_name, last_name, email, phone, notes) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, brand_id, first_name, last_name, email, phone, notes]
   );
-  return { id, brand_id, name, email, phone, notes, created_at: new Date() };
+  return { id, brand_id, first_name, last_name, email, phone, notes, created_at: new Date() };
 }
 
 async function getMember(id) {
@@ -1550,22 +1564,36 @@ async function getMember(id) {
 
 async function listMembers(brand_id) {
   const result = await pool.query(
-    `SELECT m.*,
+    `SELECT m.*, CONCAT(m.first_name, COALESCE(' ' || m.last_name, '')) as full_name,
       (SELECT COUNT(*) FROM pass_instances p WHERE p.member_id = m.id) as pass_count,
       (SELECT COALESCE((p.field_values->>'punti')::int, 0) FROM pass_instances p WHERE p.member_id = m.id AND p.status = 'active' ORDER BY p.created_at DESC LIMIT 1) as punti
-    FROM members m WHERE m.brand_id = $1 ORDER BY m.created_at DESC`,
+    FROM members m WHERE m.brand_id = $1 ORDER BY m.last_name ASC NULLS LAST, m.first_name ASC`,
     [brand_id]
   );
   return result.rows;
 }
 
 async function updateMember(id, data) {
-  const { name, email, phone, notes } = data;
+  const { first_name, last_name, email, phone, notes } = data;
   await pool.query(
-    `UPDATE members SET name = COALESCE($2, name), email = COALESCE($3, email), phone = COALESCE($4, phone), notes = COALESCE($5, notes), updated_at = NOW() WHERE id = $1`,
-    [id, name, email, phone, notes]
+    `UPDATE members SET first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), phone = COALESCE($5, phone), notes = COALESCE($6, notes), updated_at = NOW() WHERE id = $1`,
+    [id, first_name, last_name, email, phone, notes]
   );
   return getMember(id);
+}
+
+async function bulkCreateMembers(brand_id, members) {
+  const results = { created: 0, skipped: 0, errors: [] };
+  for (const m of members) {
+    try {
+      if (!m.first_name) { results.skipped++; continue; }
+      await createMember({ brand_id, first_name: m.first_name, last_name: m.last_name || null, email: m.email || null, phone: m.phone || null, notes: m.notes || null });
+      results.created++;
+    } catch (e) {
+      results.errors.push(`${m.first_name} ${m.last_name || ''}: ${e.message}`);
+    }
+  }
+  return results;
 }
 
 async function deleteMember(id) {
@@ -1644,5 +1672,6 @@ module.exports = {
   listMembers,
   updateMember,
   deleteMember,
+  bulkCreateMembers,
   pool
 };
