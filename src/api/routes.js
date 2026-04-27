@@ -69,7 +69,8 @@ const {
   listMembers,
   updateMember,
   deleteMember,
-  bulkCreateMembers
+  bulkCreateMembers,
+  pool
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
@@ -369,6 +370,14 @@ router.post('/passes', async (req, res) => {
       return res.status(400).json({
         error: 'Template ID is required'
       });
+    }
+
+    // Enforce one pass per member
+    if (member_id) {
+      const check = await pool.query('SELECT id FROM pass_instances WHERE member_id = $1 AND status = $2', [member_id, 'active']);
+      if (check.rows.length > 0) {
+        return res.status(400).json({ error: 'Questo membro ha già un pass attivo' });
+      }
     }
 
     const template = await getTemplate(template_id);

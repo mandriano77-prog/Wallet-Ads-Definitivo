@@ -1462,13 +1462,15 @@ async function loadMemberSelect() {
     const res = await fetch(`${API}/members?brand_id=${brandId}`);
     const members = await res.json();
     const sel = document.getElementById('memberSelect');
-    sel.innerHTML = '<option value="">-- Nuovo contatto --</option>';
+    sel.innerHTML = '<option value="">-- Seleziona membro --</option>';
     members.forEach(m => {
         const o = document.createElement('option');
         o.value = m.id;
         const fullName = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ');
-        o.textContent = fullName + (m.email ? ` (${m.email})` : '');
+        const hasPass = parseInt(m.pass_count) > 0;
+        o.textContent = fullName + (m.email ? ` (${m.email})` : '') + (hasPass ? ' — ha già un pass' : '');
         o.dataset.member = JSON.stringify(m);
+        if (hasPass) o.disabled = true;
         sel.appendChild(o);
     });
 }
@@ -1476,13 +1478,19 @@ async function loadMemberSelect() {
 function onMemberSelect() {
     const sel = document.getElementById('memberSelect');
     const json = sel.options[sel.selectedIndex]?.dataset.member;
-    if (!json) return; // "Nuovo contatto" selected
-    const m = JSON.parse(json);
-    const fullName = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ');
     const nomeInput = document.getElementById('passNome');
     const emailInput = document.getElementById('customerEmail');
-    if (nomeInput) nomeInput.value = fullName || '';
-    if (emailInput) emailInput.value = m.email || '';
+    if (!json) {
+        // No member selected — clear and enable fields
+        if (nomeInput) { nomeInput.value = ''; nomeInput.readOnly = false; nomeInput.style.opacity = '1'; }
+        if (emailInput) { emailInput.value = ''; emailInput.readOnly = false; emailInput.style.opacity = '1'; }
+        return;
+    }
+    const m = JSON.parse(json);
+    const fullName = m.full_name || [m.first_name, m.last_name].filter(Boolean).join(' ');
+    // Auto-fill and lock fields — data comes from anagrafica
+    if (nomeInput) { nomeInput.value = fullName || ''; nomeInput.readOnly = true; nomeInput.style.opacity = '0.6'; }
+    if (emailInput) { emailInput.value = m.email || ''; emailInput.readOnly = true; emailInput.style.opacity = '0.6'; }
 }
 
 async function loadTemplates() {
@@ -1521,18 +1529,22 @@ function loadTemplateFields() {
     const json = sel.options[sel.selectedIndex]?.dataset.template;
     if (!json) { document.getElementById('fieldGroup').innerHTML = ''; return; }
     const tpl = JSON.parse(json);
+    // Only show secondary/auxiliary fields (NOT back fields — those are fixed content)
+    const editableFields = (tpl.fields||[]).filter(f => f.type !== 'back');
     document.getElementById('fieldGroup').innerHTML = '<div class="form-group"><label class="form-label">Nome</label><input type="text" id="passNome" placeholder="Nome e Cognome"></div>'
-        + (tpl.fields||[]).map(f => `<div class="form-group"><label class="form-label">${f.label}</label><input type="text" class="field-input" data-key="${f.key}" placeholder="${f.value||''}"></div>`).join('')
+        + editableFields.map(f => `<div class="form-group"><label class="form-label">${f.label}</label><input type="text" class="field-input" data-key="${f.key}" placeholder="${f.value||''}" value="${f.value||''}"></div>`).join('')
         + '<div class="form-group"><label class="form-label">Email</label><input type="email" id="customerEmail" placeholder="email@example.com"></div>';
+    // If a member is selected, auto-fill
+    onMemberSelect();
 }
 
 async function generatePass() {
+    const memberId = document.getElementById('memberSelect')?.value || null;
+    if (!memberId) return alert('Seleziona un membro dalla lista');
     const tplId = document.getElementById('templateSelect').value;
     if (!tplId) return alert('Seleziona un template');
-    const fv = {}; const nomeVal = document.getElementById('passNome')?.value || ''; if (nomeVal) fv.nome = nomeVal; document.querySelectorAll('.field-input').forEach(i => { fv[i.dataset.key] = i.value; });
-    const memberId = document.getElementById('memberSelect')?.value || null;
-    const payload = {template_id: tplId, field_values: fv, customer_data: {email: document.getElementById('customerEmail')?.value || ''}};
-    if (memberId) payload.member_id = memberId;
+    const fv = {}; const nomeVal = document.getElementById('passNome')?.value || ''; if (nomeVal) fv.nome = nomeVal; document.querySelectorAll('.field-input').forEach(i => { if (i.dataset.key) fv[i.dataset.key] = i.value; });
+    const payload = {template_id: tplId, field_values: fv, customer_data: {email: document.getElementById('customerEmail')?.value || ''}, member_id: memberId};
     const res = await fetch(`${API}/passes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     if (!res.ok) return alert('Errore generazione pass');
     const pass = await res.json();
