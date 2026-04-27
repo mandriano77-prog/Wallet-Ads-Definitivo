@@ -55,9 +55,10 @@ app.use('/debug', debugSignRoutes);
 app.use('/landing', express.static(path.join(__dirname, 'landing')));
 app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 
-// Health check
+// Health check + version
+const BUILD_VERSION = '2.1.0-' + Date.now();
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', version: BUILD_VERSION, timestamp: new Date().toISOString() });
 });
 
 // Root redirect
