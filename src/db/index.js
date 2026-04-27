@@ -237,6 +237,29 @@ async function getDb() {
       console.log('✓ Default strip image loaded into DB for all brands');
     }
 
+    // Load default icon images into DB for all brands (H mark)
+    const iconPath = require('path').join(__dirname, '..', '..', 'public', 'assets', 'default-icon.png');
+    const icon2xPath = require('path').join(__dirname, '..', '..', 'public', 'assets', 'default-icon@2x.png');
+    if (require('fs').existsSync(iconPath)) {
+      const iconB64 = require('fs').readFileSync(iconPath).toString('base64');
+      const icon2xB64 = require('fs').existsSync(icon2xPath)
+        ? require('fs').readFileSync(icon2xPath).toString('base64')
+        : iconB64;
+      await pool.query(`
+        UPDATE brands
+        SET config = jsonb_set(
+          jsonb_set(COALESCE(config, '{}'), '{logos}', COALESCE(config->'logos', '{}'))
+          , '{logos,icon}', $1::jsonb)
+      `, [JSON.stringify(iconB64)]);
+      await pool.query(`
+        UPDATE brands
+        SET config = jsonb_set(
+          COALESCE(config, '{}')
+          , '{logos,icon@2x}', $1::jsonb)
+      `, [JSON.stringify(icon2xB64)]);
+      console.log('✓ Default icon (H mark) loaded into DB for all brands');
+    }
+
     // Add member_id column to pass_instances if not exists
     await pool.query(`
       ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id)
