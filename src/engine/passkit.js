@@ -532,10 +532,20 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using custom brand logos (left-aligned)');
   }
 
-  // Fall back to generated images if no custom logos
+  // Fall back to default icon files, then generated
   if (!iconBuffers?.icon) {
-    const icons = await generateIcon(brand.name, bgColor, fgColor);
-    iconBuffers = icons;
+    const defaultIconPath = path.join(__dirname, '..', '..', 'public', 'assets', 'default-icon.png');
+    const defaultIcon2xPath = path.join(__dirname, '..', '..', 'public', 'assets', 'default-icon@2x.png');
+    if (fs.existsSync(defaultIconPath)) {
+      iconBuffers = {
+        icon: fs.readFileSync(defaultIconPath),
+        icon2x: fs.existsSync(defaultIcon2xPath) ? fs.readFileSync(defaultIcon2xPath) : fs.readFileSync(defaultIconPath)
+      };
+      console.log('✓ Using default icon (H mark from assets)');
+    } else {
+      const icons = await generateIcon(brand.name, bgColor, fgColor);
+      iconBuffers = icons;
+    }
   }
   if (!logoBuffers?.logo) {
     const logos = await generateLogo(brand.name, bgColor, fgColor);
