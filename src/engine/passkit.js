@@ -287,18 +287,18 @@ function generatePassJson(template, instance, brand, options = {}) {
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api`,
     [structureKey]: passStructure,
-    // Barcode — Code 128 with serial number (scannable with barcode gun)
+    // Barcode — QR code with unique serial number (scannable by any smartphone)
     barcodes: [
       {
         message: instance.serial_number,
-        format: 'PKBarcodeFormatCode128',
+        format: 'PKBarcodeFormatQR',
         messageEncoding: 'iso-8859-1',
         altText: `N° ${instance.serial_number.substring(0, 13)}`
       }
     ],
     barcode: {
       message: instance.serial_number,
-      format: 'PKBarcodeFormatCode128',
+      format: 'PKBarcodeFormatQR',
       messageEncoding: 'iso-8859-1',
       altText: `N° ${instance.serial_number.substring(0, 13)}`
     }
