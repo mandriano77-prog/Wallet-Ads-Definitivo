@@ -169,6 +169,25 @@ async function getDb() {
         AND config::text LIKE '%hangarpadel.it/prenota%'
     `);
 
+    // Switch template to eventTicket
+    await pool.query(`
+      UPDATE pass_templates SET pass_type = 'eventTicket'
+      WHERE pass_type = 'storeCard'
+    `);
+
+    // Load default strip image for brands without one
+    const stripPath = require('path').join(__dirname, '..', '..', 'assets', 'strip_default.png');
+    if (require('fs').existsSync(stripPath)) {
+      const stripB64 = require('fs').readFileSync(stripPath).toString('base64');
+      await pool.query(`
+        UPDATE brands
+        SET config = jsonb_set(COALESCE(config, '{}'), '{logos,strip}', $1::jsonb)
+        WHERE NOT (config->'logos' ? 'strip')
+           OR config->'logos'->>'strip' IS NULL
+      `, [JSON.stringify(stripB64)]);
+      console.log('✓ Default strip image loaded for brands');
+    }
+
   } catch (error) {
     console.error('Error initializing schema:', error);
     throw error;
