@@ -147,6 +147,28 @@ async function getDb() {
   try {
     await pool.query(SCHEMA);
     console.log('â Database schema initialized (PostgreSQL)');
+    // --- One-shot migrations ---
+    // Update "Prenota un campo" link to Playtomic URL
+    await pool.query(`
+      UPDATE brands
+      SET config = jsonb_set(
+        config,
+        '{links}',
+        (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'label' = 'Prenota un campo'
+              THEN jsonb_set(elem, '{url}', '"https://playtomic.com/clubs/hangar-padel-club-origgio-va"')
+              ELSE elem
+            END
+          )
+          FROM jsonb_array_elements(config->'links') AS elem
+        )
+      )
+      WHERE config->'links' IS NOT NULL
+        AND config::text LIKE '%hangarpadel.it/prenota%'
+    `);
+
   } catch (error) {
     console.error('Error initializing schema:', error);
     throw error;
