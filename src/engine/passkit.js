@@ -183,7 +183,7 @@ function generatePassJson(template, instance, brand, options = {}) {
   const fgHex = brandConfig.foregroundColor || null;
   const foregroundColor = fgHex ? `rgb(${parseColor(fgHex).r}, ${parseColor(fgHex).g}, ${parseColor(fgHex).b})` : (template.style?.foregroundColor || 'rgb(255, 255, 255)');
   const bgHex = brandConfig.backgroundColor || null;
-  const backgroundColor = bgHex ? `rgb(${parseColor(bgHex).r}, ${parseColor(bgHex).g}, ${parseColor(bgHex).b})` : (template.style?.backgroundColor || 'rgb(13, 11, 26)');
+  const backgroundColor = bgHex ? `rgb(${parseColor(bgHex).r}, ${parseColor(bgHex).g}, ${parseColor(bgHex).b})` : (template.style?.backgroundColor || 'rgb(0, 0, 0)');
   const lblHex = brandConfig.labelColor || null;
   const labelColor = lblHex ? `rgb(${parseColor(lblHex).r}, ${parseColor(lblHex).g}, ${parseColor(lblHex).b})` : (template.style?.labelColor || 'rgb(212, 230, 0)');
 
