@@ -232,8 +232,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     auxiliaryFields.push({
       key: 'announcement',
       label: promoTitle,
-      value: promoText,
-      changeMessage: '%@'
+      value: promoText
     });
   }
 
