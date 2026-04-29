@@ -41,6 +41,14 @@ const PORT = process.env.PORT || 3000;
 // Trust reverse proxy (Railway, Heroku, etc.) for correct req.protocol
 app.set('trust proxy', true);
 
+// Force HTTPS in production (Railway terminates SSL at proxy)
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] === 'http' && process.env.NODE_ENV !== 'development') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  next();
+});
+
 // Middleware
 app.use(cors());
 app.use(morgan('combined'));
