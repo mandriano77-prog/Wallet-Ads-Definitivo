@@ -526,15 +526,19 @@
         <button class="modal-close" onclick="closeModal('tierModal')">&times;</button>
         <div class="modal-header" id="tierModalTitle">Nuovo Livello</div>
         <input type="hidden" id="tierEditId">
-        <div class="form-group"><label class="form-label">Nome</label><input type="text" id="trName" placeholder="es. Gold"></div>
+        <div class="form-group"><label class="form-label">Nome</label><input type="text" id="trName" placeholder="es. Bandeja"></div>
+        <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="trDescription" placeholder="es. Per chi inizia a giocare regolarmente"></div>
         <div class="form-row">
             <div class="form-group"><label class="form-label">Punti minimi</label><input type="number" id="trMinPoints" placeholder="0"></div>
             <div class="form-group"><label class="form-label">Colore (hex)</label>
                 <div class="color-input-wrap"><input type="color" id="trColorPick" value="#00D4AA" onchange="document.getElementById('trColor').value=this.value"><input type="text" id="trColor" value="#00D4AA"></div>
             </div>
         </div>
-        <div class="form-group"><label class="form-label">Benefit (uno per riga)</label>
-            <textarea id="trPerks" rows="4" placeholder="Accesso base&#10;Newsletter eventi&#10;Sconto 5% bar" style="resize:vertical;"></textarea>
+        <div class="form-group"><label class="form-label">Vantaggi (uno per riga)</label>
+            <textarea id="trPerks" rows="3" placeholder="Accesso area soci&#10;Newsletter eventi&#10;Sconto 5% bar" style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group"><label class="form-label">Premi (uno per riga)</label>
+            <textarea id="trRewards" rows="3" placeholder="Drink omaggio al bar&#10;1 ora campo gratuita&#10;T-shirt club" style="resize:vertical;"></textarea>
         </div>
         <button class="btn" onclick="saveTier()">Salva Livello</button>
     </div>
@@ -1490,30 +1494,41 @@ async function loadTiers() {
     const tiers = await res.json();
     document.getElementById('tiersList').innerHTML = tiers.length === 0
         ? '<p style="color:var(--text2)">Nessun livello configurato.</p>'
-        : tiers.map((t,i) => `<div class="card card-row">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <div class="card-icon" style="background:${t.color||'var(--teal)'};color:white;font-weight:700;font-size:14px;">${i+1}</div>
-                <div class="card-info">
+        : tiers.map((t,i) => {
+            const perks = t.perks || [];
+            const rewards = t.rewards_list || [];
+            const desc = t.description || '';
+            let detailHtml = '';
+            if (desc) detailHtml += `<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic;">${desc}</div>`;
+            if (perks.length) detailHtml += `<div style="font-size:12px;margin-top:6px;"><span style="color:var(--teal);font-weight:600;">Vantaggi:</span> ${perks.join(' · ')}</div>`;
+            if (rewards.length) detailHtml += `<div style="font-size:12px;margin-top:3px;"><span style="color:#FFD700;font-weight:600;">Premi:</span> ${rewards.join(' · ')}</div>`;
+            return `<div class="card card-row" style="align-items:flex-start;">
+            <div style="display:flex;align-items:flex-start;gap:14px;flex:1;">
+                <div class="card-icon" style="background:${t.color||'var(--teal)'};color:white;font-weight:700;font-size:14px;flex-shrink:0;">${i+1}</div>
+                <div class="card-info" style="flex:1;">
                     <div class="card-title">${t.name}</div>
                     <div class="card-desc">${t.min_points}+ punti</div>
-                    <div class="card-meta">${(t.perks||[]).join(' · ')}</div>
+                    ${detailHtml}
                 </div>
             </div>
-            <div class="card-actions">
+            <div class="card-actions" style="flex-shrink:0;">
                 <button class="btn small sec" onclick="editTier('${t.id}')">Modifica</button>
                 <button class="btn small danger" onclick="deleteTier('${t.id}')">Elimina</button>
             </div>
-        </div>`).join('');
+        </div>`;
+        }).join('');
 }
 
 function openTierModal(data) {
     document.getElementById('tierEditId').value = data?.id || '';
     document.getElementById('tierModalTitle').textContent = data ? 'Modifica Livello' : 'Nuovo Livello';
     document.getElementById('trName').value = data?.name || '';
+    document.getElementById('trDescription').value = data?.description || '';
     document.getElementById('trMinPoints').value = data?.min_points ?? '';
     document.getElementById('trColor').value = data?.color || '#00D4AA';
     document.getElementById('trColorPick').value = data?.color || '#00D4AA';
     document.getElementById('trPerks').value = (data?.perks || []).join('\n');
+    document.getElementById('trRewards').value = (data?.rewards_list || []).join('\n');
     document.getElementById('tierModal').classList.add('active');
 }
 
@@ -1527,7 +1542,16 @@ async function editTier(id) {
 async function saveTier() {
     const id = document.getElementById('tierEditId').value;
     const perks = document.getElementById('trPerks').value.split('\n').filter(l => l.trim());
-    const body = { brand_id: brandId, name: document.getElementById('trName').value, min_points: parseInt(document.getElementById('trMinPoints').value)||0, color: document.getElementById('trColor').value, perks };
+    const rewards_list = document.getElementById('trRewards').value.split('\n').filter(l => l.trim());
+    const body = {
+        brand_id: brandId,
+        name: document.getElementById('trName').value,
+        description: document.getElementById('trDescription').value,
+        min_points: parseInt(document.getElementById('trMinPoints').value)||0,
+        color: document.getElementById('trColor').value,
+        perks,
+        rewards_list
+    };
     if (!body.name) return alert('Inserisci un nome');
     if (id) { await fetch(`${API}/tiers/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); }
     else { await fetch(`${API}/tiers`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); }

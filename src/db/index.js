@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS tiers (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE tiers ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE tiers ADD COLUMN IF NOT EXISTS rewards_list JSONB DEFAULT '[]';
+
 CREATE TABLE IF NOT EXISTS vip_cards (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL REFERENCES brands(id),
@@ -1081,7 +1084,7 @@ async function deleteChallenge(id) {
  */
 async function createTier(data) {
   const id = data.id || uuidv4();
-  const { brand_id, name, min_points = 0, color = '#888888', perks = [], sort_order = 0 } = data;
+  const { brand_id, name, min_points = 0, color = '#888888', perks = [], sort_order = 0, description = '', rewards_list = [] } = data;
 
   if (!brand_id || !name) {
     throw new Error('Brand ID and name are required');
@@ -1089,12 +1092,13 @@ async function createTier(data) {
 
   try {
     const perksJson = typeof perks === 'string' ? perks : JSON.stringify(perks);
+    const rewardsJson = typeof rewards_list === 'string' ? rewards_list : JSON.stringify(rewards_list);
     await pool.query(
-      `INSERT INTO tiers (id, brand_id, name, min_points, color, perks, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, brand_id, name, min_points, color, perksJson, sort_order]
+      `INSERT INTO tiers (id, brand_id, name, min_points, color, perks, sort_order, description, rewards_list)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [id, brand_id, name, min_points, color, perksJson, sort_order, description, rewardsJson]
     );
-    return { id, brand_id, name, min_points, color, perks, sort_order };
+    return { id, brand_id, name, min_points, color, perks, sort_order, description, rewards_list };
   } catch (error) {
     throw new Error(`Failed to create tier: ${error.message}`);
   }
@@ -1165,6 +1169,17 @@ async function updateTier(id, data) {
       paramCount++;
       updates.push(`sort_order = $${paramCount}`);
       values.push(data.sort_order);
+    }
+    if (data.description !== undefined) {
+      paramCount++;
+      updates.push(`description = $${paramCount}`);
+      values.push(data.description);
+    }
+    if (data.rewards_list !== undefined) {
+      paramCount++;
+      const rewardsJson = typeof data.rewards_list === 'string' ? data.rewards_list : JSON.stringify(data.rewards_list);
+      updates.push(`rewards_list = $${paramCount}`);
+      values.push(rewardsJson);
     }
 
     if (updates.length === 0) return getTier(id);
