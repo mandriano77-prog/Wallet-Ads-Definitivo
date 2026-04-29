@@ -1153,6 +1153,17 @@ router.post('/passes/signup', async (req, res) => {
 // ============================================================================
 
 /**
+ * GET /api/v1/rewards/check - Check rewards in DB
+ */
+router.get('/rewards/check', async (req, res) => {
+  try {
+    const all = await pool.query('SELECT id, brand_id, title, cost FROM rewards ORDER BY cost');
+    const brands = await pool.query('SELECT id, name FROM brands');
+    res.json({ total: all.rows.length, brands: brands.rows, rewards: all.rows });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET/POST /api/v1/rewards/seed - Force-seed the rewards catalog
  */
 router.all('/rewards/seed', async (req, res) => {
