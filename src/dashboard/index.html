@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nudj Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -458,10 +460,31 @@
                         </div>
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-                        <div class="sec-title" style="font-size:15px;">Geofencing — Notifiche di prossimita</div>
-                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Quando il cliente e vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
+                        <div class="sec-title" style="font-size:15px;">Geofencing — Notifiche di prossimità</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Quando il cliente è vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
+
+                        <!-- Search address -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label">Cerca indirizzo</label>
+                            <div style="display:flex;gap:8px;">
+                                <input type="text" id="geoSearchInput" placeholder="es. Via Roma 1, Milano" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchGeoAddress();}">
+                                <button class="btn small" onclick="searchGeoAddress()">Cerca</button>
+                            </div>
+                        </div>
+
+                        <!-- Map -->
+                        <div id="geoMap" style="height:300px;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;z-index:1;"></div>
+
+                        <!-- Radius slider -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label">Raggio di attivazione: <strong id="radiusLabel">500m</strong></label>
+                            <input type="range" id="geoRadius" min="100" max="5000" step="50" value="500" oninput="updateGeoRadius(this.value)" style="width:100%;accent-color:var(--teal);">
+                            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);"><span>100m</span><span>1km</span><span>2.5km</span><span>5km</span></div>
+                        </div>
+
+                        <!-- Locations list -->
                         <div id="locationsContainer"></div>
-                        <button class="btn small sec" onclick="addLocationRow()" style="margin-top:8px;">+ Aggiungi punto vendita</button>
+                        <button class="btn small sec" onclick="addLocationFromMap()" style="margin-top:8px;">+ Aggiungi punto dalla mappa</button>
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                         <div class="sec-title" style="font-size:15px;">Promemoria Lock Screen</div>
@@ -789,6 +812,8 @@ function nav(id) {
     if (event && event.target) event.target.classList.add('active');
     const loaders = { members: loadMembers, 'create-pass': () => { loadTemplateSelect(); loadCreatedPasses(); }, rewards: loadRewards, challenges: loadChallenges, tiers: loadTiers, 'vip-cards': loadVipCards, push: () => { loadPushHistory(); loadScheduledPush(); }, templates: loadTemplates, 'brand-settings': loadBrandSettings, users: loadUsers };
     if (loaders[id]) loaders[id]();
+    // Leaflet needs invalidateSize after section becomes visible
+    if (id === 'brand-settings' && geoMap) setTimeout(() => geoMap.invalidateSize(), 400);
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -918,10 +943,72 @@ function renderLinks() {
 }
 
 let locationRows = [];
+let geoMap = null;
+let geoMarkers = [];
+let geoCircles = [];
+let geoTempMarker = null;
+let geoTempCircle = null;
+let geoCurrentRadius = 500;
 
-function addLocationRow(lat, lng, text) {
-    const idx = locationRows.length;
-    locationRows.push({latitude: lat || '', longitude: lng || '', relevantText: text || ''});
+function initGeoMap() {
+    if (geoMap) { geoMap.invalidateSize(); return; }
+    const mapEl = document.getElementById('geoMap');
+    if (!mapEl) return;
+    geoMap = L.map('geoMap', { zoomControl: true }).setView([45.4642, 9.1900], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OSM &copy; CARTO', maxZoom: 19
+    }).addTo(geoMap);
+    geoMap.on('click', function(e) {
+        setTempMarker(e.latlng.lat, e.latlng.lng);
+    });
+    setTimeout(() => geoMap.invalidateSize(), 200);
+}
+
+function setTempMarker(lat, lng) {
+    if (geoTempMarker) geoMap.removeLayer(geoTempMarker);
+    if (geoTempCircle) geoMap.removeLayer(geoTempCircle);
+    geoTempMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;background:#CCFF00;border:2px solid #000;border-radius:50%;box-shadow:0 0 8px #CCFF0088;"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+    }).addTo(geoMap);
+    geoTempCircle = L.circle([lat, lng], { radius: geoCurrentRadius, color: '#CCFF00', fillColor: '#CCFF00', fillOpacity: 0.12, weight: 2 }).addTo(geoMap);
+    geoMap.setView([lat, lng], Math.max(geoMap.getZoom(), 14));
+}
+
+function updateGeoRadius(val) {
+    geoCurrentRadius = parseInt(val);
+    const label = geoCurrentRadius >= 1000 ? (geoCurrentRadius / 1000).toFixed(1) + 'km' : geoCurrentRadius + 'm';
+    document.getElementById('radiusLabel').textContent = label;
+    if (geoTempCircle) geoTempCircle.setRadius(geoCurrentRadius);
+    geoCircles.forEach((c, i) => {
+        if (c) c.setRadius(locationRows[i]?.radius || geoCurrentRadius);
+    });
+}
+
+async function searchGeoAddress() {
+    const q = document.getElementById('geoSearchInput').value.trim();
+    if (!q) return;
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if (data.length === 0) return toast('Indirizzo non trovato', 'error');
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setTempMarker(lat, lng);
+        geoMap.setView([lat, lng], 16);
+    } catch(e) { toast('Errore ricerca indirizzo', 'error'); }
+}
+
+function addLocationFromMap() {
+    if (!geoTempMarker) return toast('Clicca sulla mappa o cerca un indirizzo prima', 'error');
+    const ll = geoTempMarker.getLatLng();
+    locationRows.push({ latitude: ll.lat.toFixed(6), longitude: ll.lng.toFixed(6), relevantText: '', radius: geoCurrentRadius });
+    if (geoTempMarker) { geoMap.removeLayer(geoTempMarker); geoTempMarker = null; }
+    if (geoTempCircle) { geoMap.removeLayer(geoTempCircle); geoTempCircle = null; }
+    renderLocations();
+}
+
+function addLocationRow(lat, lng, text, radius) {
+    locationRows.push({ latitude: lat || '', longitude: lng || '', relevantText: text || '', radius: radius || 500 });
     renderLocations();
 }
 
@@ -933,16 +1020,54 @@ function removeLocationRow(idx) {
 function renderLocations() {
     const c = document.getElementById('locationsContainer');
     if (!c) return;
+
+    // Clear old markers/circles
+    geoMarkers.forEach(m => { if (m && geoMap) geoMap.removeLayer(m); });
+    geoCircles.forEach(c => { if (c && geoMap) geoMap.removeLayer(c); });
+    geoMarkers = [];
+    geoCircles = [];
+
     c.innerHTML = locationRows.map((loc, i) => `
         <div class="card" style="padding:12px;margin-bottom:8px;">
             <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" step="any" placeholder="Latitudine" value="${loc.latitude}" onchange="locationRows[${i}].latitude=this.value" style="flex:1;min-width:0;">
-                <input type="number" step="any" placeholder="Longitudine" value="${loc.longitude}" onchange="locationRows[${i}].longitude=this.value" style="flex:1;min-width:0;">
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;gap:6px;margin-bottom:6px;">
+                        <span style="font-size:12px;color:var(--text2);white-space:nowrap;">Lat: <strong style="color:var(--text1);">${loc.latitude}</strong></span>
+                        <span style="font-size:12px;color:var(--text2);white-space:nowrap;">Lng: <strong style="color:var(--text1);">${loc.longitude}</strong></span>
+                        <span style="font-size:12px;color:var(--teal);white-space:nowrap;">${loc.radius >= 1000 ? (loc.radius / 1000).toFixed(1) + 'km' : (loc.radius || 500) + 'm'}</span>
+                    </div>
+                    <input type="text" placeholder="Messaggio lock screen (es. Sei vicino! Vieni a giocare)" value="${loc.relevantText}" onchange="locationRows[${i}].relevantText=this.value" style="width:100%;font-size:13px;">
+                </div>
+                <button class="btn small" style="background:var(--teal);padding:4px 8px;" onclick="zoomToLocation(${i})">📍</button>
                 <button class="btn small" style="background:var(--red);padding:4px 8px;" onclick="removeLocationRow(${i})">✕</button>
             </div>
-            <input type="text" placeholder="Messaggio lock screen (es. Sei vicino! Vieni a giocare)" value="${loc.relevantText}" onchange="locationRows[${i}].relevantText=this.value" style="margin-top:6px;width:100%;">
         </div>
     `).join('') || '<p style="font-size:12px;color:var(--text2);">Nessun punto vendita configurato.</p>';
+
+    // Draw markers and circles on map
+    if (geoMap) {
+        const bounds = [];
+        locationRows.forEach((loc, i) => {
+            if (!loc.latitude || !loc.longitude) return;
+            const lat = parseFloat(loc.latitude);
+            const lng = parseFloat(loc.longitude);
+            const r = loc.radius || 500;
+            const marker = L.marker([lat, lng], {
+                icon: L.divIcon({ className: '', html: '<div style="width:14px;height:14px;background:#00D4AA;border:2px solid #000;border-radius:50;box-shadow:0 0 6px #00D4AA88;"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
+            }).addTo(geoMap);
+            const circle = L.circle([lat, lng], { radius: r, color: '#00D4AA', fillColor: '#00D4AA', fillOpacity: 0.1, weight: 1.5 }).addTo(geoMap);
+            geoMarkers.push(marker);
+            geoCircles.push(circle);
+            bounds.push([lat, lng]);
+        });
+        if (bounds.length > 0) geoMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+}
+
+function zoomToLocation(idx) {
+    const loc = locationRows[idx];
+    if (!loc || !loc.latitude || !loc.longitude || !geoMap) return;
+    geoMap.setView([parseFloat(loc.latitude), parseFloat(loc.longitude)], 16);
 }
 
 function previewLogo(input) {
@@ -1173,9 +1298,9 @@ async function loadBrandSettings() {
     document.getElementById('bsRegolamento').value = bc.regolamento || '';
     document.getElementById('bsContatti').value = bc.contatti || '';
 
-    // Load geofencing locations
-    locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || ''}));
-    renderLocations();
+    // Load geofencing locations + init map
+    locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || '', radius: l.radius || 500}));
+    setTimeout(() => { initGeoMap(); renderLocations(); }, 300);
 
     // Load relevant date
     if (c.relevantDate) {

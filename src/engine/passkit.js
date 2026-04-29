@@ -344,8 +344,14 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.relevantDate = brandConfig.relevantDate;
   }
 
-  // Max distance for geofencing — 500m default
-  passJson.maxDistance = parseInt(brandConfig.maxDistance) || 500;
+  // Max distance for geofencing — use largest radius from locations, or 500m default
+  let maxRadius = 500;
+  if (brandConfig.locations && Array.isArray(brandConfig.locations)) {
+    brandConfig.locations.forEach(loc => {
+      if (loc.radius && parseInt(loc.radius) > maxRadius) maxRadius = parseInt(loc.radius);
+    });
+  }
+  passJson.maxDistance = parseInt(brandConfig.maxDistance) || maxRadius;
 
   return passJson;
 }
