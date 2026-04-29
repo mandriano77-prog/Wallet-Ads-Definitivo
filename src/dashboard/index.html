@@ -366,6 +366,12 @@
                         <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG consigliato, sfondo trasparente. Verra ridimensionato a 160x50 e 320x100.</p>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Logo Landing Page</label>
+                        <div id="landingLogoPreview" style="margin-bottom:10px;"></div>
+                        <input type="file" id="landingLogoUpload" accept="image/png,image/jpeg" onchange="previewLandingLogo(this)" style="font-size:13px;">
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px;">Logo grande per la pagina di onboarding. PNG consigliato, almeno 400x400 px.</p>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Strip Image (banner grande nel pass)</label>
                         <div id="stripPreview" style="margin-bottom:10px;"></div>
                         <input type="file" id="stripUpload" accept="image/png,image/jpeg" onchange="previewStrip(this)" style="font-size:13px;">
@@ -681,6 +687,7 @@ async function deleteBrandAction() {
 }
 
 let pendingLogoBase64 = null;
+let pendingLandingLogoBase64 = null;
 let linkRows = [];
 
 function addLinkRow(label, url) {
@@ -742,6 +749,17 @@ function previewLogo(input) {
     reader.onload = function(e) {
         pendingLogoBase64 = e.target.result.split(',')[1];
         document.getElementById('logoPreview').innerHTML = `<img src="${e.target.result}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+function previewLandingLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        pendingLandingLogoBase64 = e.target.result.split(',')[1];
+        document.getElementById('landingLogoPreview').innerHTML = `<img src="${e.target.result}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;background:#222;padding:4px;">`;
     };
     reader.readAsDataURL(file);
 }
@@ -911,12 +929,18 @@ async function saveBrandSettings() {
         config.logos = config.logos || {};
         config.logos.strip = pendingStripBase64;
     }
+    // If landing logo was uploaded, include it in config
+    if (pendingLandingLogoBase64) {
+        config.logos = config.logos || {};
+        config.logos.landing_logo = pendingLandingLogoBase64;
+    }
 
     const name = document.getElementById('bsName').value;
     await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || undefined, config}) });
     toast('Brand aggiornata! Rigenera i pass per vedere le modifiche.');
     pendingLogoBase64 = null;
     pendingStripBase64 = null;
+    pendingLandingLogoBase64 = null;
 }
 
 async function loadBrandSettings() {
@@ -953,6 +977,14 @@ async function loadBrandSettings() {
         preview.innerHTML = `<img src="data:image/png;base64,${c.logos['logo']}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Logo attuale</span>`;
     } else {
         preview.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessun logo caricato (verra usata l\'iniziale)</span>';
+    }
+
+    // Show current landing logo if exists
+    const landingLogoPrev = document.getElementById('landingLogoPreview');
+    if (c.logos && c.logos.landing_logo) {
+        landingLogoPrev.innerHTML = `<img src="data:image/png;base64,${c.logos.landing_logo}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Logo landing attuale</span>`;
+    } else {
+        landingLogoPrev.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessun logo landing caricato (verra usato il logo del pass)</span>';
     }
 
     // Show current strip if exists

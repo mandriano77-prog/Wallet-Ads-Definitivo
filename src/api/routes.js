@@ -232,6 +232,12 @@ router.put('/brands/:id', async (req, res) => {
       console.log('✓ Strip image uploaded');
     }
 
+    // If landing logo uploaded, store raw base64 (used on landing page)
+    if (config?.logos?.landing_logo) {
+      mergedLogos.landing_logo = config.logos.landing_logo;
+      console.log('✓ Landing logo uploaded');
+    }
+
     // Merge config: new values override, but preserve existing keys not in request
     const mergedConfig = { ...existingConfig, ...config, logos: mergedLogos };
 
