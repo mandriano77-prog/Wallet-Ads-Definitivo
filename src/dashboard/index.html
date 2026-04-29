@@ -99,6 +99,7 @@
         .user-badge:hover { color: var(--teal); }
         .user-badge .role-tag { background: var(--purple); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; }
         .admin-only { display: none; }
+        @keyframes aiProgress { 0% { transform: translateX(-100%); } 50% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
     <style id="brandThemeStyle"></style>
 </head>
@@ -439,6 +440,41 @@
                         <div style="display:flex;gap:8px;">
                             <button class="btn" onclick="applyGeneratedStrip()" style="background:var(--teal);color:#000;">Applica al Pass</button>
                             <button class="btn small sec" onclick="downloadGeneratedStrip()">Scarica PNG</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                        <div class="sec-title" style="font-size:15px;">AI Strip Generator</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Descrivi l'immagine che vuoi e l'AI la genera nelle dimensioni esatte del pass (750×246 px).</p>
+                        <div class="form-group">
+                            <label class="form-label">Descrivi l'immagine</label>
+                            <input type="text" id="aiStripPrompt" placeholder="es. padel court at sunset, dark tones, cinematic" style="font-size:14px;padding:10px 12px;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Stile</label>
+                            <select id="aiStripStyle">
+                                <option value="dark">Dark & Premium</option>
+                                <option value="vibrant">Vivido & Energetico</option>
+                                <option value="minimal">Minimal & Pulito</option>
+                                <option value="sport">Sport & Dinamico</option>
+                                <option value="nature">Natura & Outdoor</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="generateAiStrip()" id="aiStripBtn" style="margin-bottom:12px;">Genera con AI</button>
+                        <div id="aiStripLoading" style="display:none;text-align:center;padding:20px;">
+                            <div style="color:var(--teal);font-size:14px;margin-bottom:8px;">Generazione in corso...</div>
+                            <div style="width:100%;height:4px;background:#222;border-radius:2px;overflow:hidden;">
+                                <div style="width:30%;height:100%;background:var(--teal);border-radius:2px;animation:aiProgress 2s ease-in-out infinite;"></div>
+                            </div>
+                            <p style="font-size:11px;color:var(--text2);margin-top:8px;">L'AI sta creando la tua immagine (~10-15 secondi)</p>
+                        </div>
+                        <div id="aiStripResult" style="display:none;">
+                            <div style="border-radius:8px;overflow:hidden;background:#000;text-align:center;margin-bottom:10px;">
+                                <img id="aiStripPreviewImg" style="width:100%;max-width:750px;height:auto;display:block;" alt="AI Generated Strip">
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="applyAiStrip()" style="background:var(--teal);color:#000;">Applica al Pass</button>
+                                <button class="btn small sec" onclick="generateAiStrip()">Rigenera</button>
+                            </div>
                         </div>
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
@@ -1251,6 +1287,69 @@ function downloadGeneratedStrip() {
     link.download = 'strip_promo.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
+}
+
+// ==================== AI STRIP GENERATOR ====================
+let aiStripBase64 = null;
+
+async function generateAiStrip() {
+    const prompt = document.getElementById('aiStripPrompt').value.trim();
+    if (!prompt) return toast('Scrivi una descrizione per l\'immagine', 'error');
+    const style = document.getElementById('aiStripStyle').value;
+
+    // Show loading
+    document.getElementById('aiStripLoading').style.display = 'block';
+    document.getElementById('aiStripResult').style.display = 'none';
+    document.getElementById('aiStripBtn').disabled = true;
+    document.getElementById('aiStripBtn').textContent = 'Generazione...';
+
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/ai-strip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, style })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Errore generazione AI');
+        }
+
+        const data = await res.json();
+        aiStripBase64 = data.base64;
+
+        // Show result
+        document.getElementById('aiStripPreviewImg').src = data.base64;
+        document.getElementById('aiStripResult').style.display = 'block';
+        toast('Strip generata con successo!');
+    } catch (e) {
+        toast(e.message || 'Errore generazione AI', 'error');
+    } finally {
+        document.getElementById('aiStripLoading').style.display = 'none';
+        document.getElementById('aiStripBtn').disabled = false;
+        document.getElementById('aiStripBtn').textContent = 'Genera con AI';
+    }
+}
+
+async function applyAiStrip() {
+    if (!aiStripBase64 || !brandId) return toast('Nessuna immagine AI da applicare', 'error');
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/strip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strip: aiStripBase64 })
+        });
+        if (res.ok) {
+            toast('Strip AI applicata al pass!');
+            // Update strip preview
+            const preview = document.getElementById('stripPreview');
+            if (preview) preview.innerHTML = `<img src="${aiStripBase64}" style="width:100%;max-width:750px;border-radius:8px;">`;
+        } else {
+            toast('Errore salvataggio strip', 'error');
+        }
+    } catch(e) {
+        toast('Errore: ' + e.message, 'error');
+    }
 }
 
 async function saveBrandSettings() {

@@ -528,6 +528,95 @@ router.post('/brands/:id/strip', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/brands/:id/ai-strip - Generate strip image via Replicate Flux AI
+ */
+router.post('/brands/:id/ai-strip', async (req, res) => {
+  try {
+    const { prompt, style } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+
+    const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+    if (!REPLICATE_API_TOKEN) {
+      return res.status(503).json({ error: 'REPLICATE_API_TOKEN not configured' });
+    }
+
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+
+    // Build enhanced prompt for strip banner
+    const styleHints = {
+      dark: 'dark moody atmosphere, deep shadows, premium luxury feel',
+      vibrant: 'vibrant vivid colors, energetic, bold contrast',
+      minimal: 'clean minimalist, geometric shapes, soft tones',
+      sport: 'dynamic sports action, motion blur, athletic energy',
+      nature: 'natural outdoor scenery, organic textures, warm light'
+    };
+    const styleText = styleHints[style] || styleHints.dark;
+    const fullPrompt = `Ultra-wide horizontal banner image for a digital loyalty card. ${styleText}. Subject: ${prompt}. Brand: ${brand.name}. No text, no logos, no words. Cinematic composition, 3:1 aspect ratio, high quality.`;
+
+    console.log('🎨 AI Strip generation — brand:', brand.name, 'prompt:', prompt, 'style:', style);
+
+    // Call Replicate API (Flux Schnell for speed, or Flux Dev for quality)
+    const replicateRes = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${REPLICATE_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'black-forest-labs/flux-schnell',
+        input: {
+          prompt: fullPrompt,
+          num_outputs: 1,
+          aspect_ratio: '3:1',
+          output_format: 'png',
+          output_quality: 90
+        }
+      })
+    });
+
+    if (!replicateRes.ok) {
+      const err = await replicateRes.json();
+      console.error('Replicate API error:', err);
+      return res.status(502).json({ error: 'AI generation failed', details: err.detail || err });
+    }
+
+    const prediction = await replicateRes.json();
+    console.log('🎨 Prediction created:', prediction.id, 'status:', prediction.status);
+
+    // Poll for completion (Flux Schnell is fast, usually <10s)
+    let result = prediction;
+    let attempts = 0;
+    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
+      await new Promise(r => setTimeout(r, 2000));
+      const pollRes = await fetch(result.urls.get, {
+        headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` }
+      });
+      result = await pollRes.json();
+      attempts++;
+    }
+
+    if (result.status !== 'succeeded' || !result.output || result.output.length === 0) {
+      console.error('AI generation failed:', result.status, result.error);
+      return res.status(502).json({ error: 'AI generation failed', status: result.status });
+    }
+
+    const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
+    console.log('✓ AI Strip generated:', imageUrl);
+
+    // Download the image and convert to base64
+    const imgRes = await fetch(imageUrl);
+    const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    const base64 = `data:image/png;base64,${imgBuffer.toString('base64')}`;
+
+    res.json({ success: true, image_url: imageUrl, base64, prompt: fullPrompt });
+  } catch (err) {
+    console.error('Error generating AI strip:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * DELETE /api/v1/brands/:id - Delete a brand and all related data
  */
 router.delete('/brands/:id', async (req, res) => {
