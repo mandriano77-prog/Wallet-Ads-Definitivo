@@ -1,25 +1,40 @@
 /**
  * Mailer module — Resend integration for transactional emails
+ * Uses lazy initialization to ensure env vars are loaded
  */
 const { Resend } = require('resend');
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@nudj.studio';
-const FROM_NAME = process.env.FROM_NAME || 'Nudj';
+let resendClient = null;
+
+function getResend() {
+  if (resendClient) return resendClient;
+  if (process.env.RESEND_API_KEY) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+    return resendClient;
+  }
+  return null;
+}
+
+const getFromEmail = () => process.env.FROM_EMAIL || 'noreply@nudj.studio';
+const getFromName = () => process.env.FROM_NAME || 'Nudj';
 
 /**
  * Send welcome email after signup
  */
 async function sendWelcomeEmail({ to, name, brandName, brandColor, points, landingUrl }) {
   console.log('📧 sendWelcomeEmail called — to:', to, 'RESEND_API_KEY set:', !!process.env.RESEND_API_KEY);
+
+  const resend = getResend();
   if (!resend) {
     console.log('⚠️ RESEND_API_KEY not set — skipping welcome email to', to);
-    return null;
+    return { skipped: true, reason: 'RESEND_API_KEY not set' };
   }
 
   const firstName = name.split(/\s+/)[0];
   const bg = brandColor || '#000000';
   const accent = '#CCFF00';
+  const fromEmail = getFromEmail();
+  const fromName = getFromName();
 
   const html = `
 <!DOCTYPE html>
@@ -45,8 +60,8 @@ async function sendWelcomeEmail({ to, name, brandName, brandColor, points, landi
       </p>
 
       <p style="color:#bbb; font-size:14px; line-height:1.6; margin:0 0 24px;">
-        Grazie per esserti iscritto al programma fedelta di <strong style="color:#fff;">${brandName}</strong>.
-        La tua card digitale e pronta nel tuo Apple Wallet!
+        Grazie per esserti iscritto al programma fedeltà di <strong style="color:#fff;">${brandName}</strong>.
+        La tua card digitale è pronta nel tuo Apple Wallet!
       </p>
 
       <!-- Points box -->
@@ -96,19 +111,17 @@ async function sendWelcomeEmail({ to, name, brandName, brandColor, points, landi
 </body>
 </html>`;
 
-  try {
-    const result = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
-      to: [to],
-      subject: `Benvenuto nel club ${brandName}! 🎾`,
-      html
-    });
-    console.log('✓ Welcome email sent to', to, JSON.stringify(result));
-    return result;
-  } catch (error) {
-    console.error('✗ Failed to send welcome email:', error?.message || error, JSON.stringify(error));
-    return null;
-  }
+  console.log('📧 Sending via Resend — from:', `${fromName} <${fromEmail}>`, 'to:', to);
+
+  const result = await resend.emails.send({
+    from: `${fromName} <${fromEmail}>`,
+    to: [to],
+    subject: `Benvenuto nel club ${brandName}! 🎾`,
+    html
+  });
+
+  console.log('✓ Welcome email sent to', to, JSON.stringify(result));
+  return result;
 }
 
 module.exports = { sendWelcomeEmail };
