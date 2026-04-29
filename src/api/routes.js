@@ -1164,6 +1164,32 @@ router.get('/rewards/check', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/rewards/fix-brand - Move all rewards & tiers to Hirostar brand
+ */
+router.get('/rewards/fix-brand', async (req, res) => {
+  try {
+    // Find Hirostar brand
+    const hirostar = await pool.query(`SELECT id, name FROM brands WHERE LOWER(name) LIKE '%hirostar%' OR LOWER(name) LIKE '%hangar%' LIMIT 1`);
+    if (!hirostar.rows.length) return res.status(404).json({ error: 'Hirostar brand not found' });
+    const hid = hirostar.rows[0].id;
+
+    // Move all rewards to Hirostar
+    const rResult = await pool.query('UPDATE rewards SET brand_id = $1 WHERE brand_id != $1 RETURNING id, title', [hid]);
+
+    // Move all tiers to Hirostar
+    const tResult = await pool.query('UPDATE tiers SET brand_id = $1 WHERE brand_id != $1 RETURNING id, name', [hid]);
+
+    res.json({
+      brand: hirostar.rows[0],
+      rewards_moved: rResult.rows.length,
+      tiers_moved: tResult.rows.length,
+      rewards: rResult.rows,
+      tiers: tResult.rows
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET/POST /api/v1/rewards/seed - Force-seed the rewards catalog
  */
 router.all('/rewards/seed', async (req, res) => {
