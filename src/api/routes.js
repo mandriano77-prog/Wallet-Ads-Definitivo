@@ -15,6 +15,7 @@ const {
   registerDevice,
   getDevicesForPass,
   getBrand,
+  getBrandBySlug,
   getTemplate,
   updateBrand,
   deleteBrand,
@@ -143,6 +144,20 @@ router.get('/brands', async (req, res) => {
     res.json(brands);
   } catch (error) {
     console.error('Error listing brands:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/brands/by-slug/:slug - Get brand by slug
+ */
+router.get('/brands/by-slug/:slug', async (req, res) => {
+  try {
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    res.json(brand);
+  } catch (error) {
+    console.error('Error getting brand by slug:', error);
     res.status(500).json({ error: error.message });
   }
 });

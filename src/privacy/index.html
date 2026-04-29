@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .brand-name {
+            font-size: 16px;
+            color: #CCFF00;
+            margin-bottom: 32px;
+        }
+        h2 {
+            font-size: 18px;
+            color: #fff;
+            margin-top: 28px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 14px;
+            font-size: 14px;
+            color: #bbb;
+        }
+        .date {
+            font-size: 12px;
+            color: #666;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #222;
+        }
+        a { color: #CCFF00; }
+        ul { margin: 0 0 14px 20px; font-size: 14px; color: #bbb; }
+        li { margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Privacy Policy</h1>
+        <div class="brand-name" id="brandName">Caricamento...</div>
+
+        <h2>1. Titolare del Trattamento</h2>
+        <p id="titolare">Il Titolare del trattamento dei dati personali e il soggetto indicato nella pagina di registrazione (di seguito "Titolare"). Per informazioni o richieste relative al trattamento dei dati personali, e possibile contattare il Titolare tramite i recapiti indicati sul sito.</p>
+
+        <h2>2. Dati Raccolti</h2>
+        <p>Attraverso il modulo di registrazione al programma fedelta, raccogliamo i seguenti dati personali:</p>
+        <ul>
+            <li>Nome e cognome</li>
+            <li>Indirizzo email</li>
+            <li>Numero di telefono</li>
+        </ul>
+        <p>Inoltre, il sistema raccoglie automaticamente dati tecnici necessari al funzionamento del servizio (tipo di dispositivo, sistema operativo) ai fini dell'emissione della card digitale Apple Wallet.</p>
+
+        <h2>3. Finalita del Trattamento</h2>
+        <p>I dati personali sono trattati per le seguenti finalita:</p>
+        <ul>
+            <li>Creazione e gestione della card digitale del programma fedelta</li>
+            <li>Invio di notifiche push relative a promozioni, eventi e aggiornamenti del programma</li>
+            <li>Gestione dei punti fedelta e dei livelli di membership</li>
+            <li>Comunicazioni relative al servizio (aggiornamenti della card, modifiche al programma)</li>
+        </ul>
+
+        <h2>4. Base Giuridica</h2>
+        <p>Il trattamento dei dati si basa sul consenso esplicito dell'interessato, espresso tramite la spunta dell'apposita casella nel modulo di registrazione (art. 6, par. 1, lett. a del GDPR). Il consenso puo essere revocato in qualsiasi momento.</p>
+
+        <h2>5. Conservazione dei Dati</h2>
+        <p>I dati personali saranno conservati per tutta la durata dell'iscrizione al programma fedelta e per un massimo di 24 mesi dalla cancellazione dell'iscrizione, salvo obblighi di legge che richiedano una conservazione piu lunga.</p>
+
+        <h2>6. Condivisione dei Dati</h2>
+        <p>I dati personali non vengono venduti a terzi. Possono essere condivisi con:</p>
+        <ul>
+            <li>Fornitori di servizi tecnologici necessari al funzionamento della piattaforma (hosting, servizi di notifica push)</li>
+            <li>Autorita competenti, se richiesto dalla legge</li>
+        </ul>
+
+        <h2>7. Diritti dell'Interessato</h2>
+        <p>Ai sensi degli articoli 15-22 del GDPR, l'interessato ha diritto di:</p>
+        <ul>
+            <li>Accedere ai propri dati personali</li>
+            <li>Richiederne la rettifica o l'aggiornamento</li>
+            <li>Richiederne la cancellazione ("diritto all'oblio")</li>
+            <li>Limitare il trattamento</li>
+            <li>Opporsi al trattamento</li>
+            <li>Richiedere la portabilita dei dati</li>
+            <li>Revocare il consenso in qualsiasi momento</li>
+        </ul>
+        <p>Per esercitare tali diritti, e possibile contattare il Titolare ai recapiti indicati sul sito o inviando una richiesta all'indirizzo email del Titolare.</p>
+
+        <h2>8. Sicurezza</h2>
+        <p>Il Titolare adotta misure tecniche e organizzative adeguate per proteggere i dati personali da accesso non autorizzato, perdita, distruzione o alterazione. I dati sono trasmessi tramite protocollo HTTPS e conservati su server sicuri.</p>
+
+        <h2>9. Reclami</h2>
+        <p>L'interessato ha il diritto di proporre reclamo all'autorita di controllo competente (Garante per la Protezione dei Dati Personali — <a href="https://www.garanteprivacy.it" target="_blank">www.garanteprivacy.it</a>).</p>
+
+        <h2>10. Modifiche alla Privacy Policy</h2>
+        <p>Il Titolare si riserva il diritto di modificare la presente informativa in qualsiasi momento. Le modifiche saranno comunicate tramite la pagina di registrazione o notifica push.</p>
+
+        <p class="date">Ultimo aggiornamento: 29 aprile 2026</p>
+    </div>
+
+    <script>
+        (async function() {
+            const slugOrId = window.location.pathname.split('/').pop();
+            try {
+                // Try by slug first
+                let res = await fetch('/api/v1/brands/by-slug/' + slugOrId);
+                let brand;
+                if (res.ok) {
+                    const data = await res.json();
+                    brand = data;
+                } else {
+                    // Try by ID
+                    res = await fetch('/api/v1/brands/' + slugOrId);
+                    if (res.ok) brand = await res.json();
+                }
+                if (brand) {
+                    document.getElementById('brandName').textContent = brand.name;
+                    document.title = 'Privacy Policy — ' + brand.name;
+                    document.getElementById('titolare').innerHTML =
+                        `Il Titolare del trattamento dei dati personali e <strong>${brand.name}</strong>. Per informazioni o richieste relative al trattamento dei dati personali, e possibile contattare il Titolare tramite i recapiti indicati sul sito o sulla card digitale.`;
+                }
+            } catch(e) {
+                document.getElementById('brandName').textContent = '';
+            }
+        })();
+    </script>
+</body>
+</html>

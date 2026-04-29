@@ -67,12 +67,17 @@ app.get('/', (req, res) => {
   res.redirect('/dashboard/');
 });
 
+// Privacy policy page
+app.get('/privacy/:slugOrId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'privacy', 'index.html'));
+});
+
 // Short URL: /:slug serves the landing page for that brand
 // Must be AFTER all other routes to avoid conflicts
 app.get('/:slug', (req, res, next) => {
   const slug = req.params.slug;
   // Skip if it looks like a file or known route
-  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health'].includes(slug)) {
+  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health', 'privacy'].includes(slug)) {
     return next();
   }
   // Serve the landing page — it will detect the slug from the URL
