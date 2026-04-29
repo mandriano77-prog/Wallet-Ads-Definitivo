@@ -483,6 +483,19 @@
                 </div>
             </div>
 
+            <!-- ==================== USERS SECTION (admin only) ==================== -->
+            <div class="section" id="users">
+                <h2 class="sec-title">Gestione Utenti</h2>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard per brand.</p>
+                    <button class="btn" onclick="openCreateUserModal()">+ Nuovo Utente</button>
+                </div>
+                <table class="table" id="usersTable">
+                    <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Brand</th><th>Stato</th><th>Azioni</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
         </div>
     </div>
 </div>
@@ -630,19 +643,6 @@
         <div class="form-group"><label class="form-label">Seleziona Membro</label><select id="completePassSelect"></select></div>
         <button class="btn" onclick="confirmComplete()">Conferma Completamento</button>
     </div>
-</div>
-
-<!-- ==================== USERS SECTION (admin only) ==================== -->
-<div class="section" id="users">
-    <h2 class="sec-title">Gestione Utenti</h2>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard per brand.</p>
-        <button class="btn" onclick="openCreateUserModal()">+ Nuovo Utente</button>
-    </div>
-    <table class="table" id="usersTable">
-        <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Brand</th><th>Stato</th><th>Azioni</th></tr></thead>
-        <tbody></tbody>
-    </table>
 </div>
 
 <!-- Create/Edit User Modal -->
