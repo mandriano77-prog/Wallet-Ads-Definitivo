@@ -998,7 +998,7 @@ async function refreshOverview() {
             <div class="card card-row" style="padding:12px 14px;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div class="member-avatar" style="width:32px;height:32px;font-size:14px;">${(p.field_values.nome||'?')[0]}</div>
-                    <div><div style="font-weight:600;font-size:13px;">${p.field_values.nome}</div><div style="font-size:11px;color:var(--text2)">${p.field_values.livello||'Socio'}</div></div>
+                    <div><div style="font-weight:600;font-size:13px;">${p.field_values.nome}</div><div style="font-size:11px;color:var(--text2)">${p.field_values.livello||''}</div></div>
                 </div>
                 <div style="font-weight:700;color:var(--yellow)">${parseInt(p.field_values.punti)||0} pts</div>
             </div>

@@ -1029,13 +1029,17 @@ router.post('/passes/signup', async (req, res) => {
       member = await createMember({ brand_id, first_name, last_name, email, phone });
     }
 
-    // Create pass instance with name populated
+    // Get first tier for this brand (lowest sort_order / min_points)
+    const tiers = await listTiers(brand_id);
+    const firstTier = tiers.length > 0 ? tiers[0].name : '';
+
+    // Create pass instance with name + tier populated
     const fullName = [first_name, last_name].filter(Boolean).join(' ');
     const passInstance = await createPassInstance({
       template_id: template.id,
       brand_id: brand.id,
       customer_data: { email, phone, name: fullName },
-      field_values: { nome: fullName, name: fullName },
+      field_values: { nome: fullName, name: fullName, livello: firstTier, punti: '0' },
       member_id: member.id
     });
 
