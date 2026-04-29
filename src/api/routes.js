@@ -247,7 +247,7 @@ router.post('/users', authMiddleware, adminOnly, async (req, res) => {
       const brand = await getBrand(brand_id);
       if (brand) brandName = brand.name;
     }
-    const dashboardUrl = `https://${process.env.CUSTOM_DOMAIN || 'nudj.studio'}/dashboard/`;
+    const dashboardUrl = `https://${process.env.CUSTOM_DOMAIN || 'www.nudj.studio'}/dashboard/`;
     sendUserInviteEmail({
       to: email,
       name,
@@ -310,7 +310,7 @@ router.use(authMiddleware);
 router.use(brandFilter);
 
 // Custom domain for short landing URLs (fallback to request host)
-const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'nudj.studio';
+const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'www.nudj.studio';
 
 // Helper to ensure cache directory exists
 function ensureCacheDir() {
@@ -749,7 +749,8 @@ router.get('/passes/:id', async (req, res) => {
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-    const landingUrl = `https://${CUSTOM_DOMAIN}/landing/?id=${passInstance.id}`;
+    const brand = await getBrand(passInstance.brand_id);
+    const landingUrl = `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`;
 
     res.json({
       ...passInstance,
@@ -855,10 +856,11 @@ router.put('/passes/:id', async (req, res) => {
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
+    const brand = await getBrand(updated.brand_id);
     res.json({
       ...updated,
       download_url: `${baseUrl}/api/v1/passes/${req.params.id}/download`,
-      landing_url: `https://${CUSTOM_DOMAIN}/landing/?id=${req.params.id}`
+      landing_url: `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`
     });
   } catch (error) {
     console.error('Error updating pass:', error);
@@ -964,10 +966,18 @@ router.get('/passes', async (req, res) => {
     const passes = await listPasses(req.query.brand_id, req.query.status);
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-    const passesWithUrls = passes.map(pass => ({
-      ...pass,
-      download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`,
-      landing_url: `https://${CUSTOM_DOMAIN}/landing/?id=${pass.id}`
+    // Get brand slugs for landing URLs
+    const brandCache = {};
+    const passesWithUrls = await Promise.all(passes.map(async pass => {
+      if (!brandCache[pass.brand_id]) {
+        brandCache[pass.brand_id] = await getBrand(pass.brand_id);
+      }
+      const brand = brandCache[pass.brand_id];
+      return {
+        ...pass,
+        download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`,
+        landing_url: `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`
+      };
     }));
 
     res.json(passesWithUrls);
@@ -1334,7 +1344,7 @@ router.post('/passes/signup', async (req, res) => {
     });
 
     // Generate .pkpass file
-    const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'nudj.studio';
+    const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'www.nudj.studio';
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const pkpassBuffer = await createPkpass(template, passInstance, brand, { baseUrl });
 
