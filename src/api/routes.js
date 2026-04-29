@@ -1127,20 +1127,35 @@ router.post('/passes/signup', async (req, res) => {
     const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
     const landingUrl = `https://${CUSTOM_DOMAIN}/${brand.slug || ''}`;
 
-    // Send welcome email (async, don't block response)
-    sendWelcomeEmail({
-      to: email,
-      name: fullName,
-      brandName: brand.name,
-      brandColor: brand.config?.backgroundColor || '#000000',
-      points: 10,
-      landingUrl
-    }).catch(err => console.error('Welcome email error:', err));
+    // Send welcome email (await to capture result for diagnostics)
+    let emailResult = null;
+    let emailError = null;
+    try {
+      emailResult = await sendWelcomeEmail({
+        to: email,
+        name: fullName,
+        brandName: brand.name,
+        brandColor: brand.config?.backgroundColor || '#000000',
+        points: 10,
+        landingUrl
+      });
+    } catch (err) {
+      emailError = err.message || String(err);
+      console.error('Welcome email error:', err);
+    }
 
     res.status(201).json({
       message: 'Pass creato con successo!',
       pass: { id: passInstance.id, serial_number: passInstance.serial_number },
-      download_url: downloadUrl
+      download_url: downloadUrl,
+      _email_debug: {
+        resend_key_set: !!process.env.RESEND_API_KEY,
+        resend_key_prefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 8) + '...' : null,
+        from: process.env.FROM_EMAIL || 'noreply@nudj.studio',
+        to: email,
+        result: emailResult,
+        error: emailError
+      }
     });
   } catch (error) {
     console.error('Error in signup:', error);
