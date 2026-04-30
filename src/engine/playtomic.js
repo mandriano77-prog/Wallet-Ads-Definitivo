@@ -158,17 +158,18 @@ async function syncPlayers(brand_id, config) {
 // ─── Booking Sync ───────────────────────────────────────
 
 /**
- * Fetch completed bookings and award points to matched members.
+ * Fetch completed bookings and log them for challenge evaluation.
  * Only processes FINISHED bookings not yet in sync_log.
+ * Points are awarded by the challenge evaluator, not here.
  */
 async function syncBookings(brand_id, config) {
-  const { client_id, secret, tenant_id, points_per_booking = 1 } = config;
+  const { client_id, secret, tenant_id } = config;
   const token = await getToken(brand_id, client_id, secret);
 
   // Get all members with playtomic data for matching
   const members = await db.getMembersByPlaytomicEmail(brand_id);
   if (members.length === 0) {
-    return { processed: 0, points_awarded: 0, message: 'Nessun membro con email Playtomic' };
+    return { processed: 0, message: 'Nessun membro con email Playtomic' };
   }
 
   // Build lookup maps
@@ -187,7 +188,6 @@ async function syncBookings(brand_id, config) {
   const endDate = now.toISOString().replace('Z', '').split('.')[0];
 
   let processed = 0;
-  let pointsAwarded = 0;
   let page = 0;
   let hasMore = true;
 
@@ -240,34 +240,19 @@ async function syncBookings(brand_id, config) {
         const alreadySynced = await db.isBookingSynced(brand_id, booking.booking_id, member.id);
         if (alreadySynced) continue;
 
-        // Award points
-        const points = parseInt(points_per_booking) || 1;
-
-        // Find member's active pass and add points
-        const passes = await db.listPasses(brand_id);
-        const memberPass = passes.find(p => p.member_id === member.id && p.status === 'active');
-
-        if (memberPass) {
-          const currentPoints = parseInt(memberPass.field_values?.punti) || 0;
-          const newPoints = currentPoints + points;
-          const newFieldValues = { ...memberPass.field_values, punti: String(newPoints) };
-          await db.updatePassInstance(memberPass.id, { field_values: newFieldValues });
-        }
-
-        // Log the sync
+        // Log the booking (points are awarded by challenge evaluator)
         await db.addSyncLogEntry({
           brand_id,
           booking_id: booking.booking_id,
           member_id: member.id,
           participant_email: participant.email || '',
-          points_awarded: points,
+          points_awarded: 0,
           booking_date: booking.booking_start_date,
           sport_id: booking.sport_id,
           resource_name: booking.resource_name
         });
 
         processed++;
-        pointsAwarded += points;
       }
     }
 
@@ -279,7 +264,7 @@ async function syncBookings(brand_id, config) {
     }
   }
 
-  return { processed, points_awarded: pointsAwarded };
+  return { processed };
 }
 
 // ─── Full Sync (Players + Bookings) ────────────────────
@@ -305,7 +290,7 @@ async function runFullSync(brand_id) {
 
   // Step 2: Sync bookings (award points)
   const bookingResult = await syncBookings(brand_id, config);
-  console.log(`[Playtomic] Booking sync: ${bookingResult.processed} bookings processed, ${bookingResult.points_awarded} points awarded`);
+  console.log(`[Playtomic] Booking sync: ${bookingResult.processed} bookings logged`);
 
   // Step 3: Evaluate challenges based on booking data
   const challengeResult = await evaluateChallenges(brand_id);
@@ -331,7 +316,7 @@ async function runPlaytomicCron() {
 
       try {
         const result = await runFullSync(brand.id);
-        console.log(`[Playtomic Cron] Brand ${brand.name}: ${result.bookings.processed} bookings, ${result.bookings.points_awarded} pts`);
+        console.log(`[Playtomic Cron] Brand ${brand.name}: ${result.bookings.processed} bookings, ${result.challenges.completed} missions completed`);
       } catch (e) {
         console.error(`[Playtomic Cron] Error for brand ${brand.name}:`, e.message);
       }

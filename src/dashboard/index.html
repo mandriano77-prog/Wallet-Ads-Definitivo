@@ -576,10 +576,7 @@
                         <div class="form-group"><label class="form-label">Client ID</label><input type="text" id="ptClientId" placeholder="Il tuo client_id Playtomic"></div>
                         <div class="form-group"><label class="form-label">Secret</label><input type="password" id="ptSecret" placeholder="La tua password Playtomic"></div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="form-group"><label class="form-label">Tenant ID (Venue)</label><input type="text" id="ptTenantId" placeholder="ID del tuo club"></div>
-                        <div class="form-group"><label class="form-label">Punti per prenotazione</label><input type="number" id="ptPointsPerBooking" min="1" max="100" value="1"></div>
-                    </div>
+                    <div class="form-group"><label class="form-label">Tenant ID (Venue)</label><input type="text" id="ptTenantId" placeholder="ID del tuo club"></div>
                     <div class="form-group" style="margin-top:4px;">
                         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                             <input type="checkbox" id="ptSyncEnabled" style="width:18px;height:18px;accent-color:var(--teal);">
@@ -1598,7 +1595,6 @@ async function loadApiIntegration() {
     document.getElementById('ptClientId').value = pt.client_id || '';
     document.getElementById('ptSecret').value = pt.secret || '';
     document.getElementById('ptTenantId').value = pt.tenant_id || '';
-    document.getElementById('ptPointsPerBooking').value = pt.points_per_booking || 1;
     document.getElementById('ptSyncEnabled').checked = pt.sync_enabled || false;
 
     // Update status badge
@@ -1623,7 +1619,6 @@ async function savePlaytomicConfig() {
         client_id: document.getElementById('ptClientId').value.trim(),
         secret: document.getElementById('ptSecret').value.trim(),
         tenant_id: document.getElementById('ptTenantId').value.trim(),
-        points_per_booking: parseInt(document.getElementById('ptPointsPerBooking').value) || 1,
         sync_enabled: document.getElementById('ptSyncEnabled').checked
     };
     await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({config}) });
