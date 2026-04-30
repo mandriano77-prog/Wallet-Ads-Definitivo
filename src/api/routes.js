@@ -3216,6 +3216,127 @@ router.get('/brands/:id/analytics/full', authMiddleware, async (req, res) => {
 });
 
 // ============================================================================
+// PULSE: RFM SEGMENTATION
+// ============================================================================
+
+/**
+ * GET /api/v1/brands/:id/analytics/rfm - RFM segmentation for all members
+ *
+ * Recency: days since last points_log entry (excl. decay)
+ * Frequency: count of points_log entries in last 90 days (excl. decay)
+ * Monetary: total points currently on pass
+ *
+ * Each axis scored 1-5 via quintiles, then mapped to named segments.
+ */
+router.get('/brands/:id/analytics/rfm', authMiddleware, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+
+    // Get all members with their R, F, M raw values in one query
+    const raw = await pool.query(`
+      SELECT
+        m.id, m.first_name, m.last_name, m.email, m.created_at as member_since,
+        COALESCE(CAST(p.field_values->>'punti' AS INTEGER), 0) as points,
+        (SELECT EXTRACT(EPOCH FROM (NOW() - MAX(pl.created_at))) / 86400
+         FROM points_log pl WHERE pl.member_id = m.id AND pl.brand_id = $1 AND pl.reason != 'decay'
+        ) as days_since_last,
+        (SELECT COUNT(*)
+         FROM points_log pl WHERE pl.member_id = m.id AND pl.brand_id = $1 AND pl.reason != 'decay'
+           AND pl.created_at >= NOW() - INTERVAL '90 days'
+        ) as frequency_90d
+      FROM members m
+      LEFT JOIN pass_instances p ON (
+        (p.customer_data->>'member_id' = m.id OR p.field_values->>'member_id' = m.id)
+        AND p.brand_id = $1 AND p.status = 'active'
+      )
+      WHERE m.brand_id = $1
+      ORDER BY m.last_name ASC NULLS LAST
+    `, [brandId]);
+
+    const members = raw.rows;
+    if (members.length === 0) {
+      return res.json({ segments: {}, members: [], summary: {} });
+    }
+
+    // Calculate quintile thresholds for R, F, M
+    function quintileScore(values, val, inverse) {
+      // inverse=true means lower is better (recency: fewer days = more recent = higher score)
+      const sorted = [...values].filter(v => v !== null).sort((a, b) => a - b);
+      if (sorted.length === 0) return 3;
+      const idx = sorted.indexOf(val);
+      const pct = sorted.length > 1 ? idx / (sorted.length - 1) : 0.5;
+      const score = Math.ceil(pct * 5) || 1;
+      return inverse ? (6 - score) : score;
+    }
+
+    const recencyVals = members.map(m => m.days_since_last !== null ? parseFloat(m.days_since_last) : 9999);
+    const freqVals = members.map(m => parseInt(m.frequency_90d) || 0);
+    const monetaryVals = members.map(m => m.points || 0);
+
+    // Score each member
+    const scored = members.map((m, i) => {
+      const r = quintileScore(recencyVals, recencyVals[i], true);  // lower days = higher score
+      const f = quintileScore(freqVals, freqVals[i], false);        // higher freq = higher score
+      const mv = quintileScore(monetaryVals, monetaryVals[i], false); // higher points = higher score
+      const segment = classifyRFM(r, f, mv);
+      return {
+        id: m.id,
+        name: [m.first_name, m.last_name].filter(Boolean).join(' ') || 'N/A',
+        email: m.email,
+        member_since: m.member_since,
+        points: m.points,
+        days_since_last: m.days_since_last !== null ? Math.round(parseFloat(m.days_since_last)) : null,
+        frequency_90d: parseInt(m.frequency_90d) || 0,
+        r, f, m: mv,
+        rfm: `${r}${f}${mv}`,
+        segment: segment.name,
+        segment_label: segment.label,
+        segment_color: segment.color
+      };
+    });
+
+    // Build segment summary
+    const segments = {};
+    scored.forEach(m => {
+      if (!segments[m.segment]) {
+        segments[m.segment] = { name: m.segment, label: m.segment_label, color: m.segment_color, count: 0, members: [] };
+      }
+      segments[m.segment].count++;
+      segments[m.segment].members.push(m.id);
+    });
+
+    res.json({
+      members: scored,
+      segments,
+      total: members.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error computing RFM:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+function classifyRFM(r, f, m) {
+  // Champions: high on all
+  if (r >= 4 && f >= 4 && m >= 4) return { name: 'champions', label: 'Champions', color: '#34e89e' };
+  // Loyal: good frequency and monetary
+  if (f >= 3 && m >= 3) return { name: 'loyal', label: 'Fedeli', color: '#3a7bd5' };
+  // Recent: came recently but not frequent yet
+  if (r >= 4 && f <= 2) return { name: 'recent', label: 'Nuovi Attivi', color: '#00d2ff' };
+  // Promising: moderate across the board
+  if (r >= 3 && f >= 2 && m >= 2) return { name: 'promising', label: 'Promettenti', color: '#ffd93d' };
+  // At Risk: were good but haven't been around
+  if (r <= 2 && f >= 3) return { name: 'at_risk', label: 'A Rischio', color: '#ff922b' };
+  // Need Attention: moderate recency, low engagement
+  if (r >= 2 && r <= 3 && f <= 2) return { name: 'need_attention', label: 'Da Attivare', color: '#cc5de8' };
+  // Hibernating: gone
+  if (r <= 2 && f <= 2) return { name: 'hibernating', label: 'Dormienti', color: '#ff6b6b' };
+  // Default
+  return { name: 'other', label: 'Altro', color: '#888888' };
+}
+
+// ============================================================================
 // EMAIL RECAP
 // ============================================================================
 

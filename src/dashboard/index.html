@@ -434,6 +434,16 @@
                         <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Top Referrer</div>
                         <div id="analyticsReferrers"></div>
                     </div>
+
+                    <!-- RFM SEGMENTATION -->
+                    <div class="card" style="padding:20px;margin-top:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                            <div style="font-size:15px;font-weight:600;">Segmentazione RFM</div>
+                            <div style="font-size:11px;color:var(--text2);">Recency · Frequency · Monetary</div>
+                        </div>
+                        <div id="rfmSegments" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
+                        <div id="rfmTable"></div>
+                    </div>
                 </div>
             </div>
 
@@ -3493,9 +3503,80 @@ async function loadAnalytics() {
         } catch(e) {
             refEl.innerHTML = '<p style="color:var(--text2);font-size:12px;">Referral stats non disponibili.</p>';
         }
+
+        // Load RFM segmentation
+        loadRFM();
     } catch(e) {
         loading.innerHTML = '<p style="color:var(--red);">Errore caricamento analytics: ' + e.message + '</p>';
     }
+}
+
+async function loadRFM() {
+    if (!brandId) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/analytics/rfm`, { headers: authHeaders() });
+        const data = await res.json();
+
+        const segEl = document.getElementById('rfmSegments');
+        const tableEl = document.getElementById('rfmTable');
+
+        if (!data.members || data.members.length === 0) {
+            segEl.innerHTML = '<p style="color:var(--text2);font-size:12px;">Nessun membro per la segmentazione.</p>';
+            tableEl.innerHTML = '';
+            return;
+        }
+
+        // Segment badges
+        const segs = Object.values(data.segments).sort((a, b) => b.count - a.count);
+        segEl.innerHTML = segs.map(s => {
+            const pct = Math.round((s.count / data.total) * 100);
+            return `<div style="background:${s.color}22;border:1px solid ${s.color}44;color:${s.color};padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;min-width:100px;">
+                <div style="font-size:22px;font-weight:700;">${s.count}</div>
+                <div>${s.label}</div>
+                <div style="font-size:11px;opacity:0.7;">${pct}%</div>
+            </div>`;
+        }).join('');
+
+        // Members table
+        tableEl.innerHTML = `
+            <div style="margin-top:12px;max-height:400px;overflow-y:auto;">
+                <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                    <thead>
+                        <tr style="text-align:left;color:var(--text2);border-bottom:1px solid var(--border);">
+                            <th style="padding:6px 8px;">Membro</th>
+                            <th style="padding:6px 4px;text-align:center;">R</th>
+                            <th style="padding:6px 4px;text-align:center;">F</th>
+                            <th style="padding:6px 4px;text-align:center;">M</th>
+                            <th style="padding:6px 8px;">Segmento</th>
+                            <th style="padding:6px 8px;text-align:right;">Punti</th>
+                            <th style="padding:6px 8px;text-align:right;">Ultimo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.members.map(m => `
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:6px 8px;font-weight:500;">${m.name}</td>
+                                <td style="padding:6px 4px;text-align:center;"><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:4px;background:${rfmColor(m.r)};color:#fff;font-weight:700;font-size:11px;text-align:center;">${m.r}</span></td>
+                                <td style="padding:6px 4px;text-align:center;"><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:4px;background:${rfmColor(m.f)};color:#fff;font-weight:700;font-size:11px;text-align:center;">${m.f}</span></td>
+                                <td style="padding:6px 4px;text-align:center;"><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:4px;background:${rfmColor(m.m)};color:#fff;font-weight:700;font-size:11px;text-align:center;">${m.m}</span></td>
+                                <td style="padding:6px 8px;"><span style="background:${m.segment_color}22;color:${m.segment_color};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${m.segment_label}</span></td>
+                                <td style="padding:6px 8px;text-align:right;font-weight:600;">${m.points}</td>
+                                <td style="padding:6px 8px;text-align:right;color:var(--text2);">${m.days_since_last !== null ? m.days_since_last + 'gg' : '—'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch(e) {
+        console.error('RFM load error:', e);
+        document.getElementById('rfmSegments').innerHTML = '<p style="color:var(--text2);font-size:12px;">Errore caricamento RFM.</p>';
+    }
+}
+
+function rfmColor(score) {
+    const colors = { 1: '#ff6b6b', 2: '#ff922b', 3: '#ffd93d', 4: '#3a7bd5', 5: '#34e89e' };
+    return colors[score] || '#888';
 }
 
 // ─── Email Recap Trigger ──────────────────────────────
