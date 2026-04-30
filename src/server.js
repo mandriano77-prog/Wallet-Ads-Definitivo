@@ -67,6 +67,11 @@ app.use('/debug', debugSignRoutes);
 app.use('/landing', express.static(path.join(__dirname, 'landing')));
 app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 
+// Scratch card page — /scratch/:campaignId?m=memberId
+app.get('/scratch/:campaignId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'scratch', 'index.html'));
+});
+
 // Health check + version
 const BUILD_VERSION = '2.1.0-' + Date.now();
 app.get('/health', (req, res) => {
@@ -88,7 +93,7 @@ app.get('/privacy/:slugOrId', (req, res) => {
 app.get('/:slug', (req, res, next) => {
   const slug = req.params.slug;
   // Skip if it looks like a file or known route
-  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health', 'privacy'].includes(slug)) {
+  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health', 'privacy', 'scratch'].includes(slug)) {
     return next();
   }
   // Serve the landing page — it will detect the slug from the URL

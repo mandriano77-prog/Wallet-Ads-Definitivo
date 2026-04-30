@@ -198,6 +198,34 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS instant_win_campaigns (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  type TEXT DEFAULT 'scratch',
+  win_probability NUMERIC(5,2) NOT NULL DEFAULT 10.00,
+  prizes JSONB NOT NULL DEFAULT '[]',
+  max_plays_per_member INTEGER DEFAULT 1,
+  total_plays INTEGER DEFAULT 0,
+  total_wins INTEGER DEFAULT 0,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  active BOOLEAN DEFAULT true,
+  style JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS instant_win_plays (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES instant_win_campaigns(id),
+  member_id TEXT NOT NULL REFERENCES members(id),
+  brand_id TEXT NOT NULL,
+  won BOOLEAN DEFAULT false,
+  prize JSONB,
+  played_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 /**
@@ -2573,6 +2601,86 @@ async function seedAdminUser() {
   } catch(e) { console.log('Admin seed note:', e.message); }
 }
 
+// ─── Instant Win (Scratch Card) ─────────────────────────────
+
+async function createInstantWinCampaign({ brand_id, title, description, type, win_probability, prizes, max_plays_per_member, start_date, end_date, style }) {
+  const id = uuidv4();
+  await pool.query(
+    `INSERT INTO instant_win_campaigns (id, brand_id, title, description, type, win_probability, prizes, max_plays_per_member, start_date, end_date, style)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [id, brand_id, title, description || null, type || 'scratch', win_probability || 10, JSON.stringify(prizes || []), max_plays_per_member || 1, start_date || null, end_date || null, JSON.stringify(style || {})]
+  );
+  return { id };
+}
+
+async function listInstantWinCampaigns(brand_id) {
+  const res = await pool.query('SELECT * FROM instant_win_campaigns WHERE brand_id = $1 ORDER BY created_at DESC', [brand_id]);
+  return res.rows;
+}
+
+async function getInstantWinCampaign(id) {
+  const res = await pool.query('SELECT * FROM instant_win_campaigns WHERE id = $1', [id]);
+  return res.rows[0] || null;
+}
+
+async function updateInstantWinCampaign(id, fields) {
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  for (const [k, v] of Object.entries(fields)) {
+    if (['title','description','type','win_probability','max_plays_per_member','start_date','end_date','active'].includes(k)) {
+      sets.push(`${k} = $${i++}`);
+      vals.push(v);
+    } else if (k === 'prizes' || k === 'style') {
+      sets.push(`${k} = $${i++}`);
+      vals.push(JSON.stringify(v));
+    }
+  }
+  if (sets.length === 0) return;
+  vals.push(id);
+  await pool.query(`UPDATE instant_win_campaigns SET ${sets.join(', ')} WHERE id = $${i}`, vals);
+}
+
+async function deleteInstantWinCampaign(id) {
+  await pool.query('DELETE FROM instant_win_plays WHERE campaign_id = $1', [id]);
+  await pool.query('DELETE FROM instant_win_campaigns WHERE id = $1', [id]);
+}
+
+async function createInstantWinPlay({ campaign_id, member_id, brand_id, won, prize }) {
+  const id = uuidv4();
+  await pool.query(
+    `INSERT INTO instant_win_plays (id, campaign_id, member_id, brand_id, won, prize) VALUES ($1,$2,$3,$4,$5,$6)`,
+    [id, campaign_id, member_id, brand_id, won, prize ? JSON.stringify(prize) : null]
+  );
+  // Update campaign counters
+  if (won) {
+    await pool.query('UPDATE instant_win_campaigns SET total_plays = total_plays + 1, total_wins = total_wins + 1 WHERE id = $1', [campaign_id]);
+  } else {
+    await pool.query('UPDATE instant_win_campaigns SET total_plays = total_plays + 1 WHERE id = $1', [campaign_id]);
+  }
+  return { id, won };
+}
+
+async function getMemberPlays(campaign_id, member_id) {
+  const res = await pool.query(
+    'SELECT COUNT(*) as count FROM instant_win_plays WHERE campaign_id = $1 AND member_id = $2',
+    [campaign_id, member_id]
+  );
+  return parseInt(res.rows[0].count);
+}
+
+async function listInstantWinPlays(campaign_id) {
+  const res = await pool.query(
+    `SELECT p.*, m.first_name, m.last_name, m.email
+     FROM instant_win_plays p
+     LEFT JOIN members m ON m.id = p.member_id
+     WHERE p.campaign_id = $1
+     ORDER BY p.played_at DESC`,
+    [campaign_id]
+  );
+  return res.rows;
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -2697,5 +2805,14 @@ module.exports = {
   deleteUser,
   verifyPassword,
   seedAdminUser,
+  // Instant Win (Scratch Card)
+  createInstantWinCampaign,
+  listInstantWinCampaigns,
+  getInstantWinCampaign,
+  updateInstantWinCampaign,
+  deleteInstantWinCampaign,
+  createInstantWinPlay,
+  getMemberPlays,
+  listInstantWinPlays,
   pool
 };
