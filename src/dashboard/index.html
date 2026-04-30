@@ -131,6 +131,8 @@
         <div class="nav-item" onclick="nav('vip-cards')">Carte VIP</div>
         <div class="nav-label">Comunicazione</div>
         <div class="nav-item" onclick="nav('push')">Push Notification</div>
+        <div class="nav-label">Insights</div>
+        <div class="nav-item" onclick="nav('analytics')">Analytics</div>
         <div class="nav-label">Setup</div>
         <div class="nav-item" onclick="nav('templates')">Template</div>
         <div class="nav-item" onclick="nav('brand-settings')">Brand</div>
@@ -384,6 +386,23 @@
                 <div id="pushHistory"></div>
             </div>
 
+            <!-- ANALYTICS -->
+            <div id="analytics" class="section">
+                <div class="sec-title">Analytics</div>
+                <div id="analyticsLoading" style="color:var(--text2);">Caricamento analytics...</div>
+                <div id="analyticsStats" class="stats-grid" style="display:none;"></div>
+                <div id="analyticsCharts" style="display:none;">
+                    <div class="card" style="padding:20px;margin-top:16px;">
+                        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Ultimi 30 giorni — Eventi</div>
+                        <div id="analyticsEventsChart" style="height:200px;display:flex;align-items:flex-end;gap:2px;"></div>
+                    </div>
+                    <div class="card" style="padding:20px;margin-top:12px;">
+                        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Top Referrer</div>
+                        <div id="analyticsReferrers"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- TEMPLATES -->
             <div id="templates" class="section">
                 <div class="sec-title">Template</div>
@@ -426,6 +445,11 @@
                         <div id="landingLogoPreview" style="margin-bottom:10px;"></div>
                         <input type="file" id="landingLogoUpload" accept="image/png,image/jpeg" onchange="previewLandingLogo(this)" style="font-size:13px;">
                         <p style="font-size:11px;color:var(--text2);margin-top:4px;">Logo grande per la pagina di onboarding. PNG consigliato, almeno 400x400 px.</p>
+                    </div>
+                    <div class="form-group" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                        <label class="form-label">Welcome Push (messaggio benvenuto)</label>
+                        <input type="text" id="bsWelcomePush" placeholder="es. Benvenuto! Hai appena attivato la tua card. Inizia a guadagnare punti!">
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px;">Inviata automaticamente quando un utente aggiunge il pass al wallet. Lascia vuoto per disattivare.</p>
                     </div>
                     <button class="btn" onclick="saveBrandSettings()" style="margin-top:20px;">Salva Modifiche</button>
                 </div>
@@ -502,6 +526,33 @@
                                 <button class="btn small sec" onclick="generateAiStrip()">Rigenera</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Strip Promo Programmate -->
+                <div class="card" style="padding:24px;margin-bottom:16px;">
+                    <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Promo Programmate</div>
+                    <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Programma strip promozionali con data inizio/fine. La strip cambia automaticamente e torna alla default alla scadenza.</p>
+                    <div id="stripPromosContainer" style="margin-bottom:12px;"></div>
+                    <div style="border:1px dashed var(--border);border-radius:10px;padding:16px;margin-top:8px;">
+                        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Nuova Promo</div>
+                        <div class="form-group"><label class="form-label">Titolo promo</label><input type="text" id="promoTitle" placeholder="es. Weekend Gratuito"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="form-group"><label class="form-label">Data inizio</label><input type="datetime-local" id="promoStart"></div>
+                            <div class="form-group"><label class="form-label">Data fine</label><input type="datetime-local" id="promoEnd"></div>
+                        </div>
+                        <div class="form-group"><label class="form-label">Messaggio push (opzionale)</label><input type="text" id="promoPushMsg" placeholder="es. Promo attiva! Vieni a giocare oggi"></div>
+                        <div class="form-group">
+                            <label class="form-label">Frequenza push</label>
+                            <select id="promoPushFreq">
+                                <option value="none">Nessuna push</option>
+                                <option value="once">Una volta (all'attivazione)</option>
+                                <option value="daily">Giornaliera</option>
+                                <option value="hourly">Ogni ora</option>
+                            </select>
+                        </div>
+                        <p style="font-size:11px;color:var(--text2);margin-bottom:8px;">La strip verrà presa da quella attuale o dal generatore sopra. Genera la strip promo prima, poi crea la promo qui.</p>
+                        <button class="btn" onclick="createStripPromo()">Crea Promo Programmata</button>
                     </div>
                 </div>
 
@@ -718,6 +769,7 @@
                     <option value="booking_time">Fascia oraria</option>
                     <option value="booking_day">Giorno della settimana</option>
                     <option value="booking_partners">Partner diversi</option>
+                    <option value="referral">Member get Member (referral)</option>
                 </select>
             </div>
             <div class="form-row">
@@ -963,7 +1015,7 @@ function nav(id) {
     document.getElementById(id).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if (event && event.target) event.target.classList.add('active');
-    const loaders = { members: loadMembers, 'create-pass': () => { loadTemplateSelect(); loadCreatedPasses(); }, rewards: loadRewards, challenges: loadChallenges, tiers: loadTiers, 'vip-cards': loadVipCards, push: () => { loadPushHistory(); loadScheduledPush(); }, templates: loadTemplates, 'brand-settings': loadBrandSettings, 'pass-settings': loadPassSettings, 'api-integration': loadApiIntegration, users: loadUsers };
+    const loaders = { members: loadMembers, 'create-pass': () => { loadTemplateSelect(); loadCreatedPasses(); }, rewards: loadRewards, challenges: loadChallenges, tiers: loadTiers, 'vip-cards': loadVipCards, push: () => { loadPushHistory(); loadScheduledPush(); }, analytics: loadAnalytics, templates: loadTemplates, 'brand-settings': loadBrandSettings, 'pass-settings': loadPassSettings, 'api-integration': loadApiIntegration, users: loadUsers };
     if (loaders[id]) loaders[id]();
     // Leaflet needs invalidateSize after section becomes visible
     if (id === 'pass-settings' && geoMap) setTimeout(() => geoMap.invalidateSize(), 400);
@@ -1488,6 +1540,10 @@ async function saveBrandSettings() {
         config.logos.landing_logo = pendingLandingLogoBase64;
     }
 
+    // Welcome push message
+    const welcomePush = document.getElementById('bsWelcomePush').value.trim();
+    config.welcome_push_message = welcomePush || null;
+
     const name = document.getElementById('bsName').value;
     await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || undefined, config}) });
     toast('Brand aggiornata! Rigenera i pass per vedere le modifiche.');
@@ -1557,6 +1613,9 @@ async function loadBrandSettings() {
     } else {
         landingLogoPrev.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessun logo landing caricato (verra usato il logo del pass)</span>';
     }
+
+    // Welcome push message
+    document.getElementById('bsWelcomePush').value = c.welcome_push_message || '';
 }
 
 async function loadPassSettings() {
@@ -1593,6 +1652,9 @@ async function loadPassSettings() {
     } else {
         stripPrev.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessuna strip caricata (verra generata automaticamente)</span>';
     }
+
+    // Load strip promos
+    loadStripPromos();
 }
 
 async function loadApiIntegration() {
@@ -1987,6 +2049,7 @@ async function loadMembers() {
                     <div class="member-name">${name}</div>
                     <div style="font-size:12px;color:var(--text2);">${contact}${m.playtomic_email ? ' <span style="background:#2ecc71;color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px;">Playtomic</span>' : ''}</div>
                     <div>${passInfo}</div>
+                    ${m.referral_code ? `<div style="font-size:11px;color:var(--yellow);margin-top:2px;cursor:pointer;" onclick="copyReferralLink('${m.referral_code}')" title="Clicca per copiare">Referral: ${m.referral_code} ${m.referral_count ? '(' + m.referral_count + ' invitati)' : ''}</div>` : ''}
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
@@ -2307,6 +2370,7 @@ const TRIGGER_LABELS = {
     booking_time: 'Fascia oraria',
     booking_day: 'Giorno settimana',
     booking_partners: 'Partner diversi',
+    referral: 'Member get Member',
     manual: 'Manuale'
 };
 
@@ -2317,7 +2381,9 @@ function renderChallengeCard(c, isPlaytomic) {
     const config = c.trigger_config || {};
     let configDesc = '';
     if (isPlaytomic) {
-        if (c.trigger_type === 'booking_streak') {
+        if (c.trigger_type === 'referral') {
+            configDesc = `Invita ${config.target || 1} amici`;
+        } else if (c.trigger_type === 'booking_streak') {
             configDesc = `${config.weeks || 4} settimane consecutive`;
         } else if (c.trigger_type === 'booking_time') {
             configDesc = `${config.count || 1}x/${PERIOD_LABELS[config.period]||''} (${config.time_start}-${config.time_end})`;
@@ -2392,12 +2458,26 @@ async function loadChallenges() {
 
 function updateTriggerFields() {
     const trigger = document.getElementById('chTriggerSelect').value;
+    const isReferral = trigger === 'referral';
+    const isStreak = trigger === 'booking_streak';
     document.getElementById('chTimeFields').style.display = trigger === 'booking_time' ? 'grid' : 'none';
     document.getElementById('chDayFields').style.display = trigger === 'booking_day' ? 'block' : 'none';
-    document.getElementById('chStreakFields').style.display = trigger === 'booking_streak' ? 'block' : 'none';
-    document.getElementById('chCountGroup').style.display = trigger === 'booking_streak' ? 'none' : 'block';
-    document.getElementById('chPeriodGroup').style.display = trigger === 'booking_streak' ? 'none' : 'block';
-    document.getElementById('chCustomFields').style.display = document.getElementById('chTriggerPeriod').value === 'custom' && trigger !== 'booking_streak' ? 'grid' : 'none';
+    document.getElementById('chStreakFields').style.display = isStreak ? 'block' : 'none';
+    document.getElementById('chCountGroup').style.display = (isStreak || isReferral) ? 'none' : 'block';
+    document.getElementById('chPeriodGroup').style.display = (isStreak || isReferral) ? 'none' : 'block';
+    document.getElementById('chCustomFields').style.display = document.getElementById('chTriggerPeriod').value === 'custom' && !isStreak && !isReferral ? 'grid' : 'none';
+    // Referral-specific field
+    let refField = document.getElementById('chReferralTargetGroup');
+    if (!refField) {
+        const container = document.getElementById('chStreakFields').parentElement;
+        const div = document.createElement('div');
+        div.id = 'chReferralTargetGroup';
+        div.className = 'form-group';
+        div.innerHTML = '<label class="form-label">Amici da invitare (target)</label><input type="number" id="chReferralTarget" min="1" value="3" placeholder="es. 5">';
+        container.appendChild(div);
+        refField = div;
+    }
+    refField.style.display = isReferral ? 'block' : 'none';
 }
 
 function openChallengeModal(dataOrType) {
@@ -2434,6 +2514,9 @@ function openChallengeModal(dataOrType) {
         if (config.start_month) document.getElementById('chCustomStartMonth').value = config.start_month;
         if (config.end_month) document.getElementById('chCustomEndMonth').value = config.end_month;
         updateTriggerFields();
+        if (config.target && document.getElementById('chReferralTarget')) {
+            document.getElementById('chReferralTarget').value = config.target;
+        }
     } else if (isPlaytomic) {
         document.getElementById('chTriggerSelect').value = 'booking_count';
         document.getElementById('chTriggerCount').value = 1;
@@ -2455,7 +2538,9 @@ function buildTriggerConfig() {
     const trigger = document.getElementById('chTriggerSelect').value;
     const config = {};
 
-    if (trigger === 'booking_streak') {
+    if (trigger === 'referral') {
+        config.target = parseInt(document.getElementById('chReferralTarget')?.value) || 3;
+    } else if (trigger === 'booking_streak') {
         config.weeks = parseInt(document.getElementById('chStreakWeeks').value) || 4;
     } else {
         config.count = parseInt(document.getElementById('chTriggerCount').value) || 1;
@@ -3200,6 +3285,180 @@ async function removeUser(id, name) {
         toast('Utente eliminato');
         loadUsers();
     } catch(e) { toast('Errore: ' + e.message); }
+}
+
+// ─── Strip Promo Functions ──────────────────────────────
+async function createStripPromo() {
+    if (!brandId) return;
+    const title = document.getElementById('promoTitle').value.trim();
+    const start_date = document.getElementById('promoStart').value;
+    const end_date = document.getElementById('promoEnd').value;
+    const push_message = document.getElementById('promoPushMsg').value.trim();
+    const push_frequency = document.getElementById('promoPushFreq').value;
+
+    if (!title || !start_date || !end_date) {
+        toast('Titolo, data inizio e data fine sono obbligatori');
+        return;
+    }
+
+    // Get current strip as the promo strip (user should have generated/uploaded it first)
+    let strip_base64 = null;
+    try {
+        const brandRes = await fetch(`${API}/brands/${brandId}`);
+        const brand = await brandRes.json();
+        strip_base64 = brand.config?.logos?.strip || null;
+    } catch(e) {}
+
+    if (!strip_base64) {
+        toast('Carica o genera una strip prima di creare la promo');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/strip-promos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, strip_base64, start_date, end_date, push_message: push_message || null, push_frequency })
+        });
+        if (!res.ok) { const err = await res.json(); toast(err.error || 'Errore'); return; }
+        toast('Promo programmata creata!');
+        document.getElementById('promoTitle').value = '';
+        document.getElementById('promoStart').value = '';
+        document.getElementById('promoEnd').value = '';
+        document.getElementById('promoPushMsg').value = '';
+        document.getElementById('promoPushFreq').value = 'none';
+        loadStripPromos();
+    } catch(e) { toast('Errore: ' + e.message); }
+}
+
+async function loadStripPromos() {
+    if (!brandId) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/strip-promos`);
+        const promos = await res.json();
+        const container = document.getElementById('stripPromosContainer');
+        if (!promos || promos.length === 0) {
+            container.innerHTML = '<p style="font-size:12px;color:var(--text2);">Nessuna promo programmata.</p>';
+            return;
+        }
+        container.innerHTML = promos.map(p => {
+            const start = new Date(p.start_date).toLocaleString('it-IT', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+            const end = new Date(p.end_date).toLocaleString('it-IT', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+            const statusBadge = p.active
+                ? '<span class="badge active">Attiva</span>'
+                : (new Date(p.end_date) < new Date() ? '<span class="badge inactive">Scaduta</span>' : '<span class="badge inactive">In attesa</span>');
+            const pushInfo = p.push_message ? `Push: "${p.push_message}" (${p.push_frequency})` : 'Nessuna push';
+            return `<div class="card" style="padding:14px;margin-bottom:8px;">
+                <div class="card-row">
+                    <div style="flex:1;">
+                        <div style="font-weight:600;font-size:14px;">${p.title} ${statusBadge}</div>
+                        <div style="font-size:12px;color:var(--text2);margin-top:4px;">${start} — ${end}</div>
+                        <div style="font-size:11px;color:var(--text2);margin-top:2px;">${pushInfo}</div>
+                    </div>
+                    <button class="btn small danger" onclick="deleteStripPromo('${p.id}')">Elimina</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('stripPromosContainer').innerHTML = '<p style="color:var(--red);font-size:12px;">Errore caricamento promo</p>';
+    }
+}
+
+async function deleteStripPromo(id) {
+    if (!confirm('Eliminare questa promo programmata?')) return;
+    try {
+        await fetch(`${API}/strip-promos/${id}`, { method: 'DELETE' });
+        toast('Promo eliminata');
+        loadStripPromos();
+    } catch(e) { toast('Errore: ' + e.message); }
+}
+
+// ─── Analytics Functions ──────────────────────────────
+async function loadAnalytics() {
+    if (!brandId) return;
+    const loading = document.getElementById('analyticsLoading');
+    const statsEl = document.getElementById('analyticsStats');
+    const chartsEl = document.getElementById('analyticsCharts');
+    loading.style.display = 'block';
+    statsEl.style.display = 'none';
+    chartsEl.style.display = 'none';
+
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/analytics/full`);
+        const data = await res.json();
+        loading.style.display = 'none';
+        statsEl.style.display = 'grid';
+        chartsEl.style.display = 'block';
+
+        statsEl.innerHTML = `
+            <div class="stat-card"><div class="stat-label">Pass Totali</div><div class="stat-value">${data.total_passes || 0}</div></div>
+            <div class="stat-card"><div class="stat-label">Pass Attivi</div><div class="stat-value">${data.active_passes || 0}</div></div>
+            <div class="stat-card"><div class="stat-label">Membri</div><div class="stat-value">${data.total_members || 0}</div></div>
+            <div class="stat-card"><div class="stat-label">Referral</div><div class="stat-value">${data.total_referrals || 0}</div></div>
+            <div class="stat-card"><div class="stat-label">Retention Rate</div><div class="stat-value">${data.retention_rate || 0}%</div></div>
+            <div class="stat-card"><div class="stat-label">Eventi (30gg)</div><div class="stat-value">${data.events_30d || 0}</div></div>
+        `;
+
+        // Events chart (simple bar chart)
+        const eventsChart = document.getElementById('analyticsEventsChart');
+        if (data.events_by_type && Object.keys(data.events_by_type).length > 0) {
+            const maxVal = Math.max(...Object.values(data.events_by_type));
+            eventsChart.innerHTML = Object.entries(data.events_by_type).map(([type, count]) => {
+                const height = maxVal > 0 ? Math.max(10, (count / maxVal) * 180) : 10;
+                const label = type.replace(/_/g, ' ');
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <div style="font-size:11px;color:var(--teal);font-weight:600;">${count}</div>
+                    <div style="width:100%;height:${height}px;background:var(--teal);border-radius:4px 4px 0 0;min-width:30px;"></div>
+                    <div style="font-size:10px;color:var(--text2);text-align:center;word-break:break-word;">${label}</div>
+                </div>`;
+            }).join('');
+        } else {
+            eventsChart.innerHTML = '<p style="color:var(--text2);font-size:12px;padding:20px;">Nessun evento registrato negli ultimi 30 giorni.</p>';
+        }
+
+        // Referrers section
+        const refEl = document.getElementById('analyticsReferrers');
+        try {
+            const refRes = await fetch(`${API}/brands/${brandId}/referral-stats`);
+            const refData = await refRes.json();
+            if (refData.top_referrers && refData.top_referrers.length > 0) {
+                refEl.innerHTML = refData.top_referrers.map((r, i) => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;${i > 0 ? 'border-top:1px solid var(--border);' : ''}">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:var(--yellow);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">${i+1}</div>
+                            <div>
+                                <div style="font-weight:600;font-size:13px;">${r.first_name || ''} ${r.last_name || ''}</div>
+                                <div style="font-size:11px;color:var(--text2);">${r.email || ''}</div>
+                            </div>
+                        </div>
+                        <div style="font-size:18px;font-weight:700;color:var(--yellow);">${r.referral_count}</div>
+                    </div>`).join('');
+            } else {
+                refEl.innerHTML = '<p style="color:var(--text2);font-size:12px;">Nessun referral ancora.</p>';
+            }
+        } catch(e) {
+            refEl.innerHTML = '<p style="color:var(--text2);font-size:12px;">Referral stats non disponibili.</p>';
+        }
+    } catch(e) {
+        loading.innerHTML = '<p style="color:var(--red);">Errore caricamento analytics: ' + e.message + '</p>';
+    }
+}
+
+// ─── Referral Link Copy ──────────────────────────────
+async function copyReferralLink(code) {
+    // Get brand slug for the landing URL
+    let slug = brandId;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}`);
+        const brand = await res.json();
+        if (brand.slug) slug = brand.slug;
+    } catch(e) {}
+    const link = `${API.replace('/api','')}/landing/${slug}?ref=${code}`;
+    navigator.clipboard.writeText(link).then(() => {
+        toast('Link referral copiato!');
+    }).catch(() => {
+        prompt('Copia questo link referral:', link);
+    });
 }
 </script>
 </body>
