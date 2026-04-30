@@ -126,7 +126,7 @@ function authMiddleware(req, res, next) {
     '/brands/',             // brand slug lookup (used by landing page)
     '/landing/',            // landing page API (brand by slug, pass info)
     '/passes/signup',       // public signup endpoint
-    '/rewards/seed', '/challenges/seed', '/challenges/migrate-triggers', '/rewards/check', '/rewards/fix-brand', '/cleanup/non-padel'
+    '/rewards/seed', '/challenges/seed', '/challenges/migrate-triggers', '/rewards/check', '/rewards/fix-brand', '/cleanup/non-padel', '/cleanup/strip/'
   ];
   // Apple Wallet device registration paths & pass downloads
   if (req.path.match(/\/devices\//) || req.path.match(/\/passes\/.*\/pkpass/) || req.path.match(/\/passes\/.*\/download/)) return next();
@@ -1645,6 +1645,27 @@ router.get('/rewards/fix-brand', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/cleanup/strip/:brandId - Remove strip image from a specific brand
+ */
+router.get('/cleanup/strip/:brandId', async (req, res) => {
+  try {
+    const brandId = req.params.brandId;
+    const brand = await pool.query('SELECT id, name, config FROM brands WHERE id = $1', [brandId]);
+    if (!brand.rows.length) return res.status(404).json({ error: 'Brand not found' });
+
+    const config = typeof brand.rows[0].config === 'string' ? JSON.parse(brand.rows[0].config) : (brand.rows[0].config || {});
+    const hadStrip = !!(config.logos && config.logos.strip);
+
+    if (config.logos && config.logos.strip) {
+      delete config.logos.strip;
+      await pool.query('UPDATE brands SET config = $1::jsonb WHERE id = $2', [JSON.stringify(config), brandId]);
+    }
+
+    res.json({ brand: brand.rows[0].name, had_strip: hadStrip, strip_removed: hadStrip, config_logos: Object.keys(config.logos || {}) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/v1/cleanup/non-padel - Remove padel-specific data from non-padel brands
  * Deletes tiers, rewards, and challenges that were incorrectly seeded
  */
@@ -1672,7 +1693,7 @@ router.get('/cleanup/non-padel', async (req, res) => {
       if (brandData?.config?.logos?.strip) {
         const cfg = { ...brandData.config };
         delete cfg.logos.strip;
-        await pool.query('UPDATE brands SET config = $1 WHERE id = $2', [JSON.stringify(cfg), brand.id]);
+        await pool.query('UPDATE brands SET config = $1::jsonb WHERE id = $2', [JSON.stringify(cfg), brand.id]);
         stripRemoved = true;
       }
 
