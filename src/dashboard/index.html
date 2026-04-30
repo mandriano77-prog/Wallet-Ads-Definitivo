@@ -279,20 +279,20 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                     <div class="sec-title" style="margin-bottom:0">Missioni</div>
                     <div style="display:flex;gap:8px;">
-                        <button class="btn sec small" onclick="triggerChallengeEval()" id="evalChallengesBtn" title="Ricalcola il progresso di tutte le missioni Playtomic">🔄 Ricalcola</button>
-                        <button class="btn" onclick="openChallengeModal('playtomic')">+ Playtomic</button>
+                        <button class="btn sec small" onclick="triggerChallengeEval()" id="evalChallengesBtn" title="Ricalcola il progresso di tutte le missioni Playtomic" style="display:none;">🔄 Ricalcola</button>
+                        <button class="btn" id="btnNewPlaytomic" onclick="openChallengeModal('playtomic')" style="display:none;">+ Playtomic</button>
                         <button class="btn purple" onclick="openChallengeModal('manual')">+ Ad Hoc</button>
                     </div>
                 </div>
 
-                <!-- Tab switcher -->
-                <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--bg3);border-radius:8px;padding:3px;">
+                <!-- Tab switcher (shown only for brands with Playtomic) -->
+                <div id="challengeTabSwitcher" style="display:none;gap:4px;margin-bottom:20px;background:var(--bg3);border-radius:8px;padding:3px;">
                     <button class="btn small" id="tabPlaytomic" onclick="switchChallengeTab('playtomic')" style="flex:1;border-radius:6px;">🎾 Missioni Playtomic</button>
                     <button class="btn small sec" id="tabManual" onclick="switchChallengeTab('manual')" style="flex:1;border-radius:6px;">✋ Missioni Ad Hoc</button>
                 </div>
 
-                <div id="challengesPlaytomicList"></div>
-                <div id="challengesManualList" style="display:none;"></div>
+                <div id="challengesPlaytomicList" style="display:none;"></div>
+                <div id="challengesManualList"></div>
             </div>
 
             <!-- REWARDS -->
@@ -559,41 +559,50 @@
                 <div class="sec-title">🔌 API Integration</div>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:24px;">Collega servizi esterni per automatizzare il programma fedeltà.</p>
 
-                <!-- Playtomic -->
-                <div class="card" style="padding:24px;">
-                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-                        <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#00D4AA,#0088CC);display:flex;align-items:center;justify-content:center;font-size:24px;">🎾</div>
-                        <div>
-                            <div style="font-weight:700;font-size:16px;">Playtomic</div>
-                            <div style="font-size:12px;color:var(--text2);">Punti automatici da prenotazioni completate</div>
-                        </div>
-                        <div style="margin-left:auto;" id="ptStatusBadge">
-                            <span class="badge inactive">Non configurato</span>
-                        </div>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="form-group"><label class="form-label">Client ID</label><input type="text" id="ptClientId" placeholder="Il tuo client_id Playtomic"></div>
-                        <div class="form-group"><label class="form-label">Secret</label><input type="password" id="ptSecret" placeholder="La tua password Playtomic"></div>
-                    </div>
-                    <div class="form-group"><label class="form-label">Tenant ID (Venue)</label><input type="text" id="ptTenantId" placeholder="ID del tuo club"></div>
-                    <div class="form-group" style="margin-top:4px;">
-                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-                            <input type="checkbox" id="ptSyncEnabled" style="width:18px;height:18px;accent-color:var(--teal);">
-                            <span style="font-size:13px;">Abilita sync automatico (ogni 2 ore)</span>
-                        </label>
-                    </div>
-                    <div style="display:flex;gap:12px;margin-top:16px;">
-                        <button class="btn" onclick="savePlaytomicConfig()">Salva Configurazione</button>
-                        <button class="btn sec" onclick="triggerPlaytomicSync()" id="ptSyncBtn">🔄 Sync Ora</button>
-                    </div>
+                <!-- Empty state for brands without integrations -->
+                <div id="apiEmptyState" style="display:none;padding:40px;text-align:center;border:1px dashed var(--border);border-radius:12px;margin-bottom:24px;">
+                    <div style="font-size:32px;margin-bottom:12px;">🔌</div>
+                    <div style="font-size:15px;color:var(--text2);">Nessuna integrazione configurata per questo brand.</div>
+                    <div style="font-size:12px;color:var(--text2);opacity:0.6;margin-top:8px;">Le integrazioni disponibili verranno mostrate qui quando attivate.</div>
                 </div>
 
-                <!-- Sync Log -->
-                <div style="margin-top:24px;">
-                    <div class="sec-title" style="font-size:15px;">Storico Sync Playtomic</div>
-                    <div id="ptSyncLog" class="card" style="padding:16px;font-size:12px;color:var(--text2);max-height:400px;overflow-y:auto;">
-                        Nessun sync ancora effettuato.
+                <!-- Playtomic (shown only for brands with playtomic config) -->
+                <div id="playtomicSection" style="display:none;">
+                    <div class="card" style="padding:24px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                            <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#00D4AA,#0088CC);display:flex;align-items:center;justify-content:center;font-size:24px;">🎾</div>
+                            <div>
+                                <div style="font-weight:700;font-size:16px;">Playtomic</div>
+                                <div style="font-size:12px;color:var(--text2);">Punti automatici da prenotazioni completate</div>
+                            </div>
+                            <div style="margin-left:auto;" id="ptStatusBadge">
+                                <span class="badge inactive">Non configurato</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="form-group"><label class="form-label">Client ID</label><input type="text" id="ptClientId" placeholder="Il tuo client_id Playtomic"></div>
+                            <div class="form-group"><label class="form-label">Secret</label><input type="password" id="ptSecret" placeholder="La tua password Playtomic"></div>
+                        </div>
+                        <div class="form-group"><label class="form-label">Tenant ID (Venue)</label><input type="text" id="ptTenantId" placeholder="ID del tuo club"></div>
+                        <div class="form-group" style="margin-top:4px;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                                <input type="checkbox" id="ptSyncEnabled" style="width:18px;height:18px;accent-color:var(--teal);">
+                                <span style="font-size:13px;">Abilita sync automatico (ogni 2 ore)</span>
+                            </label>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:16px;">
+                            <button class="btn" onclick="savePlaytomicConfig()">Salva Configurazione</button>
+                            <button class="btn sec" onclick="triggerPlaytomicSync()" id="ptSyncBtn">🔄 Sync Ora</button>
+                        </div>
+                    </div>
+
+                    <!-- Sync Log -->
+                    <div style="margin-top:24px;">
+                        <div class="sec-title" style="font-size:15px;">Storico Sync Playtomic</div>
+                        <div id="ptSyncLog" class="card" style="padding:16px;font-size:12px;color:var(--text2);max-height:400px;overflow-y:auto;">
+                            Nessun sync ancora effettuato.
+                        </div>
                     </div>
                 </div>
 
@@ -1591,23 +1600,31 @@ async function loadApiIntegration() {
     const res = await fetch(`${API}/brands/${brandId}`);
     const brand = await res.json();
     const c = brand.config || {};
-    const pt = c.playtomic || {};
-    document.getElementById('ptClientId').value = pt.client_id || '';
-    document.getElementById('ptSecret').value = pt.secret || '';
-    document.getElementById('ptTenantId').value = pt.tenant_id || '';
-    document.getElementById('ptSyncEnabled').checked = pt.sync_enabled || false;
+    const hasPlaytomic = !!c.playtomic;
 
-    // Update status badge
-    const badge = document.getElementById('ptStatusBadge');
-    if (pt.client_id && pt.secret && pt.tenant_id) {
-        badge.innerHTML = pt.sync_enabled
-            ? '<span class="badge active">Attivo</span>'
-            : '<span class="badge" style="background:rgba(255,200,0,0.2);color:#FFD700;">Configurato (sync off)</span>';
-    } else {
-        badge.innerHTML = '<span class="badge inactive">Non configurato</span>';
+    // Show/hide sections based on brand integrations
+    document.getElementById('playtomicSection').style.display = hasPlaytomic ? 'block' : 'none';
+    document.getElementById('apiEmptyState').style.display = hasPlaytomic ? 'none' : 'block';
+
+    if (hasPlaytomic) {
+        const pt = c.playtomic || {};
+        document.getElementById('ptClientId').value = pt.client_id || '';
+        document.getElementById('ptSecret').value = pt.secret || '';
+        document.getElementById('ptTenantId').value = pt.tenant_id || '';
+        document.getElementById('ptSyncEnabled').checked = pt.sync_enabled || false;
+
+        // Update status badge
+        const badge = document.getElementById('ptStatusBadge');
+        if (pt.client_id && pt.secret && pt.tenant_id) {
+            badge.innerHTML = pt.sync_enabled
+                ? '<span class="badge active">Attivo</span>'
+                : '<span class="badge" style="background:rgba(255,200,0,0.2);color:#FFD700;">Configurato (sync off)</span>';
+        } else {
+            badge.innerHTML = '<span class="badge inactive">Non configurato</span>';
+        }
+
+        loadPlaytomicLogs();
     }
-
-    loadPlaytomicLogs();
 }
 
 async function savePlaytomicConfig() {
@@ -2152,19 +2169,39 @@ function renderChallengeCard(c, isPlaytomic) {
 
 async function loadChallenges() {
     if (!brandId) return;
+
+    // Check if brand has Playtomic integration
+    const brandRes = await fetch(`${API}/brands/${brandId}`);
+    const brand = await brandRes.json();
+    const hasPlaytomic = !!(brand.config && brand.config.playtomic);
+
+    // Show/hide Playtomic-specific UI
+    document.getElementById('challengeTabSwitcher').style.display = hasPlaytomic ? 'flex' : 'none';
+    document.getElementById('challengesPlaytomicList').style.display = hasPlaytomic ? 'block' : 'none';
+    document.getElementById('challengesManualList').style.display = hasPlaytomic ? 'none' : 'block';
+    document.getElementById('evalChallengesBtn').style.display = hasPlaytomic ? '' : 'none';
+    document.getElementById('btnNewPlaytomic').style.display = hasPlaytomic ? '' : 'none';
+
     const res = await fetch(`${API}/challenges?brand_id=${brandId}`);
     const challenges = await res.json();
 
-    const playtomic = challenges.filter(c => c.trigger_type && c.trigger_type !== 'manual');
-    const manual = challenges.filter(c => !c.trigger_type || c.trigger_type === 'manual');
+    if (hasPlaytomic) {
+        const playtomic = challenges.filter(c => c.trigger_type && c.trigger_type !== 'manual');
+        const manual = challenges.filter(c => !c.trigger_type || c.trigger_type === 'manual');
 
-    document.getElementById('challengesPlaytomicList').innerHTML = playtomic.length === 0
-        ? '<p style="color:var(--text2);padding:16px;">Nessuna missione Playtomic configurata. Le missioni Playtomic si completano automaticamente in base alle prenotazioni.</p>'
-        : playtomic.map(c => renderChallengeCard(c, true)).join('');
+        document.getElementById('challengesPlaytomicList').innerHTML = playtomic.length === 0
+            ? '<p style="color:var(--text2);padding:16px;">Nessuna missione Playtomic configurata. Le missioni Playtomic si completano automaticamente in base alle prenotazioni.</p>'
+            : playtomic.map(c => renderChallengeCard(c, true)).join('');
 
-    document.getElementById('challengesManualList').innerHTML = manual.length === 0
-        ? '<p style="color:var(--text2);padding:16px;">Nessuna missione ad hoc. Queste missioni vengono assegnate manualmente dall\'operatore.</p>'
-        : manual.map(c => renderChallengeCard(c, false)).join('');
+        document.getElementById('challengesManualList').innerHTML = manual.length === 0
+            ? '<p style="color:var(--text2);padding:16px;">Nessuna missione ad hoc. Queste missioni vengono assegnate manualmente dall\'operatore.</p>'
+            : manual.map(c => renderChallengeCard(c, false)).join('');
+    } else {
+        // No Playtomic — show all challenges as manual list
+        document.getElementById('challengesManualList').innerHTML = challenges.length === 0
+            ? '<p style="color:var(--text2);padding:16px;">Nessuna missione configurata.</p>'
+            : challenges.map(c => renderChallengeCard(c, false)).join('');
+    }
 }
 
 function updateTriggerFields() {
