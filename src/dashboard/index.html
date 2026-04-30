@@ -1687,7 +1687,11 @@ function renderSyncReport(data) {
             </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;">
+            <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:22px;font-weight:700;color:var(--teal);">${p.nudj_members || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Membri Nudj</div>
+            </div>
             <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:22px;font-weight:700;color:var(--teal);">${p.total_players || 0}</div>
                 <div style="font-size:11px;color:var(--text2);">Giocatori Playtomic</div>
@@ -1697,14 +1701,16 @@ function renderSyncReport(data) {
                 <div style="font-size:11px;color:var(--text2);">Nuovi match email</div>
             </div>
             <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
-                <div style="font-size:22px;font-weight:700;color:var(--teal);">${b.processed || 0}</div>
-                <div style="font-size:11px;color:var(--text2);">Prenotazioni trovate</div>
+                <div style="font-size:22px;font-weight:700;color:var(--teal);">${(b.all_bookings||[]).length} / ${b.processed || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Prenotazioni trovate / nuove</div>
             </div>
             <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:22px;font-weight:700;color:${(c.completed||0) > 0 ? '#FFD700' : 'var(--teal)'};">${c.completed || 0}</div>
                 <div style="font-size:11px;color:var(--text2);">Missioni completate</div>
             </div>
-        </div>`;
+        </div>
+        ${p.message ? `<div style="font-size:12px;color:#FF9800;margin-bottom:8px;">⚠️ ${p.message}</div>` : ''}
+        ${b.message ? `<div style="font-size:12px;color:#FF9800;margin-bottom:8px;">⚠️ ${b.message}</div>` : ''}`;
 
     // Completions detail
     if (completions.length > 0) {

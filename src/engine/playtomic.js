@@ -86,13 +86,14 @@ async function syncPlayers(brand_id, config) {
   const { client_id, secret, tenant_id } = config;
   const token = await getToken(brand_id, client_id, secret);
 
-  // Get all Nudj members with playtomic_email set
-  const members = await db.getMembersByPlaytomicEmail(brand_id);
+  // Get ALL members for this brand (match by any email)
+  const members = await db.listMembers(brand_id);
   if (members.length === 0) {
-    return { matched: 0, total_players: 0, message: 'Nessun membro con email Playtomic' };
+    return { matched: 0, total_players: 0, nudj_members: 0, message: 'Nessun membro Nudj per questo brand' };
   }
 
   // Build email → member map (lowercase for matching)
+  // Check playtomic_email first, then regular email
   const emailMap = new Map();
   members.forEach(m => {
     if (m.playtomic_email) emailMap.set(m.playtomic_email.toLowerCase(), m);
@@ -156,7 +157,7 @@ async function syncPlayers(brand_id, config) {
     cursor = result.next_cursor_id || null;
   }
 
-  return { matched, total_players: totalPlayers, match_details: matchDetails };
+  return { matched, total_players: totalPlayers, nudj_members: members.length, match_details: matchDetails };
 }
 
 // ─── Booking Sync ───────────────────────────────────────
@@ -170,10 +171,10 @@ async function syncBookings(brand_id, config) {
   const { client_id, secret, tenant_id } = config;
   const token = await getToken(brand_id, client_id, secret);
 
-  // Get all members with playtomic data for matching
-  const members = await db.getMembersByPlaytomicEmail(brand_id);
+  // Get ALL members for this brand (match by any email)
+  const members = await db.listMembers(brand_id);
   if (members.length === 0) {
-    return { processed: 0, message: 'Nessun membro con email Playtomic' };
+    return { processed: 0, all_bookings: [], matched_bookings: [], skipped_bookings: [], unmatched_participants: [], message: 'Nessun membro Nudj per questo brand' };
   }
 
   // Build lookup maps
