@@ -3782,11 +3782,14 @@ async function saveScratchCard() {
     };
     if (!body.title) { toast('Inserisci un titolo'); return; }
     try {
+        let res;
         if (id) {
-            await fetch(`${API}/scratch-cards/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) });
+            res = await fetch(`${API}/scratch-cards/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) });
         } else {
-            await fetch(`${API}/brands/${brandId}/scratch-cards`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) });
+            res = await fetch(`${API}/brands/${brandId}/scratch-cards`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) });
         }
+        const data = await res.json();
+        if (!res.ok) { toast('Errore: ' + (data.error || 'Salvataggio fallito')); return; }
         closeModal('scratchModal');
         toast('Campagna salvata!');
         loadScratchCards();
