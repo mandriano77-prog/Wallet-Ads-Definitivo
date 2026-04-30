@@ -108,11 +108,23 @@ getDb().then(db => {
       : `http://localhost:${PORT}`;
     startScheduler(baseUrl);
 
-    // Playtomic sync cron — every 2 hours
-    console.log('🎾 Playtomic sync cron started (every 2h)');
-    setInterval(() => runPlaytomicCron(), 2 * 60 * 60 * 1000);
-    // Run first sync 30s after boot (give DB time to settle)
-    setTimeout(() => runPlaytomicCron(), 30 * 1000);
+    // Playtomic sync cron — daily at 10:00 AM (reads previous day's completed bookings)
+    // Uses 7-day window so missed days are auto-recovered
+    function schedulePlaytomicDaily() {
+      const now = new Date();
+      const next10am = new Date(now);
+      next10am.setHours(10, 0, 0, 0);
+      // If 10:00 already passed today, schedule for tomorrow
+      if (now >= next10am) next10am.setDate(next10am.getDate() + 1);
+      const msUntil = next10am.getTime() - now.getTime();
+      console.log(`🎾 Playtomic sync scheduled at 10:00 AM (in ${Math.round(msUntil / 60000)} min)`);
+      setTimeout(() => {
+        runPlaytomicCron();
+        // After first run, repeat every 24h
+        setInterval(() => runPlaytomicCron(), 24 * 60 * 60 * 1000);
+      }, msUntil);
+    }
+    schedulePlaytomicDaily();
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
