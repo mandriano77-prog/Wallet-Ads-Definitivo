@@ -72,6 +72,7 @@ const {
   // Members
   createMember,
   getMember,
+  getMemberByEmail,
   listMembers,
   updateMember,
   deleteMember,
@@ -330,6 +331,64 @@ router.put('/auth/change-password', authMiddleware, async (req, res) => {
     await updateUser(req.user.id, { password: new_password });
     res.json({ success: true, message: 'Password aggiornata.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Public webhook inbound (BEFORE auth middleware) ──
+router.post('/webhook/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { email, points, reason, action } = req.body;
+
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+    const pts = parseInt(points) || 0;
+    if (pts <= 0 && action !== 'event') return res.status(400).json({ error: 'Points must be > 0 (or use action: "event")' });
+
+    // Find brand by webhook key
+    const brandRes = await pool.query(
+      `SELECT * FROM brands WHERE config->>'webhookKey' = $1`, [key]
+    );
+    const brand = brandRes.rows[0];
+    if (!brand) return res.status(404).json({ error: 'Invalid webhook key' });
+
+    // Find member by email
+    const member = await getMemberByEmail(brand.id, email);
+    if (!member) return res.status(404).json({ error: 'Member not found', email });
+
+    // Find member's active pass
+    const passes = await listPasses(brand.id);
+    const memberPass = passes.find(p => p.member_id === member.id && p.status === 'active');
+
+    if (pts > 0 && memberPass) {
+      // Credit points
+      await logPoints({
+        brand_id: brand.id,
+        member_id: member.id,
+        pass_id: memberPass.id,
+        points: pts,
+        reason: reason || 'webhook',
+        details: `Webhook: ${reason || 'external'}`
+      });
+      const currentPunti = parseInt(memberPass.field_values?.punti || '0');
+      const newPunti = currentPunti + pts;
+      await updatePassInstance(memberPass.id, {
+        field_values: { ...memberPass.field_values, punti: String(newPunti) }
+      });
+      console.log(`[Webhook] +${pts} pts to ${email} (brand ${brand.name})`);
+    }
+
+    // Log event
+    await logEvent({
+      brand_id: brand.id,
+      pass_id: memberPass?.id || null,
+      event_type: 'webhook_inbound',
+      event_data: { email, points: pts, reason: reason || 'external', action: action || 'points' }
+    });
+
+    res.json({ ok: true, member_id: member.id, points_added: pts, new_total: memberPass ? parseInt(memberPass.field_values?.punti || '0') + pts : null });
+  } catch (err) {
+    console.error('[Webhook] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── Public scratch card play endpoint (BEFORE auth middleware) ──
@@ -3566,6 +3625,20 @@ router.post('/scratch-cards/:id/send-email', authMiddleware, async (req, res) =>
     res.json({ sent, skipped, total: membersWithEmail.length, errors: errors.slice(0, 5) });
   } catch (err) {
     console.error('[ScratchEmail] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Bridge: Webhook key management ─────────────────────────────
+router.post('/brands/:id/webhook-key', authMiddleware, async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const config = brand.config || {};
+    config.webhookKey = require('crypto').randomBytes(20).toString('hex');
+    await updateBrand(brand.id, { config });
+    res.json({ webhookKey: config.webhookKey });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

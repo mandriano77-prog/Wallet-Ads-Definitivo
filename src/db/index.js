@@ -2262,6 +2262,14 @@ async function getMember(id) {
   return result.rows[0] || null;
 }
 
+async function getMemberByEmail(brand_id, email) {
+  const result = await pool.query(
+    `SELECT * FROM members WHERE brand_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
+    [brand_id, email]
+  );
+  return result.rows[0] || null;
+}
+
 async function listMembers(brand_id) {
   const result = await pool.query(
     `SELECT m.*, CONCAT(m.first_name, COALESCE(' ' || m.last_name, '')) as full_name,
@@ -2786,6 +2794,7 @@ module.exports = {
   // Members
   createMember,
   getMember,
+  getMemberByEmail,
   listMembers,
   updateMember,
   deleteMember,
