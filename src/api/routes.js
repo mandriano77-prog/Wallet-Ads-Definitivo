@@ -580,9 +580,71 @@ router.post('/scratch-cards/:id/play', async (req, res) => {
   }
 });
 
+// ─── Leads (public submit + login) ──────────────────────────
+const leadsCors = (req, res, next) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  });
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+};
+
+router.options('/leads', leadsCors);
+router.options('/leads/login', leadsCors);
+
+// Login for ads admin panel — uses same users table
+router.post('/leads/login', leadsCors, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const user = await getUserByEmail(email);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+  } catch (err) {
+    console.error('Leads login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// PUBLIC — submit lead (no auth)
+router.post('/leads', leadsCors, async (req, res) => {
+  try {
+    const { first, last, email, company, interest, message, source } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const lead = await createLead({
+      first_name: first || '',
+      last_name: last || '',
+      email,
+      company: company || '',
+      interest: interest || '',
+      message: message || '',
+      source: source || 'ads.nudj.it',
+    });
+    res.json({ ok: true, id: lead.id });
+  } catch (err) {
+    console.error('Lead creation error:', err);
+    res.status(500).json({ error: 'Failed to save lead' });
+  }
+});
+
 // Apply auth + brand filter to all routes below
 router.use(authMiddleware);
 router.use(brandFilter);
+
+// Admin — list leads (after auth middleware, so it requires login)
+router.get('/leads', leadsCors, async (req, res) => {
+  try {
+    const { source, limit, offset } = req.query;
+    const leads = await listLeads({ source, limit: parseInt(limit) || 100, offset: parseInt(offset) || 0 });
+    const count = await getLeadCount(source);
+    res.json({ leads, total: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Custom domain for short landing URLs (fallback to request host)
 const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
@@ -3810,69 +3872,6 @@ router.post('/decay/run', authMiddleware, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// ─── Leads (public submit + admin view) ─────────────────────
-const leadsCors = (req, res, next) => {
-  res.set({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  });
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-};
-
-// CORS preflight for all /leads routes
-router.options('/leads', leadsCors);
-router.options('/leads/login', leadsCors);
-
-// Login for ads admin panel — uses same users table
-router.post('/leads/login', leadsCors, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    const user = await getUserByEmail(email);
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
-  } catch (err) {
-    console.error('Leads login error:', err);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-// PUBLIC — submit lead
-router.post('/leads', leadsCors, async (req, res) => {
-  try {
-    const { first, last, email, company, interest, message, source } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
-    const lead = await createLead({
-      first_name: first || '',
-      last_name: last || '',
-      email,
-      company: company || '',
-      interest: interest || '',
-      message: message || '',
-      source: source || 'ads.nudj.it',
-    });
-    res.json({ ok: true, id: lead.id });
-  } catch (err) {
-    console.error('Lead creation error:', err);
-    res.status(500).json({ error: 'Failed to save lead' });
-  }
-});
-
-// Admin — list leads (auth required)
-router.get('/leads', leadsCors, authMiddleware, async (req, res) => {
-  try {
-    const { source, limit, offset } = req.query;
-    const leads = await listLeads({ source, limit: parseInt(limit) || 100, offset: parseInt(offset) || 0 });
-    const count = await getLeadCount(source);
-    res.json({ leads, total: count });
-  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;
