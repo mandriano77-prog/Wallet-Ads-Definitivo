@@ -524,8 +524,26 @@ router.post('/scratch-cards/:id/play', async (req, res) => {
     // If won and prize has points, credit them
     if (won && prize && prize.points && prize.points > 0) {
       try {
+        // Find the member's pass — try multiple matching strategies
         const memberPasses = await listPasses(campaign.brand_id);
-        const memberPass = memberPasses.find(p => p.customer_data?.member_id === member_id || p.field_values?.member_id === member_id);
+        let memberPass = memberPasses.find(p =>
+          p.customer_data?.member_id === member_id ||
+          p.field_values?.member_id === member_id
+        );
+
+        // Fallback: match by member email on pass
+        if (!memberPass) {
+          const member = await getMember(member_id);
+          if (member?.email) {
+            memberPass = memberPasses.find(p =>
+              p.customer_data?.email === member.email ||
+              p.field_values?.email === member.email ||
+              p.customer_email === member.email
+            );
+          }
+          console.log(`[ScratchCard] member_id match failed, email fallback: ${member?.email} → ${memberPass ? 'FOUND' : 'NOT FOUND'}`);
+        }
+
         if (memberPass) {
           await logPoints({
             brand_id: campaign.brand_id,
@@ -540,7 +558,17 @@ router.post('/scratch-cards/:id/play', async (req, res) => {
           await updatePassInstance(memberPass.id, {
             field_values: { ...memberPass.field_values, punti: String(newPunti) }
           });
-          console.log(`[ScratchCard] Awarded ${prize.points} points to member ${member_id}`);
+          console.log(`[ScratchCard] Awarded ${prize.points} points to member ${member_id} (pass ${memberPass.id})`);
+
+          // Push update to wallet so points refresh on device
+          try {
+            const devices = await getDevicesForPass(memberPass.id);
+            for (const d of devices) {
+              await sendPushUpdate(d.push_token);
+            }
+          } catch (pushErr) { console.error('[ScratchCard] Push after points error:', pushErr.message); }
+        } else {
+          console.warn(`[ScratchCard] No pass found for member ${member_id} in brand ${campaign.brand_id} — points NOT awarded`);
         }
       } catch (e) { console.error('[ScratchCard] Error awarding points:', e.message); }
     }
