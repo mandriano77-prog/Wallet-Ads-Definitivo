@@ -1235,11 +1235,13 @@ function getCampaignLandingUrl(id) {
     });
 }
 
-function getCampaignDirectUrl(id) {
-    const c = campaignsCache.find(x => x.id === id);
-    if (!c) return '';
-    const base = location.origin;
-    return fetch(`${API}/brands/${brandId}`).then(r => r.json()).then(brand => {
+async function getCampaignDirectUrl(id) {
+    try {
+        const c = campaignsCache.find(x => x.id === id);
+        if (!c) { console.error('Campaign not in cache:', id); return ''; }
+        const base = location.origin;
+        const res = await fetch(`${API}/brands/${brandId}`);
+        const brand = await res.json();
         let url = `${base}/save/${brand.slug}/${id}`;
         const params = [];
         if (c.utm_source) params.push(`utm_source=${encodeURIComponent(c.utm_source)}`);
@@ -1249,7 +1251,10 @@ function getCampaignDirectUrl(id) {
         if (c.utm_term) params.push(`utm_term=${encodeURIComponent(c.utm_term)}`);
         if (params.length) url += '?' + params.join('&');
         return url;
-    });
+    } catch(err) {
+        console.error('getCampaignDirectUrl error:', err);
+        return '';
+    }
 }
 
 async function copyCampaignLink(id) {
@@ -1266,13 +1271,19 @@ let currentQrCampaignId = null;
 let currentQrMode = 'direct';
 
 async function showCampaignQR(id) {
-    currentQrCampaignId = id;
-    await renderQR();
-    document.getElementById('qrModal').classList.add('active');
+    try {
+        currentQrCampaignId = id;
+        await renderQR();
+        document.getElementById('qrModal').classList.add('active');
+    } catch(err) {
+        console.error('showCampaignQR error:', err);
+        alert('Errore generazione QR: ' + err.message);
+    }
 }
 
 async function renderQR() {
     const url = await getCampaignDirectUrl(currentQrCampaignId);
+    if (!url) { alert('Impossibile generare URL campagna. Verifica che il brand abbia uno slug.'); return; }
     document.getElementById('qrUrl').value = url;
     const canvas = document.getElementById('qrCanvas');
     canvas.innerHTML = '';
