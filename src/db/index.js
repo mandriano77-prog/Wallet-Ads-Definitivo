@@ -280,6 +280,8 @@ async function getDb() {
     await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'`).catch(()=>{});
 
     // instant_win_campaigns — columns added after initial schema
+    // Old schema used "title" instead of "name" — rename if needed
+    await pool.query(`ALTER TABLE instant_win_campaigns RENAME COLUMN title TO name`).catch(()=>{});
     await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`).catch(()=>{});
     await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS brand_id TEXT`).catch(()=>{});
     await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`).catch(()=>{});
