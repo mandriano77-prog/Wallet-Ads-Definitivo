@@ -1053,8 +1053,16 @@ async function getInstantWinCampaign(id) {
 }
 
 async function listInstantWinCampaigns(brandId) {
-  const r = await pool.query(
-    'SELECT * FROM instant_win_campaigns WHERE brand_id = $1 ORDER BY created_at DESC', [brandId]);
+  const r = await pool.query(`
+    SELECT c.*, COALESCE(p.play_count, 0)::int AS total_plays
+    FROM instant_win_campaigns c
+    LEFT JOIN (
+      SELECT campaign_id, COUNT(*) AS play_count
+      FROM instant_win_plays GROUP BY campaign_id
+    ) p ON p.campaign_id = c.id
+    WHERE c.brand_id = $1
+    ORDER BY c.created_at DESC
+  `, [brandId]);
   return r.rows;
 }
 
