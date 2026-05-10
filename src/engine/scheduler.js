@@ -19,6 +19,7 @@ const {
 const { createPkpass } = require('./passkit');
 const { sendPushUpdate } = require('./apns');
 const googleWallet = require('./google-wallet');
+const samsungWallet = require('./samsung-wallet');
 const path = require('path');
 const fs = require('fs');
 
@@ -129,8 +130,10 @@ function calculateNextRun(schedule) {
  */
 async function executeScheduledPush(schedule, baseUrl) {
   const { brand_id, title, message, target, update_pass, channel = 'apple' } = schedule;
-  const sendApple = channel === 'apple' || channel === 'both';
-  const sendGoogle = channel === 'google' || channel === 'both';
+  const legacyBoth = channel === 'both';
+  const sendApple = channel === 'apple' || legacyBoth || channel === 'all';
+  const sendGoogle = channel === 'google' || legacyBoth || channel === 'all';
+  const sendSamsung = channel === 'samsung' || channel === 'all';
 
   console.log(`⏰ Executing scheduled push: "${title}" for brand ${brand_id}`);
 
@@ -198,6 +201,17 @@ async function executeScheduledPush(schedule, baseUrl) {
     }
   }
 
+  let samsungNotify = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
+  if (update_pass && sendSamsung && samsungWallet.isConfigured()) {
+    try {
+      const passes = await listPasses(brand_id);
+      samsungNotify = await samsungWallet.notifySavedPassesUpdates(passes);
+      console.log('[SamsungWallet] Scheduled notify', samsungNotify);
+    } catch (e) {
+      console.error('[SamsungWallet] Scheduled notify error:', e.message);
+    }
+  }
+
   // Send APNs push
   let devices = [];
   let sentCount = 0;
@@ -218,7 +232,14 @@ async function executeScheduledPush(schedule, baseUrl) {
   await logEvent({
     brand_id,
     event_type: 'scheduled_push_sent',
-    metadata: { title, channel, sent_count: sentCount, passes_updated: passesUpdated, schedule_id: schedule.id }
+    metadata: {
+      title,
+      channel,
+      sent_count: sentCount,
+      samsung_notify: samsungNotify,
+      passes_updated: passesUpdated,
+      schedule_id: schedule.id
+    }
   });
 
   console.log(`✓ Scheduled push sent: ${sentCount}/${devices.length} devices, ${passesUpdated} passes updated`);

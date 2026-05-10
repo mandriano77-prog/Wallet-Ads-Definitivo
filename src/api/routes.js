@@ -25,10 +25,14 @@ const {
   updateGamificationCampaign, deleteGamificationCampaign,
   createGamificationPlay, listGamificationPlays, countGamificationPlaysForUser, getGamificationStats,
   pool,
-  updatePassDeviceId
+  updatePassDeviceId,
+  updateGoogleWalletStatus,
+  updateSamsungWalletStatus,
+  getPassBySamsungRefId
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const googleWallet = require('../engine/google-wallet');
+const samsungWallet = require('../engine/samsung-wallet');
 const { getFormats, getFormat, generateWithFal, composeCreative } = require('../engine/creative-ai');
 const { generateBanner, BANNER_TEMPLATES, IAB_FORMATS } = require('../engine/banner-builder');
 const { generateVideo, cleanupVideo, VIDEO_FORMATS, VIDEO_TEMPLATES } = require('../engine/video-builder');
@@ -41,6 +45,21 @@ const { execFile } = require('child_process');
 const os = require('os');
 
 const router = express.Router();
+
+/** Canali ammessi su API/dashboard (solo singoli + all). Legacy `both` resta nei record DB ma non è più selezionabile. */
+const PUSH_CHANNELS = ['apple', 'google', 'samsung', 'all'];
+function assertPushChannel(ch) {
+  return PUSH_CHANNELS.includes(ch);
+}
+function parseWalletPushFlags(channel) {
+  const c = channel || 'apple';
+  const legacyBoth = c === 'both';
+  return {
+    sendApple: c === 'apple' || legacyBoth || c === 'all',
+    sendGoogle: c === 'google' || legacyBoth || c === 'all',
+    sendSamsung: c === 'samsung' || c === 'all'
+  };
+}
 
 /**
  * Convert a base64 PDF (first page) to base64 PNG using pdftoppm (poppler-utils).
@@ -72,6 +91,10 @@ async function pdfToPngIfNeeded(base64Data) {
     try { fs.unlinkSync(pdfPath); } catch(e) {}
     throw new Error('Impossibile convertire il PDF in immagine. Verifica che il file sia un PDF valido.');
   }
+}
+
+async function notifySamsungSavedPasses(passes) {
+  return samsungWallet.notifySavedPassesUpdates(passes);
 }
 
 async function syncGoogleWalletObjectsForPasses({ brand, passes, message }) {
@@ -214,7 +237,11 @@ router.get('/brands/by-slug/:slug', async (req, res) => {
     const safeConfig = { ...(brand.config || {}) };
     delete safeConfig.logos;
     delete safeConfig.landingBg;
-    res.json({ ...brand, config: safeConfig });
+    res.json({
+      ...brand,
+      config: safeConfig,
+      wallet: { google: googleWallet.isConfigured(), samsung: samsungWallet.isConfigured() }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -369,6 +396,74 @@ router.post('/signup/google-wallet', async (req, res) => {
   } catch (err) {
     console.error('Google Wallet signup error:', err);
     res.status(500).json({ error: 'Errore Google Wallet: ' + err.message });
+  }
+});
+
+// ============================================================================
+// SAMSUNG WALLET SIGNUP — Data Fetch Link (loyalty card, Partner portal)
+// ============================================================================
+router.post('/signup/samsung-wallet', async (req, res) => {
+  try {
+    if (!samsungWallet.isConfigured()) {
+      return res.status(501).json({ error: 'Samsung Wallet non configurato sul server' });
+    }
+
+    const { brand_slug, campaign_id, utm } = req.body;
+    if (!brand_slug) return res.status(400).json({ error: 'brand_slug richiesto' });
+
+    const brand = await getBrandBySlug(brand_slug);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    let template = null;
+    if (campaign_id) {
+      const campaign = await getCampaign(campaign_id);
+      if (campaign && campaign.template_id) template = await getTemplate(campaign.template_id);
+    }
+    if (!template) {
+      const templates = await listTemplates(brand.id);
+      template = templates[0];
+    }
+    if (!template) return res.status(400).json({ error: 'Nessun template configurato' });
+
+    const passData = {
+      template_id: template.id,
+      brand_id: brand.id,
+      campaign_id: campaign_id || null,
+      field_values: {},
+      utm: utm || {},
+      user_agent: req.headers['user-agent'] || null,
+      referrer_url: req.headers['referer'] || req.body.referrer || null
+    };
+    const passInstance = await createPassInstance(passData);
+
+    await logEvent({
+      pass_id: passInstance.id,
+      brand_id: brand.id,
+      event_type: 'pass_created',
+      metadata: { source: 'landing_samsung', campaign_id, utm }
+    });
+    if (campaign_id) await incrementCampaignDownloads(campaign_id);
+
+    const refId = samsungWallet.refIdForPass(passInstance.id);
+    await updatePassInstance(passInstance.id, {
+      samsung_wallet_ref_id: refId,
+      samsung_wallet_saved: false,
+      samsung_installed_at: null
+    });
+
+    const save_link = samsungWallet.generateDataFetchLink(refId);
+
+    await logEvent({
+      brand_id: brand.id,
+      pass_id: passInstance.id,
+      event_type: 'samsung_wallet_link_generated',
+      metadata: { refId }
+    });
+
+    res.json({ save_link, pass_id: passInstance.id, ref_id: refId });
+  } catch (err) {
+    console.error('[SamsungWallet] signup error:', err);
+    res.status(500).json({ error: 'Errore Samsung Wallet: ' + err.message });
   }
 });
 
@@ -1262,11 +1357,10 @@ router.post('/push/send', async (req, res) => {
   try {
     const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id, channel = 'apple' } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
-    if (!['apple', 'google', 'both'].includes(channel)) {
-      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    if (!assertPushChannel(channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all)' });
     }
-    const sendApple = channel === 'apple' || channel === 'both';
-    const sendGoogle = channel === 'google' || channel === 'both';
+    const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
 
     console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
 
@@ -1281,6 +1375,7 @@ router.post('/push/send', async (req, res) => {
       : await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id]);
     const targetPasses = passQuery.rows;
     const googleEligible = targetPasses.filter(p => p.google_wallet_object_id);
+    const samsungEligible = targetPasses.filter(p => p.samsung_wallet_ref_id && p.samsung_wallet_saved);
 
     // Get Apple APNs devices only if requested
     let devices = [];
@@ -1300,11 +1395,20 @@ router.post('/push/send', async (req, res) => {
     }
 
     console.log(`[PUSH DEBUG] Devices found for brand: ${devices.length}`);
-    if ((!sendApple || devices.length === 0) && (!sendGoogle || googleEligible.length === 0)) {
+    const appleEmpty = !sendApple || devices.length === 0;
+    const googleEmpty = !sendGoogle || googleEligible.length === 0;
+    const samsungEmpty =
+      !sendSamsung || samsungEligible.length === 0 || !samsungWallet.isConfigured();
+    if (appleEmpty && googleEmpty && samsungEmpty) {
       return res.json({
         sent_apns: 0,
         total_apns: sendApple ? devices.length : 0,
         google: { attempted: sendGoogle ? googleEligible.length : 0, updated: 0, errors: 0, skipped: !sendGoogle || !googleWallet.isConfigured() },
+        samsung: {
+          attempted: sendSamsung ? samsungEligible.length : 0,
+          notified: 0,
+          skipped: !sendSamsung || !samsungWallet.isConfigured()
+        },
         message: 'Nessun destinatario per i canali selezionati',
         debug: { brand_id_sent: brand_id, total_devices_in_db: parseInt(allDevices.rows[0].count), brand_ids_in_passes: allPasses.rows.map(r => r.brand_id) }
       });
@@ -1382,6 +1486,12 @@ router.post('/push/send', async (req, res) => {
       console.log('[GoogleWallet] Push sync', googleSync);
     }
 
+    let samsungSync = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
+    if (sendSamsung && samsungWallet.isConfigured()) {
+      samsungSync = await notifySamsungSavedPasses(targetPasses);
+      console.log('[SamsungWallet] Push notify', samsungSync);
+    }
+
     // Apple APNs push — track per-pass status
     let sentAppleCount = 0;
     const pushResults = [];
@@ -1414,12 +1524,13 @@ router.post('/push/send', async (req, res) => {
       }
     }
 
-    const sentCombined = sentAppleCount + (googleSync.updated || 0);
+    const sentCombined = sentAppleCount + (googleSync.updated || 0) + (samsungSync.notified || 0);
     await logPush({ brand_id, title, message, campaign_id, sent_count: sentCombined, channel });
     res.json({
       sent_apns: sentAppleCount,
       total_apns: sendApple ? devices.length : 0,
       google: googleSync,
+      samsung: samsungSync,
       sent: sentCombined,
       apns_results: pushResults
     });
@@ -1465,8 +1576,8 @@ router.get('/push/scheduled', async (req, res) => {
 
 router.post('/push/scheduled', async (req, res) => {
   try {
-    if (req.body.channel && !['apple', 'google', 'both'].includes(req.body.channel)) {
-      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    if (req.body.channel && !assertPushChannel(req.body.channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all)' });
     }
     const body = { ...req.body };
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
@@ -1485,8 +1596,8 @@ router.post('/push/scheduled', async (req, res) => {
 
 router.put('/push/scheduled/:id', async (req, res) => {
   try {
-    if (req.body.channel && !['apple', 'google', 'both'].includes(req.body.channel)) {
-      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    if (req.body.channel && !assertPushChannel(req.body.channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all)' });
     }
     const item = await updateScheduledPush(req.params.id, req.body);
     res.json(item);
@@ -1582,11 +1693,10 @@ router.get('/brands/:id/geofencing', async (req, res) => {
 router.put('/brands/:id/geofencing', async (req, res) => {
   try {
     const { locations, maxDistance, channel = 'apple' } = req.body;
-    if (!['apple', 'google', 'both'].includes(channel)) {
-      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    if (!assertPushChannel(channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all)' });
     }
-    const sendApple = channel === 'apple' || channel === 'both';
-    const sendGoogle = channel === 'google' || channel === 'both';
+    const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const config = brand.config || {};
@@ -1623,16 +1733,20 @@ router.put('/brands/:id/geofencing', async (req, res) => {
     }
 
     let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: !sendGoogle };
+    let samsungSync = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
+    const passRows = await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [req.params.id]);
     if (sendGoogle) {
-      const passRows = await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [req.params.id]);
       googleSync = await syncGoogleWalletObjectsForPasses({
         brand: await getBrand(req.params.id),
         passes: passRows.rows,
         message: (config.locations && config.locations[0] && config.locations[0].relevantText) || 'Aggiornamento geolocalizzazione'
       });
     }
+    if (sendSamsung && samsungWallet.isConfigured()) {
+      samsungSync = await notifySamsungSavedPasses(passRows.rows);
+    }
 
-    res.json({ success: true, channel, locations: config.locations, pushes_sent: pushCount, google: googleSync });
+    res.json({ success: true, channel, locations: config.locations, pushes_sent: pushCount, google: googleSync, samsung: samsungSync });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2587,6 +2701,148 @@ router.post('/game/:serial_number', async (req, res) => {
 
 
 // ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Google Wallet ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+
+function samsungInboundHeadersOk(req, method) {
+  const rid = req.get('x-request-id');
+  if (!rid || String(rid).trim().length < 8) {
+    console.warn('[SamsungWallet]', method, req.path, 'missing or short x-request-id');
+    return false;
+  }
+  return samsungWallet.verifyInboundAuth(req.get('authorization'), method, req.path);
+}
+
+router.get('/samsung-wallet/status', (req, res) => {
+  res.json(samsungWallet.getStatusInfo());
+});
+
+router.get('/samsung-wallet/pass/:id', async (req, res) => {
+  try {
+    if (!samsungWallet.isConfigured()) {
+      return res.status(501).json({ error: 'Samsung Wallet not configured' });
+    }
+    const instance = await getPassInstance(req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Pass not found' });
+
+    let refId = instance.samsung_wallet_ref_id;
+    if (!refId) {
+      refId = samsungWallet.refIdForPass(instance.id);
+      await updatePassInstance(instance.id, {
+        samsung_wallet_ref_id: refId,
+        samsung_wallet_saved: false,
+        samsung_installed_at: null
+      });
+    }
+
+    const save_link = samsungWallet.generateDataFetchLink(refId);
+
+    await logEvent({
+      brand_id: instance.brand_id,
+      pass_id: instance.id,
+      event_type: 'samsung_wallet_link_generated',
+      metadata: { refId }
+    });
+
+    res.json({ save_link, ref_id: refId });
+  } catch (err) {
+    console.error('[SamsungWallet] pass link error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/samsung-wallet/cards/:cardId/:refId', async (req, res) => {
+  try {
+    if (!samsungWallet.isConfigured()) {
+      return res.status(503).json({ error: 'Samsung Wallet not configured' });
+    }
+
+    const { cardId, refId } = req.params;
+    if (cardId !== samsungWallet.CARD_ID) {
+      return res.status(204).send();
+    }
+
+    if (!samsungInboundHeadersOk(req, 'GET')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const pass = await getPassBySamsungRefId(refId);
+    if (!pass) {
+      return res.status(204).send();
+    }
+
+    const template = await getTemplate(pass.template_id);
+    const brand = await getBrand(pass.brand_id);
+    if (!brand || !template) {
+      return res.status(204).send();
+    }
+
+    const state = pass.samsung_wallet_saved ? 'ACTIVE' : 'PENDING';
+    const body = samsungWallet.buildLoyaltyCardResponse(brand, template, pass, refId, state);
+
+    console.log('[SamsungWallet] GET card data', String(refId).slice(0, 8));
+    res.json(body);
+  } catch (err) {
+    console.error('[SamsungWallet] GET cards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/samsung-wallet/cards/:cardId/:refId', async (req, res) => {
+  try {
+    if (!samsungWallet.isConfigured()) {
+      return res.status(503).json({ error: 'Samsung Wallet not configured' });
+    }
+
+    const { cardId, refId } = req.params;
+    if (cardId !== samsungWallet.CARD_ID) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!samsungInboundHeadersOk(req, 'POST')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const cc2 = String(req.query.cc2 || '').trim();
+    const eventRaw = String(req.query.event || '').trim().toUpperCase();
+    if (!cc2 || cc2.length !== 2 || !eventRaw) {
+      return res.status(400).json({ error: 'cc2 e event sono richiesti (query)' });
+    }
+
+    const passBefore = await getPassBySamsungRefId(refId);
+    if (!passBefore) {
+      return res.status(204).send();
+    }
+
+    const deleted = eventRaw === 'DELETED';
+    const installed =
+      eventRaw === 'ADDED' || eventRaw === 'PROVISIONED' || eventRaw === 'UPDATED';
+
+    let passRow = passBefore;
+    if (deleted) {
+      passRow = await updateSamsungWalletStatus(refId, false);
+    } else if (installed) {
+      passRow = await updateSamsungWalletStatus(refId, true, cc2);
+    }
+
+    if (passRow) {
+      const ev = deleted ? 'samsung_wallet_removed' : 'samsung_wallet_installed';
+      await logEvent({
+        pass_id: passRow.id,
+        brand_id: passRow.brand_id,
+        event_type: ev,
+        metadata: { refId, cc2, event: eventRaw, callback: req.body?.callback || null }
+      });
+      if (!deleted && (eventRaw === 'ADDED' || eventRaw === 'PROVISIONED')) {
+        await updatePassDeviceId(passRow.serial_number, refId, 'samsung');
+      }
+    }
+
+    console.log('[SamsungWallet] POST card state', String(refId).slice(0, 8), cc2, eventRaw);
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('[SamsungWallet] POST cards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * GET /api/v1/google-wallet/pass/:id - Get "Add to Google Wallet" link

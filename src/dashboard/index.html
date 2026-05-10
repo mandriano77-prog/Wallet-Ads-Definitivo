@@ -342,7 +342,8 @@
                             <select id="pushChannel">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
-                                <option value="both">Apple + Google</option>
+                                <option value="samsung">Samsung Wallet</option>
+                                <option value="all">Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -410,7 +411,8 @@
                             <select id="schedChannel">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
-                                <option value="both">Apple + Google</option>
+                                <option value="samsung">Samsung Wallet</option>
+                                <option value="all">Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -468,7 +470,8 @@
                             <select id="geoChannel" style="max-width:280px;">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
-                                <option value="both">Apple + Google</option>
+                                <option value="samsung">Samsung Wallet</option>
+                                <option value="all">Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1320,6 +1323,7 @@
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" class="btn small" id="passDetailDlBtn" title="Scarica pass Apple Wallet (.pkpass)">Apple · .pkpass</button>
             <button type="button" class="btn small sec" id="passDetailGwBtn" title="Apri &quot;Aggiungi a Google Wallet&quot;">Google Wallet</button>
+            <button type="button" class="btn small sec" id="passDetailSamsungBtn" title="Apri link Samsung Wallet (Data Fetch)">Samsung Wallet</button>
             <button type="button" class="btn small sec" onclick="closeModal('passDetailModal')">Chiudi</button>
         </div>
     </div>
@@ -1958,6 +1962,28 @@ function passGooglePending(p) {
     return !passGoogleSaved(p);
 }
 
+function passSamsungSaved(p) {
+    if (!p) return false;
+    const s = p.samsung_wallet_saved;
+    if (s === true || s === 'true' || s === 't' || s === 1 || s === '1') return true;
+    if (s === false || s === 'false' || s === 'f' || s === 0 || s === '0') return false;
+    if (p.samsung_installed_at) return true;
+    if (p.device_source === 'samsung') return true;
+    return false;
+}
+function passSamsungPending(p) {
+    if (!p || !p.samsung_wallet_ref_id) return false;
+    return !passSamsungSaved(p);
+}
+
+function pushChannelDisplayLabel(ch) {
+    if (ch === 'both') return 'Apple+Google (legacy)';
+    if (ch === 'all') return 'Tutti';
+    if (ch === 'google') return 'Google';
+    if (ch === 'samsung') return 'Samsung';
+    return 'Apple';
+}
+
 function copyGwCallbackBtn(btn) {
     const raw = btn.getAttribute('data-callback-url');
     if (!raw) return toast('URL non disponibile');
@@ -2050,13 +2076,13 @@ async function loadPasses(resetPage = false) {
     }
 
     // Stats bar
-    const installed = filteredPasses.filter(p => !!(p.device_id || passGoogleSaved(p))).length;
-    const reachableWallet = filteredPasses.filter(p => !!p.push_token || passGoogleSaved(p) || passGooglePending(p)).length;
+    const installed = filteredPasses.filter(p => !!(p.device_id || passGoogleSaved(p) || passSamsungSaved(p))).length;
+    const reachableWallet = filteredPasses.filter(p => !!p.push_token || passGoogleSaved(p) || passGooglePending(p) || passSamsungSaved(p) || passSamsungPending(p)).length;
     const pushSent = filteredPasses.filter(p => p.push_count > 0).length;
     const statsHtml = `<div class="stats-grid" style="margin-bottom:16px;">
         <div class="stat-card"><div class="stat-label">Pass visibili</div><div class="stat-value">${filteredPasses.length}</div></div>
         <div class="stat-card"><div class="stat-label">Installati (wallet)</div><div class="stat-value">${installed}</div></div>
-        <div class="stat-card"><div class="stat-label">Raggiungibili (Apple o Google)</div><div class="stat-value">${reachableWallet}</div></div>
+        <div class="stat-card"><div class="stat-label">Raggiungibili (Apple / Google / Samsung)</div><div class="stat-value">${reachableWallet}</div></div>
         <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${pushSent}</div></div>
     </div>`;
 
@@ -2077,7 +2103,7 @@ async function loadPasses(resetPage = false) {
             <thead><tr>
                 <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
-                <th title="Apple: campanella = token APNs registrato. Google: GW verde = pass salvato in Google Wallet (conferma server). GW° ambra = oggetto Google creato ma salvataggio non ricevuto (callback non configurato o utente non ha completato). Trattino = nessun flusso Google per questo pass (es. solo .pkpass Apple).">Apple push · Google</th>
+                <th title="Apple: campanella = APNs. Google: GW / GW°. Samsung: SW / SW° (ref salvato sul server Samsung).">Apple · Google · Samsung</th>
                 <th title="Storico notifiche inviate via Apple Push (APNs)">Push (APNs)</th>
                 <th>Device ID</th>
                 <th>Campagna</th>
@@ -2092,15 +2118,18 @@ async function loadPasses(resetPage = false) {
                 const utm = p.utm || {};
                 const googleSaved = passGoogleSaved(p);
                 const googlePending = passGooglePending(p);
-                const isInstalled = !!(p.device_id || googleSaved);
+                const samsungSaved = passSamsungSaved(p);
+                const samsungPending = passSamsungPending(p);
+                const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
                 const applePushOn = !!p.push_token;
                 const osInfo = parseUserAgent(p.user_agent);
                 const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
                 const utmStr = utmParts.length ? utmParts.join(' / ') : '-';
                 const refDisplay = p.referrer_url ? shortenUrl(p.referrer_url) : '-';
                 const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
-                const installTitle = !isInstalled ? 'Non installato in Apple/Google Wallet'
+                const installTitle = !isInstalled ? 'Non installato nei wallet configurati'
                     : p.device_source === 'google' ? 'Salvato in Google Wallet'
+                    : p.device_source === 'samsung' ? 'Salvato in Samsung Wallet'
                     : p.device_source === 'apple' ? 'Installato in Apple Wallet'
                     : 'Installato nel wallet';
                 const installCellInner = isInstalled
@@ -2117,6 +2146,13 @@ async function loadPasses(resetPage = false) {
                 } else {
                     walletReachHtml += '<span title="Nessun oggetto Google Wallet: pass solo Apple / landing iOS, oppure GW non ancora generato da Vedi pass" style="opacity:0.3;font-size:11px;">—</span>';
                 }
+                if (samsungSaved) {
+                    walletReachHtml += '<span title="Samsung Wallet: salvataggio confermato (Send Card State)" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(20,40,160,0.15);">SW</span>';
+                } else if (samsungPending) {
+                    walletReachHtml += '<span title="Flusso Samsung: refId generato; in attesa di salvataggio su dispositivo Samsung" style="font-size:11px;font-weight:700;color:#fbbf24;padding:2px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.12);">SW°</span>';
+                } else {
+                    walletReachHtml += '<span title="Nessun ref Samsung per questo pass" style="opacity:0.3;font-size:11px;">·</span>';
+                }
                 walletReachHtml += '</span>';
                 return `<tr>
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
@@ -2127,7 +2163,7 @@ async function loadPasses(resetPage = false) {
                         const pushDate = p.last_push_at ? new Date(p.last_push_at).toLocaleDateString('it') : '';
                         return statusIcon + ' <span style="font-size:10px;opacity:0.6;" title="' + esc(String(p.push_count)) + ' push APNs inviate">' + p.push_count + 'x · ' + pushDate + '</span>';
                     })() : '<span style="opacity:0.3;" title="Nessuna push APNs inviata">-</span>'}</td>
-                    <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : '') + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
+                    <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : p.device_source === 'samsung' ? 'S ' : '') + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
                     <td>${camp ? esc(camp.name) : '<span style="opacity:0.3">-</span>'}</td>
                     <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(utmParts.join(' / '))}">${esc(utmStr)}</td>
                     <td style="font-size:11px;">${esc(osInfo)}</td>
@@ -2190,6 +2226,7 @@ function downloadPassesTableCsv() {
         'Data installazione',
         'Push Apple (token registrato)',
         'Google Wallet',
+        'Samsung Wallet',
         'Push APNs (storico)',
         'Device ID',
         'Sorgente device',
@@ -2204,7 +2241,11 @@ function downloadPassesTableCsv() {
         const utm = p.utm || {};
         const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
         const gSaved = passGoogleSaved(p);
-        const isInstalled = !!(p.device_id || gSaved);
+        const samSaved = passSamsungSaved(p);
+        let samsungWalletCsv = '';
+        if (samSaved) samsungWalletCsv = 'Salvato';
+        else if (p.samsung_wallet_ref_id) samsungWalletCsv = 'Ref + link (in attesa salvataggio)';
+        const isInstalled = !!(p.device_id || gSaved || samSaved);
         const applePushOn = !!p.push_token;
         const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it-IT') : '';
         let pushStr = '-';
@@ -2214,7 +2255,7 @@ function downloadPassesTableCsv() {
         let googleWalletCsv = '';
         if (gSaved) googleWalletCsv = 'Salvato';
         else if (p.google_wallet_object_id) googleWalletCsv = 'Oggetto + link (in attesa salvataggio)';
-        const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : '';
+        const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : p.device_source === 'samsung' ? 'Samsung' : '';
         const passCreato = p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : '';
         return [
             passCreato,
@@ -2222,6 +2263,7 @@ function downloadPassesTableCsv() {
             installDateStr,
             applePushOn ? 'Sì' : 'No',
             googleWalletCsv,
+            samsungWalletCsv,
             pushStr,
             p.device_id || '',
             src,
@@ -2295,6 +2337,13 @@ async function viewPassDetail(id) {
         if (gwOk) gwLinkStatus = 'Salvato';
         else if (p.google_wallet_object_id) gwLinkStatus = 'Oggetto creato — usa il pulsante per aprire “Aggiungi a Google Wallet”';
         else gwLinkStatus = 'Usa il pulsante Google Wallet per creare l\'oggetto e ottenere il link';
+        const samOk = passSamsungSaved(p);
+        const samSavedLbl = samOk ? 'Sì — salvato in Samsung Wallet' : 'No';
+        const samInstalledAtLbl = p.samsung_installed_at ? esc(new Date(p.samsung_installed_at).toLocaleString('it-IT')) : '—';
+        let samLinkStatus = '—';
+        if (samOk) samLinkStatus = 'Salvato';
+        else if (p.samsung_wallet_ref_id) samLinkStatus = 'Ref creato — usa il pulsante Samsung Wallet per il Data Fetch link';
+        else samLinkStatus = 'Usa Samsung Wallet per generare refId e link';
 
         document.getElementById('passDetailBody').innerHTML = `
             <p><strong>Serial</strong><br><code style="font-size:11px;">${esc(p.serial_number || '')}</code></p>
@@ -2309,6 +2358,10 @@ async function viewPassDetail(id) {
             <p><strong>Google Wallet — salvato il</strong><br>${gwInstalledAtLbl}</p>
             <p><strong>Google Wallet — object ID</strong><br>${esc(p.google_wallet_object_id || '—')}</p>
             <p><strong>Google Wallet — stato link</strong><br>${esc(gwLinkStatus)}</p>
+            <p><strong>Samsung Wallet — salvato</strong><br>${esc(samSavedLbl)}</p>
+            <p><strong>Samsung Wallet — salvato il</strong><br>${samInstalledAtLbl}</p>
+            <p><strong>Samsung Wallet — refId</strong><br><code style="font-size:10px;">${esc(p.samsung_wallet_ref_id || '—')}</code></p>
+            <p><strong>Samsung Wallet — stato link</strong><br>${esc(samLinkStatus)}</p>
             <p><strong>Push Apple (APNs)</strong><br>${typeof p.push_count === 'number' ? p.push_count : 0} · ultimo: ${p.last_push_at ? esc(new Date(p.last_push_at).toLocaleString('it-IT')) : '—'} (${esc(p.last_push_status || '—')})</p>
             <p><strong>OS / browser (landing)</strong><br>${esc(parseUserAgent(p.user_agent))}</p>
             <p><strong>Referrer</strong><br>${p.referrer_url ? '<span style="word-break:break-all;">' + esc(p.referrer_url) + '</span>' : '—'}</p>
@@ -2318,6 +2371,7 @@ async function viewPassDetail(id) {
             <pre style="font-size:11px;overflow:auto;max-height:100px;background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border);">${esc(utm)}</pre>`;
         document.getElementById('passDetailDlBtn').onclick = () => downloadPass(id);
         document.getElementById('passDetailGwBtn').onclick = () => openGoogleWalletSaveLink(id);
+        document.getElementById('passDetailSamsungBtn').onclick = () => openSamsungWalletSaveLink(id);
         document.getElementById('passDetailModal').classList.add('active');
     } catch (err) {
         console.error('viewPassDetail', err);
@@ -2341,6 +2395,26 @@ async function openGoogleWalletSaveLink(passId) {
         if (data.save_link) {
             window.open(data.save_link, '_blank');
             toast('Apri il link per aggiungere il pass a Google Wallet');
+        } else {
+            toast('Link non disponibile');
+        }
+    } catch (e) {
+        toast('Errore: ' + (e.message || e));
+    }
+}
+
+async function openSamsungWalletSaveLink(passId) {
+    try {
+        const res = await fetch(`${API}/samsung-wallet/pass/${passId}`);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 501) {
+            toast('Samsung Wallet non configurato sul server');
+            return;
+        }
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        if (data.save_link) {
+            window.open(data.save_link, '_blank');
+            toast('Apri il link Add to Samsung Wallet');
         } else {
             toast('Link non disponibile');
         }
@@ -2802,6 +2876,10 @@ async function sendImmediatePush() {
     let msg = `Invio completato.\nAPNs: ${apnsSent}/${apnsTotal}`;
     if (data.google && data.google.skipped) msg += `\nGoogle Wallet: non configurato`;
     else msg += `\nGoogle Wallet: ${gwSynced} aggiornati`;
+    if (data.samsung) {
+        if (data.samsung.skipped) msg += `\nSamsung Wallet: non configurato o canale non incluso`;
+        else msg += `\nSamsung Wallet: update notify ${data.samsung.notified ?? 0}/${data.samsung.attempted ?? 0} (richiede JWT partner in produzione)`;
+    }
     if (data.apns_results && data.apns_results.length > 0) {
         const fails = data.apns_results.filter(r => !r.success);
         if (fails.length > 0) msg += `\n\nErrori APNs:\n` + fails.map(f => `${f.token}: ${f.reason || f.error || 'unknown'}`).join('\n');
@@ -2859,7 +2937,7 @@ async function loadScheduledPush() {
     if (!list.length) { el.innerHTML = '<p style="color:var(--text2)">Nessuna notifica programmata.</p>'; return; }
     el.innerHTML = list.map(s => {
         const typeLabel = s.schedule_type === 'once' ? 'Una tantum' : s.schedule_type === 'daily' ? 'Giornaliera' : 'Settimanale';
-        const channelLabel = s.channel === 'both' ? 'Apple+Google' : s.channel === 'google' ? 'Google' : 'Apple';
+        const channelLabel = pushChannelDisplayLabel(s.channel || 'apple');
         return `
         <div class="card">
             <div class="card-row">
@@ -3175,7 +3253,8 @@ async function saveGeofencing() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const gwUpdated = data.google?.updated || 0;
-        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} aggiornamenti · Google: ${gwUpdated} aggiornamenti.`;
+        const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
+        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato!');
     } catch (e) {
@@ -3196,7 +3275,7 @@ async function loadPushHistory() {
         <thead><tr><th>Data</th><th>Canale</th><th>Titolo</th><th>Messaggio</th><th>Inviati</th></tr></thead>
         <tbody>${logs.map(l => `<tr>
             <td style="font-size:12px;">${new Date(l.sent_at||l.created_at).toLocaleString('it')}</td>
-            <td>${l.channel === 'both' ? 'Apple+Google' : l.channel === 'google' ? 'Google' : 'Apple'}</td>
+            <td>${pushChannelDisplayLabel(l.channel || 'apple')}</td>
             <td>${esc(l.title)}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.message)}</td>
             <td>${l.sent_count||0}</td>
@@ -3645,15 +3724,18 @@ async function loadAnalytics() {
     const appleDv = analytics.appleDeviceCount ?? analytics.deviceCount ?? 0;
     const gwSaved = analytics.googleWalletSavedCount ?? 0;
     const gwObj = analytics.googleWalletObjectCount ?? 0;
+    const swSaved = analytics.samsungWalletSavedCount ?? 0;
     const gwHint = gwObj > gwSaved
         ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Oggetti con link: ${gwObj} · ancora da salvare in app: ${gwObj - gwSaved}</div>`
         : `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Android: conta i pass con salvataggio confermato (non i device Apple)</div>`;
+    const swHint = `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Confermati tramite Send Card State da Samsung Wallet</div>`;
     document.getElementById('analyticsStats').innerHTML = `
         <div class="stat-card"><div class="stat-label">Pass Totali</div><div class="stat-value">${analytics.totalPasses||0}</div></div>
         <div class="stat-card"><div class="stat-label">Download Totali</div><div class="stat-value">${totalDL}</div></div>
         <div class="stat-card"><div class="stat-label">Install Totali</div><div class="stat-value">${totalIN}</div></div>
         <div class="stat-card"><div class="stat-label">Apple · dispositivi PassKit</div><div class="stat-value">${appleDv}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">iPhone/iPad distinti con pass in Wallet</div></div>
         <div class="stat-card"><div class="stat-label">Google Wallet · pass salvati</div><div class="stat-value">${gwSaved}</div>${gwHint}</div>
+        <div class="stat-card"><div class="stat-label">Samsung Wallet · pass salvati</div><div class="stat-value">${swSaved}</div>${swHint}</div>
         <div class="stat-card"><div class="stat-label">Campagne</div><div class="stat-value">${campaigns.length}</div></div>
     `;
     syncAnalyticsRangeControls();
@@ -3816,24 +3898,42 @@ function renderAnalyticsTrendChart(passes) {
     updateAnalyticsMetricButtons();
 }
 
+function walletSplitPrimaryKind(p) {
+    if (passSamsungSaved(p) || p.device_source === 'samsung') return 'samsung';
+    if (passGoogleSaved(p) || p.device_source === 'google') return 'google';
+    if (p.device_source === 'apple' || (p.push_token && p.device_source !== 'google')) return 'apple';
+    return 'other';
+}
+
 function renderAnalyticsWalletSplit(passes) {
     const el = document.getElementById('analyticsWalletSplit');
     if (!el) return;
-    const totalInstalled = passes.filter(p => !!p.device_id || passGoogleSaved(p)).length;
-    const google = passes.filter(p => passGoogleSaved(p) || p.device_source === 'google').length;
-    const apple = passes.filter(p => p.device_source === 'apple' && !passGoogleSaved(p)).length;
-    const other = Math.max(0, totalInstalled - apple - google);
-    const total = Math.max(1, apple + google + other);
+    const installedList = passes.filter(p => !!(p.device_id || passGoogleSaved(p) || passSamsungSaved(p)));
+    const totalInstalled = installedList.length;
+    let samsung = 0;
+    let google = 0;
+    let apple = 0;
+    let other = 0;
+    for (const p of installedList) {
+        const k = walletSplitPrimaryKind(p);
+        if (k === 'samsung') samsung++;
+        else if (k === 'google') google++;
+        else if (k === 'apple') apple++;
+        else other++;
+    }
+    const total = Math.max(1, apple + google + samsung + other);
     const seg = (v) => ((v / total) * 100).toFixed(1);
     el.innerHTML = `
         <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);box-shadow:inset 0 1px 2px rgba(0,0,0,.35);">
             <div style="width:${seg(apple)}%;background:linear-gradient(90deg,#86efac,#22c55e);" title="Apple ${apple}"></div>
             <div style="width:${seg(google)}%;background:linear-gradient(90deg,#60a5fa,#2563eb);" title="Google ${google}"></div>
+            <div style="width:${seg(samsung)}%;background:linear-gradient(90deg,#93c5fd,#1428a0);" title="Samsung ${samsung}"></div>
             <div style="width:${seg(other)}%;background:linear-gradient(90deg,#c4b5fd,#8b5cf6);" title="Altro ${other}"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:12px;font-size:12px;color:var(--text2);">
             <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Apple Wallet: <strong style="color:var(--text)">${apple}</strong> (${seg(apple)}%)</div>
             <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;margin-right:6px;"></span>Google Wallet: <strong style="color:var(--text)">${google}</strong> (${seg(google)}%)</div>
+            <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#1428a0;margin-right:6px;"></span>Samsung Wallet: <strong style="color:var(--text)">${samsung}</strong> (${seg(samsung)}%)</div>
             <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b5cf6;margin-right:6px;"></span>Altro: <strong style="color:var(--text)">${other}</strong> (${seg(other)}%)</div>
             <div style="margin-top:4px;">Installati totali: <strong style="color:var(--text)">${totalInstalled}</strong></div>
         </div>
