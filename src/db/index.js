@@ -394,6 +394,13 @@ async function getDb() {
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS google_wallet_saved BOOLEAN DEFAULT FALSE`);
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS google_installed_at TIMESTAMPTZ`);
 
+    // Samsung Wallet (Partner loyalty card — refId per Get Card Data)
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS samsung_wallet_ref_id TEXT`);
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS samsung_wallet_saved BOOLEAN DEFAULT FALSE`);
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS samsung_installed_at TIMESTAMPTZ`);
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS samsung_wallet_cc2 TEXT`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pass_samsung_ref ON pass_instances(samsung_wallet_ref_id) WHERE samsung_wallet_ref_id IS NOT NULL AND samsung_wallet_ref_id <> ''`);
+
     // Unified device tracking
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS device_id TEXT`);
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS device_source TEXT`);
@@ -640,6 +647,10 @@ async function updatePassInstance(id, data) {
   if (data.google_wallet_object_id !== undefined) { p++; updates.push(`google_wallet_object_id = $${p}`); values.push(data.google_wallet_object_id); }
   if (data.google_wallet_saved !== undefined) { p++; updates.push(`google_wallet_saved = $${p}`); values.push(!!data.google_wallet_saved); }
   if (data.google_installed_at !== undefined) { p++; updates.push(`google_installed_at = $${p}`); values.push(data.google_installed_at); }
+  if (data.samsung_wallet_ref_id !== undefined) { p++; updates.push(`samsung_wallet_ref_id = $${p}`); values.push(data.samsung_wallet_ref_id); }
+  if (data.samsung_wallet_saved !== undefined) { p++; updates.push(`samsung_wallet_saved = $${p}`); values.push(!!data.samsung_wallet_saved); }
+  if (data.samsung_installed_at !== undefined) { p++; updates.push(`samsung_installed_at = $${p}`); values.push(data.samsung_installed_at); }
+  if (data.samsung_wallet_cc2 !== undefined) { p++; updates.push(`samsung_wallet_cc2 = $${p}`); values.push(data.samsung_wallet_cc2); }
   if (data.device_id !== undefined) { p++; updates.push(`device_id = $${p}`); values.push(data.device_id); }
   if (data.device_source !== undefined) { p++; updates.push(`device_source = $${p}`); values.push(data.device_source); }
   if (updates.length === 0) return getPassInstance(id);
@@ -662,6 +673,7 @@ async function listPasses(brandId, options = {}) {
     (SELECT dr.push_token FROM device_registrations dr WHERE dr.serial_number = p.serial_number ORDER BY dr.created_at DESC NULLS LAST LIMIT 1) AS push_token,
     COALESCE(
       p.google_installed_at,
+      p.samsung_installed_at,
       (SELECT MIN(dr2.created_at) FROM device_registrations dr2 WHERE dr2.serial_number = p.serial_number)
     ) AS install_date
     FROM pass_instances p
@@ -763,7 +775,15 @@ async function getSerialsForDevice(deviceLibraryId, passesUpdatedSince) {
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Analytics Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 async function getAnalytics(brandId) {
-  const [passResult, statusResult, eventResult, appleDevicesResult, googleSavedResult, googleObjectResult] = await Promise.all([
+  const [
+    passResult,
+    statusResult,
+    eventResult,
+    appleDevicesResult,
+    googleSavedResult,
+    googleObjectResult,
+    samsungSavedResult
+  ] = await Promise.all([
     pool.query('SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1', [brandId]),
     pool.query('SELECT status, COUNT(*) as count FROM pass_instances WHERE brand_id = $1 GROUP BY status', [brandId]),
     pool.query('SELECT event_type, COUNT(*) as count FROM events WHERE brand_id = $1 GROUP BY event_type', [brandId]),
@@ -775,7 +795,8 @@ async function getAnalytics(brandId) {
     pool.query(
       'SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1 AND google_wallet_object_id IS NOT NULL AND google_wallet_object_id <> \'\'',
       [brandId]
-    )
+    ),
+    pool.query('SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1 AND samsung_wallet_saved = TRUE', [brandId])
   ]);
   const byStatus = {};
   for (const row of statusResult.rows) byStatus[row.status] = parseInt(row.count);
@@ -784,6 +805,7 @@ async function getAnalytics(brandId) {
   const appleDeviceCount = parseInt(appleDevicesResult.rows[0].count);
   const googleWalletSavedCount = parseInt(googleSavedResult.rows[0].count);
   const googleWalletObjectCount = parseInt(googleObjectResult.rows[0].count);
+  const samsungWalletSavedCount = parseInt(samsungSavedResult.rows[0].count);
   return {
     totalPasses: parseInt(passResult.rows[0].count),
     byStatus,
@@ -792,7 +814,8 @@ async function getAnalytics(brandId) {
     deviceCount: appleDeviceCount,
     appleDeviceCount,
     googleWalletSavedCount,
-    googleWalletObjectCount
+    googleWalletObjectCount,
+    samsungWalletSavedCount
   };
 }
 
@@ -1438,6 +1461,39 @@ async function updatePassDeviceId(serialNumber, deviceId, source) {
   );
 }
 
+async function getPassBySamsungRefId(refId) {
+  if (!refId) return null;
+  const result = await pool.query('SELECT * FROM pass_instances WHERE samsung_wallet_ref_id = $1 LIMIT 1', [refId]);
+  return result.rows[0] || null;
+}
+
+async function updateSamsungWalletStatus(refId, installed, cc2 = null) {
+  try {
+    if (installed) {
+      await pool.query(
+        `UPDATE pass_instances SET samsung_wallet_saved = TRUE, samsung_installed_at = COALESCE(samsung_installed_at, NOW()),
+         samsung_wallet_cc2 = COALESCE($3, samsung_wallet_cc2),
+         device_source = 'samsung', device_id = $2, last_updated = NOW()
+         WHERE samsung_wallet_ref_id = $1`,
+        [refId, refId.slice(0, 64), cc2 && String(cc2).length === 2 ? cc2.toUpperCase() : null]
+      );
+    } else {
+      await pool.query(
+        `UPDATE pass_instances SET samsung_wallet_saved = FALSE, samsung_installed_at = NULL, samsung_wallet_cc2 = NULL,
+          device_id = CASE WHEN device_source = 'samsung' THEN NULL ELSE device_id END,
+          device_source = CASE WHEN device_source = 'samsung' THEN NULL ELSE device_source END,
+          last_updated = NOW() WHERE samsung_wallet_ref_id = $1`,
+        [refId]
+      );
+    }
+    const result = await pool.query('SELECT * FROM pass_instances WHERE samsung_wallet_ref_id = $1', [refId]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('[DB] updateSamsungWalletStatus error:', error.message);
+    return null;
+  }
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -1546,5 +1602,7 @@ module.exports = {
   countGamificationPlaysForUser,
   getGamificationStats,
   updateGoogleWalletStatus,
+  getPassBySamsungRefId,
+  updateSamsungWalletStatus,
   updatePassDeviceId
 };

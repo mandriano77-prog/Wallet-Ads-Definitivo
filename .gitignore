@@ -5,5 +5,12 @@ node_modules/
 test-signed.pkpass
 data/
 .env
+.env.*
+!.env.example
 .DS_Store
 certs/
+# Samsung / chiavi e cert (non committare segreti)
+*.key
+*.pem
+*.csr
+wallet-ads-secrets/

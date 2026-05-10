@@ -181,6 +181,10 @@
                         </svg>
                         <span>Aggiungi a Google Wallet</span>
                     </a>
+      <a href="#" id="samsungBtn" class="cta" style="display:none;background:#1428A0;color:#fff;margin-top:10px;text-decoration:none;justify-content:center;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.2)" onclick="addToSamsungWallet(event)">
+        <svg style="width:22px;height:22px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>
+        <span>Aggiungi a Samsung Wallet</span>
+      </a>
       <div class="error" id="error"></div>
     </div>
 
@@ -199,6 +203,12 @@
         const v = params.get(k);
         if (v) utm[k] = v;
       });
+
+      window.__landingSignupContext = {
+        slug,
+        campaignId: campaignId || null,
+        utm
+      };
 
       const el = {
         logoArea: document.getElementById('logoArea'),
@@ -270,7 +280,36 @@
           };
           bgImg.src = `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/landing-bg?t=${Date.now()}`;
 
+          setupWalletButtons(brand.wallet || {});
         } catch (e) { console.error(e); }
+      }
+
+      function setupWalletButtons(wallet) {
+        var w = wallet || {};
+        var ua = navigator.userAgent || '';
+        var isAndroid = /android/i.test(ua);
+        var isIOS = /iphone|ipad|ipod/i.test(ua);
+        var isSamsung = /samsung/i.test(ua);
+        var googleBtn = document.getElementById('googleBtn');
+        var samsungBtn = document.getElementById('samsungBtn');
+        var appleBtn = document.getElementById('installBtn');
+        if (!appleBtn) return;
+        if (googleBtn) googleBtn.style.display = 'none';
+        if (samsungBtn) samsungBtn.style.display = 'none';
+        if (isIOS) {
+          appleBtn.style.display = 'flex';
+          return;
+        }
+        appleBtn.style.display = 'flex';
+        if (isAndroid) {
+          appleBtn.style.display = 'none';
+          if (isSamsung && w.samsung && samsungBtn) samsungBtn.style.display = 'flex';
+          if (w.google && googleBtn) googleBtn.style.display = 'flex';
+          if (!w.google && !w.samsung) appleBtn.style.display = 'none';
+          return;
+        }
+        if (w.google && googleBtn) googleBtn.style.display = 'flex';
+        if (w.samsung && samsungBtn) samsungBtn.style.display = 'flex';
       }
 
       async function install() {
@@ -313,26 +352,11 @@
       el.btn.addEventListener('click', install);
       loadBrand();
     })();
-  
-
-    // Google Wallet device detection
-    (function(){
-      var ua = navigator.userAgent || '';
-      var isAndroid = /android/i.test(ua);
-      var isIOS = /iphone|ipad|ipod/i.test(ua);
-      var googleBtn = document.getElementById('googleBtn');
-      var appleBtn = document.getElementById('installBtn');
-      if (isAndroid && googleBtn && appleBtn) {
-        appleBtn.style.display = 'none';
-        googleBtn.style.display = 'flex';
-      } else if (!isIOS && googleBtn) {
-        googleBtn.style.display = 'flex';
-      }
-    })();
 
     async function addToGoogleWallet(e) {
       e.preventDefault();
       var btn = document.getElementById('googleBtn');
+      var ctx = window.__landingSignupContext || {};
       var origHTML = btn.innerHTML;
       btn.querySelector('span').textContent = 'Caricamento...';
       try {
@@ -340,9 +364,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            brand_slug: slug,
-            campaign_id: campaignId || null,
-            utm: Object.keys(utm).length ? utm : null
+            brand_slug: ctx.slug || location.pathname.replace(/^\/+|\/+$/g, ''),
+            campaign_id: ctx.campaignId || null,
+            utm: ctx.utm && Object.keys(ctx.utm).length ? ctx.utm : null
           })
         });
         if (!res.ok) {
@@ -358,6 +382,40 @@
       } catch(err) {
         btn.querySelector('span').textContent = 'Errore - riprova';
         setTimeout(function(){ btn.innerHTML = origHTML; }, 2000);
+      }
+    }
+
+    async function addToSamsungWallet(e) {
+      e.preventDefault();
+      var btn = document.getElementById('samsungBtn');
+      if (!btn || !btn.querySelector('span:last-child')) return;
+      var label = btn.querySelector('span:last-child');
+      var orig = label.textContent;
+      label.textContent = 'Caricamento...';
+      try {
+        var ctx = window.__landingSignupContext || {};
+        var res = await fetch('/api/v1/signup/samsung-wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            brand_slug: ctx.slug || location.pathname.replace(/^\/+|\/+$/g, ''),
+            campaign_id: ctx.campaignId || null,
+            utm: ctx.utm && Object.keys(ctx.utm).length ? ctx.utm : null
+          })
+        });
+        if (!res.ok) {
+          var err = await res.json().catch(function(){ return {}; });
+          throw new Error(err.error || 'Errore');
+        }
+        var data = await res.json();
+        if (data.save_link) {
+          window.location.href = data.save_link;
+        } else {
+          throw new Error('Link Samsung non disponibile');
+        }
+      } catch (err) {
+        label.textContent = 'Errore — riprova';
+        setTimeout(function(){ label.textContent = orig; }, 2200);
       }
     }
     </script>
