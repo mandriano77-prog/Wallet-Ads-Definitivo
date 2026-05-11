@@ -597,23 +597,12 @@
 
                 <!-- TAB 3: Geofencing -->
                 <div id="pushPanel_geofencing" class="push-panel" style="display:none;">
-                    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Aggiungi punti di interesse (POI). Cerca l’<strong>indirizzo</strong> (via, piazza, città): usiamo i dati pubblici <strong>OpenStreetMap</strong> (Nominatim) per ricavare le coordinate. Quando l’utente si avvicina, iOS mostra il pass sulla lock screen con il messaggio che imposti. <strong>Qui non ci sono altri campi</strong> perché Apple nel pass accetta solo testo di prossimità per POI (<code>relevantText</code>): <strong>strip, logo e testi sulla tessera</strong> si configurano in <strong>Design pass</strong> e <strong>Identità brand</strong> — valgono per tutto il pass, non diversi per ogni POI. Nessun server nel rilevamento: è il telefono che misura la distanza.</p>
+                    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Per ogni <strong>POI</strong> Apple permette solo il messaggio lock screen (<code>relevantText</code>). Per <strong>testo e strip sulla tessera</strong> usa il blocco <strong>Facciata pass</strong> subito sotto (stesso tab), poi <strong>Salva e Aggiorna Pass</strong> in fondo — oppure <strong>Design pass</strong> / Identità brand. Cerca l’indirizzo su <strong>OpenStreetMap</strong> (Nominatim); nessun server nel rilevamento prossimità.</p>
                     <p style="font-size:11px;color:var(--orange);margin:-8px 0 16px;opacity:.95;">Policy Nominatim: non più di circa <strong>1 richiesta al secondo</strong> per progetto — la dashboard rallenta automaticamente le ricerche consecutive; digitando lentamente eviti blocchi temporanei (429).</p>
 
-                    <div class="push-card">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
-                            <button class="btn small" onclick="addGeoLocation()">+ Aggiungi POI</button>
-                        </div>
-                        <div id="geoLocationsList"></div>
-                        <div id="geoEmptyMsg" style="padding:20px;text-align:center;color:var(--text2);font-size:13px;border:1px dashed var(--border);border-radius:8px;">
-                            Nessun punto di prossimità configurato. Clicca "+ Aggiungi POI" per iniziare.
-                        </div>
-                    </div>
-
-                    <div class="push-card" style="margin-top:16px;">
-                        <div style="font-weight:700;font-size:14px;color:var(--text1);margin-bottom:8px;">Facciata pass (con «Salva e Aggiorna Pass»)</div>
-                        <p style="font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">Stesso contenuto per <strong>tutti</strong> i possessori del pass (non diverso per ogni POI — limite Apple). Strip e testo qui sotto aggiornano il brand e vengono inclusi nel <code>.pkpass</code> al prossimo download.</p>
+                    <div class="push-card" style="border:2px solid rgba(255,107,107,.45);box-shadow:0 0 0 1px rgba(255,107,107,.12);">
+                        <div style="font-weight:800;font-size:15px;color:var(--text1);margin-bottom:6px;">Facciata pass — aggiorna la tessera qui</div>
+                        <p style="font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">Compila e poi premi <strong>Salva e Aggiorna Pass</strong> (in basso). Stesso contenuto per <strong>tutti</strong> i possessori (non per singolo POI — limite Apple).</p>
                         <div class="form-row" style="gap:12px;flex-wrap:wrap;">
                             <div class="form-group" style="flex:1;min-width:140px;">
                                 <label class="form-label">Etichetta campo (max 16)</label>
@@ -632,6 +621,17 @@
                         <div id="geoStripPreviewWrap" style="display:none;margin-bottom:8px;">
                             <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Anteprima strip attuale / nuova</div>
                             <img id="geoStripPreview" alt="" style="max-height:72px;border-radius:8px;border:1px solid var(--border);object-fit:cover;">
+                        </div>
+                    </div>
+
+                    <div class="push-card" style="margin-top:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
+                            <button class="btn small" onclick="addGeoLocation()">+ Aggiungi POI</button>
+                        </div>
+                        <div id="geoLocationsList"></div>
+                        <div id="geoEmptyMsg" style="padding:20px;text-align:center;color:var(--text2);font-size:13px;border:1px dashed var(--border);border-radius:8px;">
+                            Nessun punto di prossimità configurato. Clicca "+ Aggiungi POI" per iniziare.
                         </div>
                     </div>
 
@@ -661,7 +661,7 @@
                             <li>iOS controlla la prossimità in background — zero batteria, zero server</li>
                             <li>Quando l'utente è nel raggio, il pass appare sulla lock screen</li>
                             <li>Il <strong>relevantText</strong> è l’unico testo extra per POI che Apple espone: <strong>solo lock screen</strong>, non cambia strip né campi sulla facciata del pass</li>
-                            <li>Per immagine o testo aggiuntivo sulla tessera puoi usare il blocco <strong>Facciata pass</strong> qui sopra (stesso valore per tutti) oppure <strong>Design pass</strong>; dopo «Salva e aggiorna pass» il <code>.pkpass</code> include gli aggiornamenti</li>
+                            <li>Per immagine o testo sulla tessera: blocco <strong>Facciata pass</strong> in cima a questa scheda (o <strong>Design pass</strong>); dopo «Salva e aggiorna pass» il <code>.pkpass</code> si aggiorna — su iPhone apri il pass e <strong>tira giù</strong> per scaricare la nuova versione</li>
                             <li>Massimo <strong>10 locations</strong> per pass (limite Apple)</li>
                             <li>Dopo il salvataggio, tutti i pass attivi vengono aggiornati via push</li>
                         </ul>
@@ -3751,7 +3751,7 @@ function renderGeoLocations() {
             <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label">Messaggio lock screen (solo Apple Wallet, vicino al POI)</label>
                 <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo" aria-describedby="geoRelevantHint_${i}">
-                <p id="geoRelevantHint_${i}" style="font-size:11px;color:var(--text2);margin:6px 0 0;line-height:1.45;">Non aggiorna strip o campi sul pass: è il campo <code>relevantText</code> di Apple. Ripeti il messaggio nei campi del pass in <strong>Design pass</strong> se vuoi la stessa copy sulla tessera.</p>
+                <p id="geoRelevantHint_${i}" style="font-size:11px;color:var(--text2);margin:6px 0 0;line-height:1.45;">Solo lock screen Apple (<code>relevantText</code>). Per testo/strip sulla tessera: sezione <strong>Facciata pass</strong> in cima a questa scheda + <strong>Salva e Aggiorna Pass</strong> in basso.</p>
             </div>
         </div>
         `;
@@ -3838,7 +3838,7 @@ async function saveGeofencing() {
         const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
         statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
-        toast('Geofencing salvato!');
+        toast('Geofencing salvato! Su iPhone: apri il pass in Wallet e tira giù per aggiornare.');
         geoStripPendingBase64 = null;
         const sf2 = document.getElementById('geoStripFile');
         if (sf2) sf2.value = '';
