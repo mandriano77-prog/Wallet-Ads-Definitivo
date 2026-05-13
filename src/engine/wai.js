@@ -4,7 +4,8 @@ const {
   listScheduledPush,
   listPushes,
   listInstantWinCampaigns,
-  listStripPromos
+  listStripPromos,
+  listMedia
 } = require('../db');
 const { extractJSON } = require('./ai-copy');
 const { getAnthropicApiKey } = require('./env-ai');
@@ -185,7 +186,7 @@ function sanitizeStripPrompt(text) {
 }
 
 async function buildWaiContext(brandId) {
-  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos] = await Promise.all([
+  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos, mediaItems] = await Promise.all([
     getBrand(brandId),
     pool.query('SELECT COUNT(*)::int AS total FROM pass_instances WHERE brand_id = $1', [brandId]),
     pool.query(
@@ -198,12 +199,13 @@ async function buildWaiContext(brandId) {
     listScheduledPush(brandId),
     listPushes(brandId),
     listInstantWinCampaigns(brandId),
-    listStripPromos(brandId)
+    listStripPromos(brandId),
+    listMedia(brandId, 'strip')
   ]);
 
   if (!brand) throw new Error('Brand non trovato');
 
-  const mediaLibrary = Array.isArray(brand.config?.media_library) ? brand.config.media_library : [];
+  const mediaLibrary = Array.isArray(mediaItems) ? mediaItems : [];
 
   return {
     brand_name: brand.name,
@@ -215,8 +217,8 @@ async function buildWaiContext(brandId) {
     member_count: 0,
     active_rewards: [],
     media_library_count: mediaLibrary.length,
-    media_library_recent: mediaLibrary.slice(-5).map((m) => ({
-      name: m.name,
+    media_library_recent: mediaLibrary.slice(0, 5).map((m) => ({
+      name: m.title || m.name,
       type: m.type,
       created_at: m.created_at
     })),

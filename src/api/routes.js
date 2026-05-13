@@ -3620,7 +3620,7 @@ router.get('/wai/history', async (req, res) => {
 router.post('/wai/strip-save', async (req, res) => {
   try {
     if (!requireWriteAccess(req, res)) return;
-    const { brand_id, image_base64, name } = req.body;
+    const { brand_id, image_base64, name, campaign_id = null } = req.body;
     if (!brand_id || !image_base64 || !name) {
       return res.status(400).json({ error: 'brand_id, image_base64 e name richiesti' });
     }
@@ -3632,34 +3632,37 @@ router.post('/wai/strip-save', async (req, res) => {
     const mediaName = String(name).trim();
     if (!mediaName) return res.status(400).json({ error: 'name richiesto' });
 
-    const config = brand.config || {};
-    config.media_library = Array.isArray(config.media_library) ? config.media_library : [];
-    const mediaEntry = {
-      id: uuidv4(),
-      name: mediaName,
-      type: 'strip',
-      base64: image_base64,
-      created_at: new Date().toISOString(),
-      source: 'wai_generated'
-    };
-    config.media_library.push(mediaEntry);
-    config.logos = config.logos || {};
-    config.logos.strip = image_base64;
+    const normalizedBase64 = String(image_base64).replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '').trim();
+    if (!normalizedBase64) return res.status(400).json({ error: 'image_base64 non valido' });
 
+    const mediaItem = await createMedia({
+      brand_id,
+      campaign_id: campaign_id || null,
+      type: 'strip',
+      title: mediaName,
+      image_base64: normalizedBase64,
+      width: 1125,
+      height: 432
+    });
+
+    const config = brand.config || {};
+    config.logos = config.logos || {};
+    config.logos.strip = normalizedBase64;
     await updateBrand(brand_id, { config });
+
     await logWaiInteraction({
       brand_id,
       user_id: req.user?.id || null,
       prompt: mediaName,
       intent: 'strip.generate',
       action: 'completed',
-      payload: { media_id: mediaEntry.id, name: mediaEntry.name }
+      payload: { media_id: mediaItem.id, name: mediaName, campaign_id: campaign_id || null }
     });
 
     res.json({
       success: true,
-      media_id: mediaEntry.id,
-      message: `Strip "${mediaName}" salvata nella libreria e applicata al pass.`
+      media_id: mediaItem.id,
+      message: `Strip "${mediaName}" salvata nella Media Library e applicata al pass.`
     });
   } catch (err) {
     console.error('W.AI strip save error:', err);

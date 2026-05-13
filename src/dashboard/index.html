@@ -6122,7 +6122,7 @@ function refreshDashboardSection(intent) {
         reward: () => { if (typeof loadRewards === 'function') loadRewards(); },
         member: () => { if (typeof loadMembers === 'function') loadMembers(); },
         campaign: () => { loadCampaigns(); },
-        strip: () => { loadStripPromos(); }
+        strip: () => { loadStripPromos(); loadMediaLibrary(); }
     };
     (refreshMap[prefix] || (() => {}))();
 }
