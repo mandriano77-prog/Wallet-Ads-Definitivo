@@ -2,7 +2,7 @@ const DEFAULT_WAI_QUERY_MODEL = 'claude-sonnet-4-6';
 const DEFAULT_WAI_ACTION_MODEL = 'claude-opus-4-7';
 
 const QUERY_PROMPT_RE = /\b(quanti|quante|quanto|come siamo|andati|metriche|performance|analytics|storico|mostra|dimmi|raccontami|ultim[oi]\s+\d+\s*(gg|giorni|settimane)|cerca|trova|membri|pass attivi|installati|aiuto|help|cosa puoi|cosa sai)\b/i;
-const ACTION_PROMPT_RE = /\b(crea|programma|schedula|pianifica|manda|invia|imposta|aggiungi|importa|cambia|strip|reward|campagna|notifica|push|ruota|premio|geofenc)\b/i;
+const ACTION_PROMPT_RE = /\b(crea|programma|schedula|pianifica|manda|invia|imposta|aggiungi|importa|cambia|strip|reward|campagna|notifica|push|ruota|premio|geofenc|genera|immagine)\b/i;
 
 function readEnvTrim(name) {
   const value = process.env[name];

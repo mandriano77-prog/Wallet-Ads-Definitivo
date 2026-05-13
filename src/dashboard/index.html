@@ -1575,6 +1575,24 @@
     <textarea id="waiPrompt" rows="3" placeholder="Scrivi cosa vuoi fare..." style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f4ede2; padding:12px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
     <button type="button" id="waiSendBtn" onclick="askWai()" style="width:100%; margin-top:8px; padding:10px; background:#00D4AA; color:#0a0a0a; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">Chiedi a W.AI</button>
     <div id="waiPreview" style="display:none;"></div>
+    <div id="wai-strip-preview" style="display:none; margin-top:12px;">
+      <img id="wai-strip-img" alt="Anteprima strip generata" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.08);" />
+      <div style="margin-top:12px;">
+        <input id="wai-strip-name" type="text" placeholder="Nome per questa strip (es. Promo Estate 2026)"
+          style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#f4ede2; border-radius:8px; font-size:13px; box-sizing:border-box; font-family:inherit;" />
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+        <button type="button" onclick="waiSaveStrip()" style="flex:1; min-width:120px; padding:10px; background:#00D4AA; color:#0a0a0a; border:none; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit;">
+          Salva e applica
+        </button>
+        <button type="button" onclick="waiRegenerateStrip()" style="flex:1; min-width:120px; padding:10px; background:rgba(255,255,255,0.06); color:#ccc; border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit;">
+          Rigenera
+        </button>
+        <button type="button" onclick="waiCancelStrip()" style="padding:10px 16px; background:none; color:#888; border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit;">
+          Annulla
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5881,6 +5899,19 @@ async function deleteUser(id) {
 
 // ==================== W.AI ====================
 let waiDraft = null;
+let waiCurrentStripBase64 = null;
+let waiCurrentStripPayload = null;
+
+function waiResetStripPreview() {
+    const stripPreview = document.getElementById('wai-strip-preview');
+    const stripImg = document.getElementById('wai-strip-img');
+    const stripName = document.getElementById('wai-strip-name');
+    if (stripPreview) stripPreview.style.display = 'none';
+    if (stripImg) stripImg.removeAttribute('src');
+    if (stripName) stripName.value = '';
+    waiCurrentStripBase64 = null;
+    waiCurrentStripPayload = null;
+}
 
 function toggleWaiOverlay(forceOpen) {
     const el = document.getElementById('waiOverlay');
@@ -5892,6 +5923,7 @@ function toggleWaiOverlay(forceOpen) {
     if (!shouldOpen) {
         const preview = document.getElementById('waiPreview');
         if (preview) preview.style.display = 'none';
+        waiResetStripPreview();
     }
 }
 
@@ -5909,6 +5941,7 @@ async function askWai() {
     }
     const preview = document.getElementById('waiPreview');
     if (preview) preview.style.display = 'none';
+    waiResetStripPreview();
 
     try {
         const res = await fetch(`${API}/wai/ask`, {
@@ -5944,18 +5977,27 @@ function renderWaiPreview(data) {
             ${warnHtml}`;
     } else {
         const details = data.preview?.details || {};
-        const detailsHtml = Object.entries(details).map(([k, v]) =>
-            `<div style="font-size:12px;color:#999;"><strong style="color:#ccc;">${esc(k)}:</strong> ${esc(String(v))}</div>`
-        ).join('');
+        const isStripGenerate = data.intent === 'strip.generate';
+        const promptEn = details.prompt_en || data.payload?.prompt_en || '';
+        const detailsHtml = Object.entries(details)
+            .filter(([k]) => !(isStripGenerate && k === 'prompt_en'))
+            .map(([k, v]) =>
+                `<div style="font-size:12px;color:#999;"><strong style="color:#ccc;">${esc(k)}:</strong> ${esc(String(v))}</div>`
+            ).join('');
+        const promptBox = isStripGenerate && promptEn
+            ? `<div style="margin:8px 0;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);font-size:11px;color:#aaa;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${esc(promptEn)}</div>`
+            : '';
+        const confirmLabel = isStripGenerate ? 'Genera immagine' : 'Conferma';
 
         box.innerHTML = `
             <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Anteprima</div>
             <p style="font-size:13px;color:#00D4AA;margin-bottom:8px;">${esc(data.preview?.summary || '')}</p>
+            ${promptBox}
             <div style="margin-bottom:8px;">${detailsHtml}</div>
             ${warnHtml}
             <div style="display:flex;gap:8px;margin-top:12px;">
                 <button onclick="confirmWai()" style="flex:1;padding:8px;background:#00D4AA;color:#0a0a0a;
-                    border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Conferma</button>
+                    border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">${confirmLabel}</button>
                 <button onclick="dismissWai()" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);
                     color:#999;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;
                     cursor:pointer;">Annulla</button>
@@ -5966,6 +6008,10 @@ function renderWaiPreview(data) {
 
 async function confirmWai() {
     if (!waiDraft?.payload || !Object.keys(waiDraft.payload).length) return alert('Nessuna azione da confermare');
+    if (waiDraft.intent === 'strip.generate') {
+        await waiHandleStripGenerate(waiDraft.payload);
+        return;
+    }
     const res = await fetch(`${API}/wai/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -5978,6 +6024,85 @@ async function confirmWai() {
     refreshDashboardSection(waiDraft.intent);
 }
 
+async function waiHandleStripGenerate(payload) {
+    const preview = document.getElementById('waiPreview');
+    const stripPreview = document.getElementById('wai-strip-preview');
+    const img = document.getElementById('wai-strip-img');
+    const nameInput = document.getElementById('wai-strip-name');
+    if (stripPreview) stripPreview.style.display = 'none';
+    if (preview) {
+        preview.style.display = 'block';
+        preview.innerHTML = '<div style="font-size:13px;color:#ccc;line-height:1.6;">Generazione immagine in corso... (10-20 secondi)</div>';
+    }
+
+    try {
+        const res = await fetch(`${API}/wai/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                intent: 'strip.generate',
+                payload,
+                prompt: document.getElementById('waiPrompt')?.value || ''
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Generazione fallita');
+        if (!data.image_base64) throw new Error('Immagine non ricevuta dal server');
+
+        waiCurrentStripBase64 = data.image_base64;
+        waiCurrentStripPayload = payload;
+        if (img) img.src = `data:image/png;base64,${data.image_base64}`;
+        if (nameInput) nameInput.value = '';
+        if (preview) {
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+        }
+        if (stripPreview) stripPreview.style.display = 'block';
+    } catch (err) {
+        if (preview) {
+            preview.style.display = 'block';
+            preview.innerHTML = `<div style="font-size:13px;color:#f5a623;line-height:1.6;">${esc(err.message || 'Errore generazione strip')}</div>`;
+        }
+    }
+}
+
+async function waiSaveStrip() {
+    const name = document.getElementById('wai-strip-name')?.value?.trim() || '';
+    if (!name) return alert('Inserisci un nome per la strip');
+    if (!waiCurrentStripBase64) return alert('Nessuna immagine da salvare');
+    if (!brandId) return alert('Seleziona un brand');
+
+    try {
+        const res = await fetch(`${API}/wai/strip-save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                brand_id: brandId,
+                image_base64: waiCurrentStripBase64,
+                name
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Salvataggio fallito');
+        toast(data.message || `Strip "${name}" salvata`);
+        waiCancelStrip();
+        dismissWai();
+        refreshDashboardSection('strip.generate');
+        if (typeof loadBrandIdentity === 'function') loadBrandIdentity();
+    } catch (err) {
+        alert(err.message || 'Errore nel salvataggio');
+    }
+}
+
+async function waiRegenerateStrip() {
+    if (!waiCurrentStripPayload) return;
+    await waiHandleStripGenerate(waiCurrentStripPayload);
+}
+
+function waiCancelStrip() {
+    waiResetStripPreview();
+}
+
 function dismissWai() {
     waiDraft = null;
     const preview = document.getElementById('waiPreview');
@@ -5987,6 +6112,7 @@ function dismissWai() {
         preview.innerHTML = '';
     }
     if (prompt) prompt.value = '';
+    waiResetStripPreview();
 }
 
 function refreshDashboardSection(intent) {

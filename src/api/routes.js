@@ -3405,6 +3405,7 @@ router.post('/google-wallet/callback', async (req, res) => {
 });
 
 const waiRateBuckets = new Map();
+const waiStripGenerateBuckets = new Map();
 
 function enforceWaiRateLimit(brandId) {
   const now = Date.now();
@@ -3419,6 +3420,21 @@ function enforceWaiRateLimit(brandId) {
   }
   recent.push(now);
   waiRateBuckets.set(brandId, recent);
+}
+
+function enforceWaiStripGenerateRateLimit(brandId) {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const max = 5;
+  const bucket = waiStripGenerateBuckets.get(brandId) || [];
+  const recent = bucket.filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    const err = new Error('Limite generazioni strip W.AI raggiunto (5 all’ora)');
+    err.status = 429;
+    throw err;
+  }
+  recent.push(now);
+  waiStripGenerateBuckets.set(brandId, recent);
 }
 
 async function performImmediatePushForWai(payload) {
@@ -3505,6 +3521,31 @@ const WAI_EXECUTORS = {
     }
     const item = await createStripPromo(payload);
     return { message: `Strip promo '${payload.title}' creata`, data: item };
+  },
+  'strip.generate': async (payload) => {
+    const brand = await getBrand(payload.brand_id);
+    if (!brand) throw new Error('Brand non trovato');
+    const stylePrompt = brand.config?.aiStylePrompt || null;
+    const imageUrl = await generateWithFal(
+      `${payload.prompt_en}, promotional banner, wide aspect ratio`,
+      payload.width,
+      payload.height,
+      payload.model,
+      null,
+      stylePrompt
+    );
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) throw new Error('Download immagine generata fallito');
+    const arrayBuf = await imgResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuf).toString('base64');
+    return {
+      message: 'Immagine strip generata',
+      image_base64: base64,
+      image_url: imageUrl,
+      prompt_used: payload.prompt_en,
+      dimensions: `${payload.width}x${payload.height}`,
+      needs_name: true
+    };
   }
 };
 
@@ -3541,6 +3582,7 @@ router.post('/wai/execute', async (req, res) => {
     if (!EXECUTABLE_INTENTS.has(intent)) {
       return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
     }
+    if (intent === 'strip.generate') enforceWaiStripGenerateRateLimit(payload.brand_id);
 
     const normalized = validateWaiResponse({ intent, type: 'create', payload, preview: { summary: '', details: {}, warnings: [] } }, payload.brand_id);
     const executor = WAI_EXECUTORS[intent];
@@ -3571,6 +3613,56 @@ router.get('/wai/history', async (req, res) => {
     res.json(items);
   } catch (err) {
     console.error('W.AI history error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wai/strip-save', async (req, res) => {
+  try {
+    if (!requireWriteAccess(req, res)) return;
+    const { brand_id, image_base64, name } = req.body;
+    if (!brand_id || !image_base64 || !name) {
+      return res.status(400).json({ error: 'brand_id, image_base64 e name richiesti' });
+    }
+    if (!requireBrandId(req, res, brand_id)) return;
+
+    const brand = await getBrand(brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const mediaName = String(name).trim();
+    if (!mediaName) return res.status(400).json({ error: 'name richiesto' });
+
+    const config = brand.config || {};
+    config.media_library = Array.isArray(config.media_library) ? config.media_library : [];
+    const mediaEntry = {
+      id: uuidv4(),
+      name: mediaName,
+      type: 'strip',
+      base64: image_base64,
+      created_at: new Date().toISOString(),
+      source: 'wai_generated'
+    };
+    config.media_library.push(mediaEntry);
+    config.logos = config.logos || {};
+    config.logos.strip = image_base64;
+
+    await updateBrand(brand_id, { config });
+    await logWaiInteraction({
+      brand_id,
+      user_id: req.user?.id || null,
+      prompt: mediaName,
+      intent: 'strip.generate',
+      action: 'completed',
+      payload: { media_id: mediaEntry.id, name: mediaEntry.name }
+    });
+
+    res.json({
+      success: true,
+      media_id: mediaEntry.id,
+      message: `Strip "${mediaName}" salvata nella libreria e applicata al pass.`
+    });
+  } catch (err) {
+    console.error('W.AI strip save error:', err);
     res.status(500).json({ error: err.message });
   }
 });

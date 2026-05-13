@@ -14,8 +14,14 @@ const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
   'push.send',
   'campaign.create',
-  'strip.create'
+  'strip.create',
+  'strip.generate'
 ]);
+
+const STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
+const STRIP_GENERATE_WIDTH = 1125;
+const STRIP_GENERATE_HEIGHT = 432;
+const DISALLOWED_STRIP_PROMPT = /\b(nsfw|nude|naked|porn|xxx|erotic)\b/i;
 
 const SYSTEM_PROMPT = `Sei W.AI, l'agente AI del back office Ads2Wallet.
 Aiuti i brand manager a gestire il loro programma wallet pass tramite comandi in linguaggio naturale.
@@ -49,6 +55,7 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - member.add_points — Aggiungi punti a un membro specifico
 - campaign.create — Crea una campagna gamification (instant win / ruota)
 - strip.create — Crea una strip promo (cambio immagine pass temporaneo)
+- strip.generate — Genera una nuova immagine strip con AI (Flux)
 
 ### Lettura
 - analytics.query — Rispondi a domande su metriche e performance
@@ -108,6 +115,14 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - prize_name, prize_description: premio
 - win_probability: 0.0-1.0 (default 0.1 se non specificato)
 
+### strip.generate — Generazione immagine strip con AI
+Quando il manager chiede di creare, generare o cambiare l'immagine strip del pass, usa l'intent strip.generate.
+Traduci la descrizione italiana in prompt_en in inglese per Flux 1.1 Pro.
+Regole prompt_en: scena fotografica panoramica, includi "wide panoramic composition, no text, no watermarks, no logos, no UI elements", includi "photorealistic commercial photography" o "editorial photography", 30-60 parole, non inventare prodotti non menzionati.
+Stili: commercial_photo (default), lifestyle, food, minimal, seasonal, abstract.
+Nel payload: prompt_en, style_prompt null, width 1125, height 432, model "fal-ai/flux-pro/v1.1".
+In preview.details includi description_it, prompt_en, style, dimensions "1125x432 (@3x Apple Wallet)".
+
 ### analytics.query / pass.count / push.history / member.search
 - Usa i dati nel contesto brand per rispondere.
 - Metti la risposta nel campo "answer" in italiano.
@@ -157,6 +172,18 @@ async function callWai(systemPrompt, userMessage, model) {
   return text;
 }
 
+function sanitizeStripPrompt(text) {
+  const cleaned = String(text || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  if (DISALLOWED_STRIP_PROMPT.test(cleaned)) {
+    throw new Error('Il prompt non è consentito per la generazione strip');
+  }
+  return cleaned.slice(0, 600);
+}
+
 async function buildWaiContext(brandId) {
   const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos] = await Promise.all([
     getBrand(brandId),
@@ -176,13 +203,24 @@ async function buildWaiContext(brandId) {
 
   if (!brand) throw new Error('Brand non trovato');
 
+  const mediaLibrary = Array.isArray(brand.config?.media_library) ? brand.config.media_library : [];
+
   return {
     brand_name: brand.name,
     brand_sector: brand.config?.settore || 'non specificato',
+    brand_tone: brand.config?.tone || brand.config?.brand_tone || 'non specificato',
+    brand_colors: brand.config?.colors || brand.config?.brand_colors || null,
     pass_count: passStats.rows[0]?.total || 0,
     pass_with_push: deviceStats.rows[0]?.with_push || 0,
     member_count: 0,
     active_rewards: [],
+    media_library_count: mediaLibrary.length,
+    media_library_recent: mediaLibrary.slice(-5).map((m) => ({
+      name: m.name,
+      type: m.type,
+      created_at: m.created_at
+    })),
+    active_strip_loaded: !!(brand.config?.logos?.strip || brand.config?.strip_base64),
     scheduled_push: scheduled.slice(0, 5).map((s) => ({
       title: s.title,
       message: s.message,
@@ -255,7 +293,7 @@ function validateWaiResponse(raw, brandId) {
 
   if (type === 'query' || type === 'system') {
     if (!answer && intent === 'help') {
-      preview.summary = 'Posso programmare push, inviarle subito, creare campagne instant win e strip promo, e rispondere su pass e analytics.';
+      preview.summary = 'Posso programmare push, inviarle subito, creare campagne instant win, strip promo e generare immagini strip con AI, e rispondere su pass e analytics.';
     }
     return { intent, type, preview, payload: {}, answer: answer || preview.summary };
   }
@@ -299,6 +337,15 @@ function validateWaiResponse(raw, brandId) {
       ? Number(payload.win_probability)
       : 0.1;
     payload.status = payload.status || 'draft';
+  }
+
+  if (intent === 'strip.generate') {
+    payload.prompt_en = sanitizeStripPrompt(payload.prompt_en || preview.details?.prompt_en || '');
+    if (!payload.prompt_en) throw new Error('prompt_en obbligatorio per generazione strip');
+    payload.style_prompt = payload.style_prompt || null;
+    payload.width = STRIP_GENERATE_WIDTH;
+    payload.height = STRIP_GENERATE_HEIGHT;
+    payload.model = STRIP_GENERATE_MODEL;
   }
 
   if (intent === 'strip.create') {
