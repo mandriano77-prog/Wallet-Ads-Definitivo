@@ -13,9 +13,21 @@
 
 const crypto = require('crypto');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 // ── Config ────────────────────────────────────────────────────────────
 const ISSUER_ID = process.env.GOOGLE_WALLET_ISSUER_ID || '';
+const DEFAULT_SERVICE_ACCOUNT_FILE = path.join(__dirname, '..', '..', 'google-pass-credentials.json');
+
+function parseServiceAccount(raw, sourceLabel) {
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`[GoogleWallet] Failed to parse ${sourceLabel}:`, e.message);
+    return null;
+  }
+}
 
 // Support both raw JSON and base64-encoded JSON
 function loadServiceAccount() {
@@ -23,17 +35,36 @@ function loadServiceAccount() {
   if (process.env.GOOGLE_WALLET_SA_BASE64) {
     try {
       const decoded = Buffer.from(process.env.GOOGLE_WALLET_SA_BASE64, 'base64').toString('utf8');
-      return JSON.parse(decoded);
+      const parsed = parseServiceAccount(decoded, 'GOOGLE_WALLET_SA_BASE64 decoded payload');
+      if (parsed) return parsed;
     } catch (e) {
       console.error('[GoogleWallet] Failed to decode GOOGLE_WALLET_SA_BASE64:', e.message);
     }
   }
   // Option 2: raw JSON string
   if (process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON) {
+    const parsed = parseServiceAccount(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON, 'GOOGLE_WALLET_SERVICE_ACCOUNT_JSON');
+    if (parsed) return parsed;
+  }
+  // Option 3: explicit file path
+  const configuredFile = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_FILE;
+  if (configuredFile) {
     try {
-      return JSON.parse(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON);
+      const fileText = fs.readFileSync(configuredFile, 'utf8');
+      const parsed = parseServiceAccount(fileText, `GOOGLE_WALLET_SERVICE_ACCOUNT_FILE (${configuredFile})`);
+      if (parsed) return parsed;
     } catch (e) {
-      console.error('[GoogleWallet] Failed to parse GOOGLE_WALLET_SERVICE_ACCOUNT_JSON:', e.message);
+      console.error('[GoogleWallet] Failed to read GOOGLE_WALLET_SERVICE_ACCOUNT_FILE:', e.message);
+    }
+  }
+  // Option 4: default credentials file in repo root
+  if (fs.existsSync(DEFAULT_SERVICE_ACCOUNT_FILE)) {
+    try {
+      const fileText = fs.readFileSync(DEFAULT_SERVICE_ACCOUNT_FILE, 'utf8');
+      const parsed = parseServiceAccount(fileText, DEFAULT_SERVICE_ACCOUNT_FILE);
+      if (parsed) return parsed;
+    } catch (e) {
+      console.error('[GoogleWallet] Failed to read default service account file:', e.message);
     }
   }
   return null;
@@ -63,7 +94,7 @@ function walletPublicBrandAssetUri(brand, asset) {
  * Create a signed JWT for Google Wallet API auth (OAuth2 service account)
  */
 function createServiceAccountJWT() {
-  if (!SERVICE_ACCOUNT_JSON) throw new Error('GOOGLE_WALLET_SERVICE_ACCOUNT_JSON not configured');
+  if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -111,7 +142,7 @@ async function getAccessToken() {
  * Create a signed JWT for "Add to Google Wallet" save link
  */
 function createSaveJWT(passObject) {
-  if (!SERVICE_ACCOUNT_JSON) throw new Error('GOOGLE_WALLET_SERVICE_ACCOUNT_JSON not configured');
+  if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -170,8 +201,8 @@ async function createOrUpdatePassClass(brand, template) {
     // Callback for save/delete events — Google POSTs here when user adds/removes pass
     callbackOptions: API_BASE
       ? {
-          url: `${API_BASE}/google-wallet/callback`
-        }
+        url: `${API_BASE}/google-wallet/callback`
+      }
       : undefined
   };
 

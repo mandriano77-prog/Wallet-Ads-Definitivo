@@ -1,0 +1,210 @@
+{
+    "info": {
+        "_postman_id": "a4c9147b-67f1-4f45-8de5-5ec635e955e3",
+        "name": "Wallet Ads - Google Wallet Testing",
+        "description": "Collection to test Google Wallet configuration, signup, and callback diagnostics for Wallet_Ads.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000"
+        },
+        {
+            "key": "adminEmail",
+            "value": "admin@ads2wallet.com"
+        },
+        {
+            "key": "adminPassword",
+            "value": "Ads2Wallet2026!"
+        },
+        {
+            "key": "jwtToken",
+            "value": ""
+        },
+        {
+            "key": "brandSlug",
+            "value": "my-brand"
+        },
+        {
+            "key": "campaignId",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "Health",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/health",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "health"
+                    ]
+                },
+                "description": "Basic health check."
+            },
+            "response": []
+        },
+        {
+            "name": "Auth Login (Get JWT)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () {",
+                            "  pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "const json = pm.response.json();",
+                            "pm.test('token exists', function () {",
+                            "  pm.expect(json.token).to.be.a('string').and.not.empty;",
+                            "});",
+                            "",
+                            "if (json.token) pm.collectionVariables.set('jwtToken', json.token);"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/auth/login",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "auth",
+                        "login"
+                    ]
+                },
+                "description": "Get JWT token for protected endpoints below."
+            },
+            "response": []
+        },
+        {
+            "name": "Google Wallet Status",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwtToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/google-wallet/status",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "google-wallet",
+                        "status"
+                    ]
+                },
+                "description": "Returns Google Wallet integration status and callback URL."
+            },
+            "response": []
+        },
+        {
+            "name": "Signup Google Wallet",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () {",
+                            "  pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "const json = pm.response.json();",
+                            "pm.test('save_link exists', function () {",
+                            "  pm.expect(json.save_link).to.be.a('string').and.to.include('pay.google.com');",
+                            "});",
+                            "pm.test('pass_id exists', function () {",
+                            "  pm.expect(json.pass_id).to.be.a('string').and.not.empty;",
+                            "});",
+                            "",
+                            "if (json.save_link) pm.collectionVariables.set('saveLink', json.save_link);",
+                            "if (json.pass_id) pm.collectionVariables.set('passId', json.pass_id);"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"brand_slug\": \"{{brandSlug}}\",\n  \"campaign_id\": \"{{campaignId}}\",\n  \"utm\": {\n    \"source\": \"postman\",\n    \"medium\": \"manual-test\",\n    \"campaign\": \"google-wallet\"\n  }\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/signup/google-wallet",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "signup",
+                        "google-wallet"
+                    ]
+                },
+                "description": "Creates a pass instance and returns Google Wallet save_link + pass_id."
+            },
+            "response": []
+        },
+        {
+            "name": "Google Callback Info (GET)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwtToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/google-wallet/callback",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "google-wallet",
+                        "callback"
+                    ]
+                },
+                "description": "Informational page. Real Google callbacks are POST requests from Google servers."
+            },
+            "response": []
+        }
+    ]
+}
