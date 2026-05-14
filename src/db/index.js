@@ -343,6 +343,29 @@ async function getDb() {
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS update_pass BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_assistant_log (
+      id TEXT PRIMARY KEY,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      user_id TEXT,
+      prompt TEXT NOT NULL,
+      proposal JSONB,
+      final_payload JSONB,
+      action TEXT NOT NULL DEFAULT 'planned',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_assistant_log_brand ON push_assistant_log(brand_id, created_at DESC)`).catch(()=>{});
+    await pool.query(`CREATE TABLE IF NOT EXISTS wai_log (
+      id TEXT PRIMARY KEY,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      user_id TEXT,
+      prompt TEXT NOT NULL,
+      intent TEXT,
+      proposal JSONB,
+      action TEXT DEFAULT 'planned',
+      payload JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wai_log_brand ON wai_log(brand_id, created_at DESC)`).catch(()=>{});
     await pool.query(`ALTER TABLE media ADD COLUMN IF NOT EXISTS campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL`).catch(()=>{});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_media_campaign ON media(campaign_id)`).catch(()=>{});
 
@@ -955,6 +978,52 @@ async function deleteScheduledPush(id) {
 async function getDueScheduledPush() {
   const result = await pool.query(
     `SELECT * FROM scheduled_push WHERE active = true AND next_run_at <= NOW()`
+  );
+  return result.rows;
+}
+
+async function logPushAssistantInteraction({ brand_id, user_id = null, prompt, proposal = null, final_payload = null, action = 'planned' }) {
+  const id = uuidv4();
+  await pool.query(
+    `INSERT INTO push_assistant_log (id, brand_id, user_id, prompt, proposal, final_payload, action)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      id,
+      brand_id,
+      user_id,
+      prompt,
+      proposal ? JSON.stringify(proposal) : null,
+      final_payload ? JSON.stringify(final_payload) : null,
+      action
+    ]
+  );
+  return { id };
+}
+
+async function logWaiInteraction({ brand_id, user_id = null, prompt, intent = null, proposal = null, action = 'planned', payload = null }) {
+  const id = uuidv4();
+  await pool.query(
+    `INSERT INTO wai_log (id, brand_id, user_id, prompt, intent, proposal, action, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      id,
+      brand_id,
+      user_id,
+      prompt,
+      intent,
+      proposal ? JSON.stringify(proposal) : null,
+      action,
+      payload ? JSON.stringify(payload) : null
+    ]
+  );
+  return { id };
+}
+
+async function listWaiLog(brand_id, limit = 20) {
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+  const result = await pool.query(
+    'SELECT * FROM wai_log WHERE brand_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [brand_id, safeLimit]
   );
   return result.rows;
 }
@@ -1634,6 +1703,9 @@ module.exports = {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  logPushAssistantInteraction,
+  logWaiInteraction,
+  listWaiLog,
   // Strip Promos
   createStripPromo,
   listStripPromos,

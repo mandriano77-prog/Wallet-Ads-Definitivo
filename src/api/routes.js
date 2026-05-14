@@ -13,7 +13,7 @@ const {
   registerDevice, getDevicesForPass, getDevicesForBrand, unregisterDevice, getSerialsForDevice,
   getAnalytics, getCampaignAnalytics,
   logPush, listPushes, deletePush, clearPushHistory,
-  createScheduledPush, listScheduledPush, getScheduledPush, updateScheduledPush, deleteScheduledPush,
+  createScheduledPush, listScheduledPush, getScheduledPush, updateScheduledPush, deleteScheduledPush, logPushAssistantInteraction, logWaiInteraction, listWaiLog,
   createStripPromo, listStripPromos, getStripPromo, updateStripPromo, deleteStripPromo,
   createUser, getUserByEmail, getUser, listUsers, updateUser, deleteUser, verifyPassword,
   createMedia, listMedia, getMedia, deleteMedia,
@@ -42,6 +42,8 @@ const { generateVideo, cleanupVideo, VIDEO_FORMATS, VIDEO_TEMPLATES } = require(
 const { sendPushUpdate } = require('../engine/apns');
 const { computeInitialScheduledRun } = require('../engine/scheduler');
 const { generateLandingCopy, generateCreativeCopy } = require('../engine/ai-copy');
+const { planScheduledPush } = require('../engine/push-assistant');
+const { askWai, EXECUTABLE_INTENTS, validateWaiResponse } = require('../engine/wai');
 const sharp = require('sharp');
 const jwt = require('jsonwebtoken');
 const { execFile } = require('child_process');
@@ -867,6 +869,18 @@ function requireBrandId(req, res, brandId) {
   return true;
 }
 
+function requireWriteAccess(req, res) {
+  if (!req.user) {
+    res.status(401).json({ error: 'Non autenticato' });
+    return false;
+  }
+  if (req.user.role === 'viewer') {
+    res.status(403).json({ error: 'Permessi insufficienti (solo lettura)' });
+    return false;
+  }
+  return true;
+}
+
 /** Brand PK (UUID nel path tipo `/brands/:id`). */
 function requireOwnedBrandPk(req, res, brandPk) {
   return requireBrandId(req, res, brandPk);
@@ -1226,6 +1240,60 @@ router.post('/brands/:id/ai-copy', async (req, res) => {
     res.json({ options });
   } catch (err) {
     console.error('AI copy error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/brands/:id/push-assistant/plan', async (req, res) => {
+  try {
+    if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    if (!requireWriteAccess(req, res)) return;
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const prompt = String(req.body.prompt || '').trim();
+    if (!prompt) return res.status(400).json({ error: 'prompt richiesto' });
+
+    const [scheduled, history] = await Promise.all([
+      listScheduledPush(brand.id),
+      listPushes(brand.id)
+    ]);
+    const plan = await planScheduledPush({ brand, prompt, scheduled, history });
+    await logPushAssistantInteraction({
+      brand_id: brand.id,
+      user_id: req.user?.id || req.user?.sub || null,
+      prompt,
+      proposal: plan.proposal,
+      action: 'planned'
+    });
+    res.json(plan);
+  } catch (err) {
+    console.error('Push assistant plan error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/brands/:id/push-assistant/feedback', async (req, res) => {
+  try {
+    if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    if (!requireWriteAccess(req, res)) return;
+    const action = String(req.body.action || '').trim();
+    if (!['confirmed', 'dismissed'].includes(action)) {
+      return res.status(400).json({ error: 'action non valida' });
+    }
+    const prompt = String(req.body.prompt || '').trim();
+    if (!prompt) return res.status(400).json({ error: 'prompt richiesto' });
+
+    await logPushAssistantInteraction({
+      brand_id: req.params.id,
+      user_id: req.user?.id || req.user?.sub || null,
+      prompt,
+      proposal: req.body.proposal || null,
+      final_payload: req.body.final_payload || null,
+      action
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Push assistant feedback error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3333,6 +3401,275 @@ router.post('/google-wallet/callback', async (req, res) => {
       } catch (_) {}
     }
     res.status(200).send('OK');
+  }
+});
+
+const waiRateBuckets = new Map();
+const waiStripGenerateBuckets = new Map();
+
+function enforceWaiRateLimit(brandId) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 20;
+  const bucket = waiRateBuckets.get(brandId) || [];
+  const recent = bucket.filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    const err = new Error('Limite W.AI raggiunto (20 richieste al minuto)');
+    err.status = 429;
+    throw err;
+  }
+  recent.push(now);
+  waiRateBuckets.set(brandId, recent);
+}
+
+function enforceWaiStripGenerateRateLimit(brandId) {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const max = 5;
+  const bucket = waiStripGenerateBuckets.get(brandId) || [];
+  const recent = bucket.filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    const err = new Error('Limite generazioni strip W.AI raggiunto (5 all’ora)');
+    err.status = 429;
+    throw err;
+  }
+  recent.push(now);
+  waiStripGenerateBuckets.set(brandId, recent);
+}
+
+async function performImmediatePushForWai(payload) {
+  const { brand_id, title, message, campaign_id = null, update_pass = true, channel = 'apple' } = payload;
+  if (!assertPushChannel(channel)) throw new Error('channel non valido');
+  const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
+
+  const targetPasses = campaign_id
+    ? (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])).rows
+    : (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id])).rows;
+
+  let devices = [];
+  if (sendApple) {
+    if (campaign_id) {
+      devices = (await pool.query(
+        `SELECT DISTINCT dr.push_token, dr.serial_number
+         FROM device_registrations dr
+         JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+         WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
+        [brand_id, campaign_id]
+      )).rows;
+    } else {
+      devices = await getDevicesForBrand(brand_id);
+    }
+  }
+
+  if (update_pass !== false) {
+    const brand = await getBrand(brand_id);
+    const config = { ...(brand?.config || {}) };
+    config.pushAnnouncement = { title, message, ts: Date.now() };
+    await updateBrand(brand_id, { config });
+    if (sendApple) {
+      for (const pass of targetPasses) await touchPass(pass.id);
+    }
+  }
+
+  let sentAppleCount = 0;
+  if (sendApple) {
+    for (const device of devices) {
+      const result = await sendPushUpdate(device.push_token);
+      if (result.success) sentAppleCount++;
+    }
+  }
+
+  let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: !sendGoogle };
+  if (sendGoogle) {
+    const brand = await getBrand(brand_id);
+    googleSync = await syncGoogleWalletObjectsForPasses({ brand, passes: targetPasses, message });
+  }
+
+  let samsungSync = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
+  if (sendSamsung && samsungWallet.isConfigured()) {
+    samsungSync = await notifySamsungSavedPasses(targetPasses.filter((p) => p.samsung_wallet_ref_id && p.samsung_wallet_saved));
+  }
+
+  const sentCombined = sentAppleCount + (googleSync.updated || 0) + (samsungSync.notified || 0);
+  await logPush({ brand_id, title, message, campaign_id, sent_count: sentCombined, channel });
+  return { sent: sentCombined, sent_apns: sentAppleCount, google: googleSync, samsung: samsungSync };
+}
+
+const WAI_EXECUTORS = {
+  'push.schedule': async (payload) => {
+    const body = { ...payload };
+    if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
+      body.schedule_days = body.days.map((x) => String(x)).join(',');
+    }
+    const nextRun = computeInitialScheduledRun(body);
+    if (!nextRun) throw new Error('Data/orario non validi per la pianificazione');
+    body.next_run_at = nextRun;
+    const item = await createScheduledPush(body);
+    return { message: `Push programmata: ${payload.title}`, data: item };
+  },
+  'push.send': async (payload) => {
+    const data = await performImmediatePushForWai(payload);
+    return { message: `Push inviata: ${payload.title}`, data };
+  },
+  'campaign.create': async (payload) => {
+    const item = await createInstantWinCampaign(payload);
+    return { message: `Campagna '${payload.name}' creata`, data: item };
+  },
+  'strip.create': async (payload) => {
+    if (!payload.strip_base64) {
+      throw new Error('strip_base64 mancante: carica l’immagine strip dal back office');
+    }
+    const item = await createStripPromo(payload);
+    return { message: `Strip promo '${payload.title}' creata`, data: item };
+  },
+  'strip.generate': async (payload) => {
+    const brand = await getBrand(payload.brand_id);
+    if (!brand) throw new Error('Brand non trovato');
+    const stylePrompt = brand.config?.aiStylePrompt || null;
+    const imageUrl = await generateWithFal(
+      `${payload.prompt_en}, promotional banner, wide aspect ratio`,
+      payload.width,
+      payload.height,
+      payload.model,
+      null,
+      stylePrompt
+    );
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) throw new Error('Download immagine generata fallito');
+    const arrayBuf = await imgResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuf).toString('base64');
+    return {
+      message: 'Immagine strip generata',
+      image_base64: base64,
+      image_url: imageUrl,
+      prompt_used: payload.prompt_en,
+      dimensions: `${payload.width}x${payload.height}`,
+      needs_name: true
+    };
+  }
+};
+
+router.post('/wai/ask', async (req, res) => {
+  try {
+    if (!requireWriteAccess(req, res)) return;
+    const { prompt, brand_id, followup, previous_proposal } = req.body;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    if (!requireBrandId(req, res, brand_id)) return;
+    enforceWaiRateLimit(brand_id);
+    const proposal = await askWai({
+      brandId: brand_id,
+      prompt,
+      followup,
+      previousProposal: previous_proposal
+    });
+    const loggedPrompt = String(followup || '').trim()
+      ? `${String(prompt || '').trim()}\n\nIntegrazione:\n${String(followup || '').trim()}`
+      : String(prompt || '').trim();
+    await logWaiInteraction({
+      brand_id,
+      user_id: req.user?.id || null,
+      prompt: loggedPrompt,
+      intent: proposal.intent,
+      proposal,
+      action: 'planned'
+    });
+    res.json(proposal);
+  } catch (err) {
+    const status = err.status || 500;
+    console.error('W.AI ask error:', err);
+    res.status(status).json({ error: err.message });
+  }
+});
+
+router.post('/wai/execute', async (req, res) => {
+  try {
+    if (!requireWriteAccess(req, res)) return;
+    const { intent, payload } = req.body;
+    if (!intent || !payload) return res.status(400).json({ error: 'intent e payload richiesti' });
+    if (!requireBrandId(req, res, payload.brand_id)) return;
+    if (!EXECUTABLE_INTENTS.has(intent)) {
+      return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
+    }
+    if (intent === 'strip.generate') enforceWaiStripGenerateRateLimit(payload.brand_id);
+
+    const normalized = validateWaiResponse({ intent, type: 'create', payload, preview: { summary: '', details: {}, warnings: [] } }, payload.brand_id);
+    const executor = WAI_EXECUTORS[intent];
+    if (!executor) return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
+
+    const result = await executor(normalized.payload);
+    await logWaiInteraction({
+      brand_id: payload.brand_id,
+      user_id: req.user?.id || null,
+      prompt: req.body.prompt || '',
+      intent,
+      payload: normalized.payload,
+      action: 'executed'
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('W.AI execute error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/wai/history', async (req, res) => {
+  try {
+    const { brand_id, limit } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    if (!requireBrandId(req, res, brand_id)) return;
+    const items = await listWaiLog(brand_id, limit);
+    res.json(items);
+  } catch (err) {
+    console.error('W.AI history error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wai/strip-save', async (req, res) => {
+  try {
+    if (!requireWriteAccess(req, res)) return;
+    const { brand_id, image_base64, name, campaign_id = null } = req.body;
+    if (!brand_id || !image_base64 || !name) {
+      return res.status(400).json({ error: 'brand_id, image_base64 e name richiesti' });
+    }
+    if (!requireBrandId(req, res, brand_id)) return;
+
+    const brand = await getBrand(brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const mediaName = String(name).trim();
+    if (!mediaName) return res.status(400).json({ error: 'name richiesto' });
+
+    const normalizedBase64 = String(image_base64).replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '').trim();
+    if (!normalizedBase64) return res.status(400).json({ error: 'image_base64 non valido' });
+
+    const mediaItem = await createMedia({
+      brand_id,
+      campaign_id: campaign_id || null,
+      type: 'strip',
+      title: mediaName,
+      image_base64: normalizedBase64,
+      width: 1125,
+      height: 432
+    });
+
+    await logWaiInteraction({
+      brand_id,
+      user_id: req.user?.id || null,
+      prompt: mediaName,
+      intent: 'strip.generate',
+      action: 'completed',
+      payload: { media_id: mediaItem.id, name: mediaName, campaign_id: campaign_id || null }
+    });
+
+    res.json({
+      success: true,
+      media_id: mediaItem.id,
+      message: `Strip "${mediaName}" salvata nella Media Library.`
+    });
+  } catch (err) {
+    console.error('W.AI strip save error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
