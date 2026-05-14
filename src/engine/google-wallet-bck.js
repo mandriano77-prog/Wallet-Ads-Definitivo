@@ -4,15 +4,11 @@
  * Creates and manages Google Wallet passes (Generic type).
  * Uses JWT-based "Add to Google Wallet" links — no file download needed.
  *
- * Flow (no pre-registration):
- * 1. buildPassClass()   — build class object (NOT sent to API, embedded in JWT)
- * 2. buildPassObject()  — build instance for a user
- * 3. generateSaveLink() — embed both class+object in JWT → "Add to Google Wallet" URL
- * 4. updatePassObject() — update pass content in real-time (still uses API for updates)
- *
- * NOTE: By embedding genericClasses inside the JWT payload (same as the Laravel approach),
- * we skip Google's class pre-registration/approval flow and avoid the
- * "This pass is only used for testing" restriction.
+ * Flow:
+ * 1. createPassClass() — create a template (once per brand/template)
+ * 2. createPassObject() — create an instance for a user
+ * 3. generateSaveLink() — generate the "Add to Google Wallet" URL
+ * 4. updatePassObject() — update pass content in real-time
  */
 
 const crypto = require('crypto');
@@ -35,6 +31,7 @@ function parseServiceAccount(raw, sourceLabel) {
 
 // Support both raw JSON and base64-encoded JSON
 function loadServiceAccount() {
+  // Option 1: base64 encoded (recommended in managed hosting env files)
   if (process.env.GOOGLE_WALLET_SA_BASE64) {
     try {
       const decoded = Buffer.from(process.env.GOOGLE_WALLET_SA_BASE64, 'base64').toString('utf8');
@@ -44,10 +41,12 @@ function loadServiceAccount() {
       console.error('[GoogleWallet] Failed to decode GOOGLE_WALLET_SA_BASE64:', e.message);
     }
   }
+  // Option 2: raw JSON string
   if (process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON) {
     const parsed = parseServiceAccount(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON, 'GOOGLE_WALLET_SERVICE_ACCOUNT_JSON');
     if (parsed) return parsed;
   }
+  // Option 3: explicit file path
   const configuredFile = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_FILE;
   if (configuredFile) {
     try {
@@ -58,6 +57,7 @@ function loadServiceAccount() {
       console.error('[GoogleWallet] Failed to read GOOGLE_WALLET_SERVICE_ACCOUNT_FILE:', e.message);
     }
   }
+  // Option 4: default credentials file in repo root
   if (fs.existsSync(DEFAULT_SERVICE_ACCOUNT_FILE)) {
     try {
       const fileText = fs.readFileSync(DEFAULT_SERVICE_ACCOUNT_FILE, 'utf8');
@@ -73,7 +73,6 @@ const SERVICE_ACCOUNT_JSON = loadServiceAccount();
 
 const WALLET_API_BASE = 'https://walletobjects.googleapis.com/walletobjects/v1';
 const SAVE_LINK_BASE = 'https://pay.google.com/gp/v/save';
-
 function resolveApiBase() {
   const host =
     (process.env.CUSTOM_DOMAIN && process.env.CUSTOM_DOMAIN.trim()) ||
@@ -91,6 +90,9 @@ function walletPublicBrandAssetUri(brand, asset) {
 
 // ── JWT helpers ───────────────────────────────────────────────────────
 
+/**
+ * Create a signed JWT for Google Wallet API auth (OAuth2 service account)
+ */
 function createServiceAccountJWT() {
   if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
@@ -115,6 +117,9 @@ function createServiceAccountJWT() {
   return `${signInput}.${base64url(signature)}`;
 }
 
+/**
+ * Get an OAuth2 access token from Google
+ */
 let cachedToken = null;
 let tokenExpiry = 0;
 
@@ -134,13 +139,9 @@ async function getAccessToken() {
 }
 
 /**
- * Create a signed JWT for "Add to Google Wallet" save link.
- *
- * KEY CHANGE: Now accepts both classObject and passObject and embeds
- * genericClasses + genericObjects in the payload — exactly like the Laravel code.
- * This avoids the "testing only" restriction from pre-registered classes.
+ * Create a signed JWT for "Add to Google Wallet" save link
  */
-function createSaveJWT(classObject, passObject) {
+function createSaveJWT(passObject) {
   if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
   const now = Math.floor(Date.now() / 1000);
@@ -152,8 +153,7 @@ function createSaveJWT(classObject, passObject) {
     typ: 'savetowallet',
     iat: now,
     payload: {
-      genericClasses: [classObject],  // ← embed class (skips pre-registration)
-      genericObjects: [passObject]    // ← embed object
+      genericObjects: [passObject]
     }
   };
 
@@ -171,12 +171,10 @@ function createSaveJWT(classObject, passObject) {
 // ── Pass Class (template) ─────────────────────────────────────────────
 
 /**
- * Build a pass class object.
- *
- * KEY CHANGE: This no longer calls the Google API.
- * It just returns the class object to be embedded in the JWT.
+ * Create or update a Google Wallet pass class (template).
+ * One class per brand template.
  */
-function buildPassClass(brand, template) {
+async function createOrUpdatePassClass(brand, template) {
   const classId = `${ISSUER_ID}.${brand.slug}_${template.id}`;
 
   const classObj = {
@@ -199,46 +197,64 @@ function buildPassClass(brand, template) {
     },
     imageModulesData: [],
     textModulesData: [],
-    linksModuleData: { uris: [] }
-    // NOTE: callbackOptions removed — callbacks require a pre-registered class.
-    // If you need callbacks, re-add: callbackOptions: API_BASE ? { url: `${API_BASE}/google-wallet/callback` } : undefined
+    linksModuleData: { uris: [] },
+    // Callback for save/delete events — Google POSTs here when user adds/removes pass
+    callbackOptions: API_BASE
+      ? {
+        url: `${API_BASE}/google-wallet/callback`
+      }
+      : undefined
   };
 
   // Brand logo
-  const logoUri = walletPublicBrandAssetUri(brand, 'logo');
-  if (logoUri && (brand.config?.logo_base64 || brand.config?.logos?.logo)) {
-    classObj.logo = {
-      sourceUri: { uri: logoUri },
-      contentDescription: { defaultValue: { language: 'it', value: brand.name } }
-    };
+  if (brand.config?.logo_base64 || brand.config?.logos?.logo) {
+    const logoUri = walletPublicBrandAssetUri(brand, 'logo');
+    if (logoUri) {
+      classObj.logo = {
+        sourceUri: { uri: logoUri },
+        contentDescription: { defaultValue: { language: 'it', value: brand.name } }
+      };
+    }
   }
 
-  // Hero image (strip)
-  const stripUri = walletPublicBrandAssetUri(brand, 'strip');
-  if (stripUri && (brand.config?.strip_base64 || brand.config?.logos?.strip || template.style?.stripImage)) {
-    classObj.heroImage = {
-      sourceUri: { uri: stripUri },
-      contentDescription: { defaultValue: { language: 'it', value: 'Banner' } }
-    };
+  // Hero image (strip equivalent)
+  if (brand.config?.strip_base64 || brand.config?.logos?.strip || template.style?.stripImage) {
+    const stripUri = walletPublicBrandAssetUri(brand, 'strip');
+    if (stripUri) {
+      classObj.heroImage = {
+        sourceUri: { uri: stripUri },
+        contentDescription: { defaultValue: { language: 'it', value: 'Banner' } }
+      };
+    }
   }
 
-  // Background color
-  classObj.hexBackgroundColor = rgbToHex(template.style?.backgroundColor || '#0D0B1A');
+  // Colors from template
+  const bgColor = template.style?.backgroundColor || '#0D0B1A';
+  classObj.hexBackgroundColor = rgbToHex(bgColor);
 
-  return classObj;
-}
+  // Try to get existing class first
+  try {
+    const existing = await walletApiGet(`/genericClass/${classId}`);
+    if (existing && existing.id) {
+      const updated = await walletApiPatch(`/genericClass/${classId}`, classObj);
+      console.log(`[GoogleWallet] Updated class ${classId}`);
+      return updated;
+    }
+  } catch (e) {
+    // 404 = doesn't exist, create it
+  }
 
-/**
- * @deprecated Use buildPassClass() instead.
- * Kept for backward compatibility — now just builds without API call.
- */
-async function createOrUpdatePassClass(brand, template) {
-  console.warn('[GoogleWallet] createOrUpdatePassClass() is deprecated. Use buildPassClass() — no API pre-registration needed.');
-  return buildPassClass(brand, template);
+  const created = await walletApiPost('/genericClass', classObj);
+  console.log(`[GoogleWallet] Created class ${classId}`);
+  return created;
 }
 
 // ── Pass Object (instance) ────────────────────────────────────────────
 
+/**
+ * Create a Google Wallet pass object for a specific user.
+ * Returns the object data (not yet saved — user must click the link).
+ */
 function buildPassObject(brand, template, instance, member) {
   const classId = `${ISSUER_ID}.${brand.slug}_${template.id}`;
   const objectId = `${ISSUER_ID}.${instance.serial_number}`;
@@ -302,72 +318,40 @@ function buildPassObject(brand, template, instance, member) {
   }
 
   // Hero image
-  const stripUri = walletPublicBrandAssetUri(brand, 'strip');
-  if (stripUri && (brand.config?.strip_base64 || brand.config?.logos?.strip || template.style?.stripImage)) {
-    obj.heroImage = {
-      sourceUri: { uri: stripUri },
-      contentDescription: { defaultValue: { language: 'it', value: 'Banner' } }
-    };
+  if (brand.config?.strip_base64 || brand.config?.logos?.strip || template.style?.stripImage) {
+    const stripUri = walletPublicBrandAssetUri(brand, 'strip');
+    if (stripUri) {
+      obj.heroImage = {
+        sourceUri: { uri: stripUri },
+        contentDescription: { defaultValue: { language: 'it', value: 'Banner' } }
+      };
+    }
   }
 
   // Logo
-  const logoUri = walletPublicBrandAssetUri(brand, 'logo');
-  if (logoUri && (brand.config?.logo_base64 || brand.config?.logos?.logo)) {
-    obj.logo = {
-      sourceUri: { uri: logoUri },
-      contentDescription: { defaultValue: { language: 'it', value: brand.name } }
-    };
+  if (brand.config?.logo_base64 || brand.config?.logos?.logo) {
+    const logoUri = walletPublicBrandAssetUri(brand, 'logo');
+    if (logoUri) {
+      obj.logo = {
+        sourceUri: { uri: logoUri },
+        contentDescription: { defaultValue: { language: 'it', value: brand.name } }
+      };
+    }
   }
 
   return obj;
 }
 
 /**
- * Generate the "Add to Google Wallet" URL.
- *
- * KEY CHANGE: Now takes brand+template to build the class inline,
- * then embeds both class and object in the JWT — no pre-registration needed.
+ * Generate the "Add to Google Wallet" save URL
  */
-function generateSaveLink(brand, template, passObject) {
-  const classObject = buildPassClass(brand, template);
-  const jwt = createSaveJWT(classObject, passObject);
+function generateSaveLink(passObject) {
+  const jwt = createSaveJWT(passObject);
   return `${SAVE_LINK_BASE}/${jwt}`;
 }
 
 /**
- * @deprecated Old signature: generateSaveLink(passObject)
- * If you were calling generateSaveLink with just a passObject,
- * switch to: generateSaveLink(brand, template, passObject)
- */
-function generateSaveLinkLegacy(passObject) {
-  console.warn('[GoogleWallet] generateSaveLinkLegacy() embeds only the object (old behaviour). Switch to generateSaveLink(brand, template, passObject).');
-  if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
-
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const payload = {
-    iss: SERVICE_ACCOUNT_JSON.client_email,
-    aud: 'google',
-    origins: [],
-    typ: 'savetowallet',
-    iat: now,
-    payload: { genericObjects: [passObject] }
-  };
-
-  const headerB64 = base64url(JSON.stringify(header));
-  const payloadB64 = base64url(JSON.stringify(payload));
-  const signInput = `${headerB64}.${payloadB64}`;
-
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(signInput);
-  const signature = sign.sign(SERVICE_ACCOUNT_JSON.private_key);
-
-  return `${SAVE_LINK_BASE}/${signInput}.${base64url(signature)}`;
-}
-
-/**
- * Create or update the pass object on Google's servers.
- * Still useful if you want server-side push updates later.
+ * Create the pass object on Google's servers (for updates later)
  */
 async function createPassObjectOnServer(passObject) {
   try {
@@ -386,6 +370,9 @@ async function createPassObjectOnServer(passObject) {
   return created;
 }
 
+/**
+ * Update an existing pass object
+ */
 async function updatePassObject(serialNumber, updates) {
   const objectId = `${ISSUER_ID}.${serialNumber}`;
 
@@ -399,6 +386,9 @@ async function updatePassObject(serialNumber, updates) {
   }
 }
 
+/**
+ * Update the pass message (equivalent to Apple's changeMessage)
+ */
 async function updatePassMessage(serialNumber, message) {
   return updatePassObject(serialNumber, {
     textModulesData: [{
@@ -434,7 +424,7 @@ async function walletApiPatch(path, body) {
   });
 }
 
-// ── HTTP client ───────────────────────────────────────────────────────
+// ── HTTP client (native, no deps) ────────────────────────────────────
 
 function httpRequest(method, url, body, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -499,12 +489,13 @@ function rgbToHex(color) {
   return `#${r}${g}${b}`;
 }
 
-// ── Status ────────────────────────────────────────────────────────────
+// ── Check if Google Wallet is configured ──────────────────────────────
 
 function isConfigured() {
   return !!(ISSUER_ID && SERVICE_ACCOUNT_JSON);
 }
 
+/** URL callback inviato a Google nelle generic class (`callbackOptions`); utile per diagnostica dashboard. */
 function getStatusInfo() {
   const domain =
     (process.env.CUSTOM_DOMAIN && process.env.CUSTOM_DOMAIN.trim()) ||
@@ -518,10 +509,9 @@ function getStatusInfo() {
     custom_domain: domain || null,
     callback_url: base ? `${base}/google-wallet/callback` : null,
     callback_path: '/api/v1/google-wallet/callback',
-    registration_mode: 'jwt-embedded (no pre-registration)',
     warning:
       !domain
-        ? 'No public domain configured (CUSTOM_DOMAIN/RAILWAY_PUBLIC_DOMAIN/APP_PUBLIC_DOMAIN).'
+        ? 'Nessun dominio pubblico configurato (CUSTOM_DOMAIN/RAILWAY_PUBLIC_DOMAIN/APP_PUBLIC_DOMAIN): callback Google non impostabile in modo affidabile.'
         : null
   };
 }
@@ -529,11 +519,9 @@ function getStatusInfo() {
 module.exports = {
   isConfigured,
   getStatusInfo,
-  buildPassClass,
-  createOrUpdatePassClass, // deprecated, kept for compatibility
+  createOrUpdatePassClass,
   buildPassObject,
   generateSaveLink,
-  generateSaveLinkLegacy,
   createPassObjectOnServer,
   updatePassObject,
   updatePassMessage
