@@ -454,7 +454,7 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
-                <select class="brand-sel" id="dashboardProductLine" title="Tema interfaccia per linea prodotto (non modifica i colori del pass)" onchange="onDashboardProductLineChange()">
+                <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
                     <option value="ads">Ads</option>
                     <option value="hr">HR</option>
                     <option value="engage">Engage</option>
@@ -1590,6 +1590,7 @@
 const API = '/api/v1';
 const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
 let brandId = null;
+let brandsListCache = [];
 function getAuthHeaders() {
     const t = localStorage.getItem(AUTH_TOKEN_KEY);
     const h = {};
@@ -2136,16 +2137,7 @@ async function loadBrands() {
     const res = await fetch(`${API}/brands`, { headers: { ...getAuthHeaders() } });
     if (!res.ok) return;
     const brands = await res.json();
-    const sel = document.getElementById('brandSelector');
-    sel.innerHTML = '<option value="">Seleziona Brand</option>';
-    const frag = document.createDocumentFragment();
-    brands.forEach(b => {
-        const o = document.createElement('option');
-        o.value = b.id;
-        o.textContent = b.name;
-        frag.appendChild(o);
-    });
-    sel.appendChild(frag);
+    brandsListCache = brands;
 
     const urlBrandParam = new URLSearchParams(window.location.search).get('brand_id');
     const urlMatch = urlBrandParam && brands.find(b => String(b.id) === String(urlBrandParam));
@@ -2165,8 +2157,14 @@ async function loadBrands() {
     else if (storedMatch) nextId = storedMatch.id;
     else if (singleBrandAuto) nextId = brands[0].id;
 
-    sel.value = nextId ? nextId : '';
     brandId = nextId || null;
+    if (brandId) {
+        const b = brands.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brands);
+    const sel = document.getElementById('brandSelector');
+    if (sel) sel.value = brandId ? brandId : '';
 
     updateNavState();
     if (brandId) {
@@ -2192,6 +2190,13 @@ function changeBrand() {
     const sel = document.getElementById('brandSelector');
     brandId = sel.value || null;
     currentBrandName = brandId ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
+    if (brandId) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brandsListCache);
+    if (sel) sel.value = brandId || '';
+    syncProductLineSelector();
     applyBrandTheme();
     updateNavState();
     if (!brandId) {
@@ -2285,7 +2290,13 @@ function applyProductMenuCopy(line) {
     });
 }
 
-function getDashboardProductLine() {
+function getBrandProductLine(brand) {
+    const pl = brand?.config?.product_line;
+    if (pl && VALID_PRODUCT_LINES.includes(pl)) return pl;
+    return 'ads';
+}
+
+function getUnscopedDashboardProductLine() {
     try {
         const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
         if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
@@ -2302,6 +2313,55 @@ function getDashboardProductLine() {
     if (h.includes('live2wallet')) return 'live';
     if (h.includes('ads2wallet')) return 'ads';
     return 'ads';
+}
+
+function persistDashboardProductLine(line) {
+    if (!line || !VALID_PRODUCT_LINES.includes(line)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, line); } catch (_) {}
+}
+
+function getDashboardProductLine() {
+    if (brandId && brandsListCache.length) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) return getBrandProductLine(b);
+    }
+    return getUnscopedDashboardProductLine();
+}
+
+function populateBrandSelector(brands) {
+    const sel = document.getElementById('brandSelector');
+    if (!sel) return;
+    const activeLine = getDashboardProductLine();
+    const filtered = (brands || []).filter((b) => getBrandProductLine(b) === activeLine);
+    const keepId = brandId && filtered.some((b) => String(b.id) === String(brandId)) ? brandId : null;
+    sel.innerHTML = '<option value="">Seleziona Brand</option>';
+    const frag = document.createDocumentFragment();
+    filtered.forEach((b) => {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.name;
+        frag.appendChild(o);
+    });
+    sel.appendChild(frag);
+    if (keepId) sel.value = keepId;
+    else if (brandId) {
+        brandId = null;
+        currentBrandName = '';
+        try { localStorage.removeItem(LAST_BRAND_KEY); } catch (_) {}
+        syncBrandUrl();
+    }
+}
+
+function syncProductLineSelector() {
+    const plSel = document.getElementById('dashboardProductLine');
+    if (!plSel) return;
+    const line = getDashboardProductLine();
+    plSel.value = line;
+    const locked = !!brandId;
+    plSel.disabled = locked;
+    plSel.title = locked
+        ? `Linea prodotto: ${PRODUCT_DISPLAY_TITLES[line] || line} (fissa per questo brand)`
+        : 'Seleziona la linea per filtrare i brand disponibili';
 }
 
 function syncChromeProductTitles(line) {
@@ -2338,17 +2398,22 @@ function initDashboardProductTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 }
 
 function onDashboardProductLineChange() {
+    if (brandId) {
+        syncProductLineSelector();
+        toast('Deseleziona il brand per cambiare linea prodotto (Ads, HR, Engage, Live)');
+        return;
+    }
     const sel = document.getElementById('dashboardProductLine');
     const v = sel && sel.value;
     if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
-    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
+    persistDashboardProductLine(v);
+    populateBrandSelector(brandsListCache);
     applyBrandTheme();
-    if (brandId && getActiveSectionId() === 'leads') loadLeads();
+    if (getActiveSectionId() === 'leads') loadLeads();
 }
 
 // ==================== BRAND THEMING (header only; shell = product theme) ====================
@@ -2357,8 +2422,7 @@ function applyBrandTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 
     const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
     const headerBrandName = document.getElementById('headerBrandName');
@@ -5384,7 +5448,8 @@ async function saveBrandIdentity() {
     const slug = document.getElementById('biSlug').value.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (!brandId) {
         // CREATE new brand
-        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config: { ...BRAND_PASS_FIXED_COLORS, ...config } }) });
+        const productLine = getUnscopedDashboardProductLine();
+        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config: { ...BRAND_PASS_FIXED_COLORS, ...config, product_line: productLine } }) });
         const newBrand = await res.json();
         if (newBrand.id) {
             brandId = newBrand.id;
