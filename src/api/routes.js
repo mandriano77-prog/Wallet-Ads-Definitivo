@@ -3947,18 +3947,26 @@ router.post('/wai/ask', async (req, res) => {
       followup,
       previousProposal: previous_proposal
     });
-    if (proposal.intent === 'audience.query' && proposal.payload?.query_spec) {
+    const audienceQuerySpec = proposal.payload?.query_spec || proposal.preview?.details?.query_spec;
+    if (proposal.intent === 'audience.query' && audienceQuerySpec) {
       try {
-        const result = await executeAudienceQuery(brand_id, proposal.payload.query_spec, { limit: 8, offset: 0 });
+        if (!proposal.payload?.query_spec) proposal.payload = { ...(proposal.payload || {}), query_spec: audienceQuerySpec };
+        const result = await executeAudienceQuery(brand_id, audienceQuerySpec, { limit: 8, offset: 0 });
         proposal.preview.details = {
           ...(proposal.preview.details || {}),
           member_count: result.count,
           sample_members: result.members,
-          query_spec: proposal.payload.query_spec
+          query_spec: audienceQuerySpec
         };
-        const baseAnswer = proposal.answer || proposal.preview.summary || '';
-        proposal.answer = `${baseAnswer}\n\nPossessori che corrispondono: **${result.count}**.`.trim();
-        proposal.preview.summary = proposal.answer.slice(0, 280);
+        const segmentNote = String(audienceQuerySpec.description || '').trim();
+        proposal.preview.summary = segmentNote || `Segmento audience: ${result.count} possessori`;
+        proposal.answer = [
+          segmentNote || 'Ecco il segmento richiesto.',
+          `Possessori che corrispondono: ${result.count}.`,
+          result.members?.length
+            ? `Esempi: ${result.members.slice(0, 5).map((m) => m.email || m.serial_number || m.id).filter(Boolean).join(', ')}.`
+            : ''
+        ].filter(Boolean).join(' ').trim();
       } catch (qErr) {
         proposal.preview.warnings = [...(proposal.preview.warnings || []), qErr.message];
       }

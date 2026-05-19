@@ -170,7 +170,8 @@ In preview.details includi description_it, prompt_en, style, dimensions "1125x43
 - Per "ha aperto il pass" → did_action: "opened".
 - Per "mai cliccato" / "non ha mai cliccato" / "senza click" → never_did_action: "link_click" (opzionale target_key per un link specifico). Non usare did_action insieme a never_did_action.
 - Per "aperto ma mai cliccato" → behavior: { did_action: "opened", never_did_action: "link_click", since_days: 30 } — il motore applica entrambi i filtri.
-- answer: spiega il segmento e indica che il conteggio è in preview.details.member_count (stima se non hai eseguito query).
+- answer: spiega il segmento in italiano (max 2 frasi). NON dire che il conteggio arriverà dopo: il server esegue la query e mette il numero in preview.details.member_count.
+- type: "query" (non "create"). payload DEVE contenere query_spec completo.
 
 ### audience.create
 - type: "create"
@@ -353,6 +354,71 @@ function inferStripPromptFromUserText(prompt) {
   );
 }
 
+function extractQuerySpec(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const payload = raw.payload && typeof raw.payload === 'object' ? raw.payload : {};
+  const details = raw.preview?.details && typeof raw.preview.details === 'object' ? raw.preview.details : {};
+  const qs = payload.query_spec || details.query_spec || payload;
+  if (qs?.rules || qs?.behavior || qs?.behavioral) return qs;
+  if (payload.rules || payload.behavior) {
+    return { description: payload.description || details.description, rules: payload.rules, behavior: payload.behavior };
+  }
+  return null;
+}
+
+function coerceAudiencePlatformQuery(prompt, raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  if (!/\[Audience platform\]/i.test(String(prompt || ''))) return raw;
+
+  const query_spec = extractQuerySpec(raw);
+  const intent = String(raw.intent || '').trim();
+
+  if (query_spec) {
+    return {
+      ...raw,
+      intent: 'audience.query',
+      type: 'query',
+      payload: { query_spec }
+    };
+  }
+
+  if (intent === 'audience.insights' || intent === 'analytics.query') {
+    const text = String(prompt || '').toLowerCase();
+    const daysMatch = text.match(/(\d+)\s*(?:gg|giorni|day)/);
+    const since_days = daysMatch ? Math.min(parseInt(daysMatch[1], 10), 365) : 30;
+    let did_action = null;
+    if (/\b(notific|push|avvis)\w*/.test(text) || /\bapert\w*/.test(text)) did_action = 'opened';
+    if (/\bclic\w*/.test(text) || /\blink\b/.test(text)) did_action = 'link_click';
+    if (did_action) {
+      const behavior = { did_action, since_days, min_count: 1 };
+      const linkMatch = text.match(/link\s*([123])/);
+      if (did_action === 'link_click' && linkMatch) {
+        behavior.target_key = `link_${parseInt(linkMatch[1], 10) - 1}`;
+      }
+      return {
+        ...raw,
+        intent: 'audience.query',
+        type: 'query',
+        payload: {
+          query_spec: {
+            description: `Segmento da richiesta audience platform (${since_days} giorni)`,
+            rules: {},
+            behavior
+          }
+        },
+        preview: {
+          ...(raw.preview || {}),
+          warnings: [
+            ...(Array.isArray(raw.preview?.warnings) ? raw.preview.warnings : []),
+            'Query spec generata automaticamente dal testo — verifica i filtri prima di salvare.'
+          ]
+        }
+      };
+    }
+  }
+  return raw;
+}
+
 function coerceWaiProposal(prompt, raw) {
   if (!raw || typeof raw !== 'object' || !wantsPushAndStrip(prompt)) return raw;
 
@@ -482,6 +548,20 @@ function validateWaiResponse(raw, brandId) {
     };
   }
 
+  if (intent === 'audience.query') {
+    const query_spec = extractQuerySpec({ ...raw, payload: raw.payload || payload, preview });
+    if (!query_spec) {
+      preview.warnings.push('Query audience incompleta: specifica filtri (es. aperti pass, click link) e riprova.');
+    }
+    return {
+      intent,
+      type: 'query',
+      preview,
+      payload: query_spec ? { query_spec } : {},
+      answer: answer || preview.summary
+    };
+  }
+
   if (type === 'query' || type === 'system') {
     if (!answer && intent === 'help') {
       preview.summary = 'Posso programmare push, inviarle subito, creare campagne instant win, strip promo e generare immagini strip con AI, e rispondere su pass e analytics.';
@@ -595,7 +675,7 @@ async function askWai({ brandId, prompt, followup = '', previousProposal = null 
     buildUserMessage(trimmed, context, refinement),
     modelChoice.model
   );
-  const parsed = coerceWaiProposal(routingPrompt, extractJSON(text));
+  const parsed = coerceWaiProposal(routingPrompt, coerceAudiencePlatformQuery(routingPrompt, extractJSON(text)));
   const proposal = validateWaiResponse(parsed, brandId);
   return {
     ...proposal,
