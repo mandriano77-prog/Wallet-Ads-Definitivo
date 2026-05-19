@@ -317,14 +317,31 @@ function generatePassJson(template, instance, brand, options = {}) {
 
   // ── BACK FIELDS (order: Novità → Link 1 → Regolamento → Link 2 → Link 3 → Contatti) ──
 
+  function wrapTrackableBackLinkUrl(key, label, destinationUrl) {
+    if (!destinationUrl || !instance.serial_number) return destinationUrl;
+    if (/^(mailto:|tel:|javascript:)/i.test(destinationUrl)) return destinationUrl;
+    if (String(destinationUrl).includes('/track/pass-link')) return destinationUrl;
+    try {
+      const tracked = new URL(`${baseUrl}/api/track/pass-link`);
+      tracked.searchParams.set('sn', instance.serial_number);
+      tracked.searchParams.set('key', key);
+      tracked.searchParams.set('to', destinationUrl);
+      if (label) tracked.searchParams.set('label', label);
+      return tracked.toString();
+    } catch (_) {
+      return destinationUrl;
+    }
+  }
+
   function makeBackLinkField(key, label, url) {
+    const trackedUrl = url ? wrapTrackableBackLinkUrl(key, label, url) : null;
     const field = {
       key,
       label: '',
       value: label || url || ''
     };
-    if (url) {
-      field.attributedValue = `<a href="${url}">${label || url}</a>`;
+    if (trackedUrl) {
+      field.attributedValue = `<a href="${trackedUrl}">${label || url}</a>`;
     }
     return field;
   }

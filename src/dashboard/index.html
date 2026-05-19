@@ -432,6 +432,7 @@
         <div class="nav-item" onclick="nav('gamification')">Gamification</div>
         <div class="nav-label">Database</div>
         <div class="nav-item" onclick="nav('leads')" data-menu-key="nav_leads" data-menu-default="Leads">Leads</div>
+        <div class="nav-item" onclick="nav('audiences')">Audience</div>
         <div class="nav-label">Insights</div>
         <div class="nav-item" onclick="nav('analytics')">Analytics</div>
         <div class="nav-item" onclick="nav('activity-log')">Attività</div>
@@ -577,6 +578,12 @@
                             <select id="pushCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
+                        </div>                        <div class="form-group">
+                            <label class="form-label">Audience (opzionale)</label>
+                            <select id="pushAudienceTarget">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
+                            </select>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna. Crea segmenti in <strong>Audience</strong>.</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Canale invio</label>
@@ -637,6 +644,11 @@
                             <label class="form-label">Campagna target</label>
                             <select id="schedCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
+                            </select>
+                        </div>                        <div class="form-group">
+                            <label class="form-label">Audience (opzionale)</label>
+                            <select id="schedAudienceTarget">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1236,6 +1248,104 @@
                     <tbody></tbody>
                 </table>
             </div>
+
+            <!-- AUDIENCES -->
+                        <div id="audiences" class="section">
+                <div class="sec-title">Audience Platform</div>
+                <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Segmentazione possessori pass, statistiche di apertura e click sul retro, audience salvate e query in linguaggio naturale con W.AI.</p>
+
+                <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
+                    <button type="button" class="aud-subtab active" id="audTab_overview" onclick="switchAudienceTab('overview')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--teal);margin-bottom:-2px;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;">Panoramica</button>
+                    <button type="button" class="aud-subtab" id="audTab_behavior" onclick="switchAudienceTab('behavior')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Comportamento</button>
+                    <button type="button" class="aud-subtab" id="audTab_wai" onclick="switchAudienceTab('wai')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Query W.AI</button>
+                    <button type="button" class="aud-subtab" id="audTab_saved" onclick="switchAudienceTab('saved')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Audience salvate</button>
+                </div>
+
+                <div id="audPanel_overview" class="aud-panel">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Possessori pass</div>
+                    <div class="stats-grid" id="audienceInsightsStats"></div>
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Pass per campagna</div>
+                        <div id="audienceCampaignBreakdown" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_behavior" class="aud-panel" style="display:none;">
+                    <div class="stats-grid" id="audienceBehaviorStats"></div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Link più cliccati (retro pass)</div>
+                        <div id="audienceTopLinks" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="sec-title" style="font-size:15px;">Eventi recenti</div>
+                        <div id="audienceRecentEvents" style="max-height:280px;overflow:auto;font-size:12px;">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_wai" class="aud-panel" style="display:none;">
+                    <div class="card">
+                        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Descrivi il segmento in italiano. Esempi: «chi ha cliccato il link 1 negli ultimi 30 giorni», «possessori con Apple push che hanno giocato instant win», «aperto il pass ma mai cliccato link».</p>
+                        <textarea id="audWaiPrompt" rows="3" placeholder="Descrivi l'audience che vuoi trovare..." style="width:100%;resize:vertical;margin-bottom:8px;"></textarea>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn" onclick="runAudienceWaiQuery()">Analizza con W.AI</button>
+                            <button class="btn sec" onclick="saveWaiAudienceFromQuery()" id="audWaiSaveBtn" disabled>Salva come audience</button>
+                        </div>
+                        <div id="audWaiResult" style="margin-top:16px;font-size:13px;color:var(--text2);"></div>
+                    </div>
+                </div>
+
+                <div id="audPanel_saved" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="font-size:16px;margin:0;">Le tue audience</div>
+                        <button class="btn" onclick="openAudienceEditor()">+ Nuova audience</button>
+                    </div>
+                    <div id="audiencesList" style="color:var(--text2);">Caricamento...</div>
+                </div>
+            </div>
+
+            <div id="audienceEditorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+                <div class="card" style="max-width:560px;width:100%;max-height:90vh;overflow:auto;margin:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="margin:0;font-size:18px;" id="audienceEditorTitle">Nuova audience</div>
+                        <button class="btn sec" onclick="closeAudienceEditor()">✕</button>
+                    </div>
+                    <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="audName"></div>
+                    <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="audDescription"></div>
+                    <div class="form-group"><label class="form-label">Campagna</label><select id="audCampaign"><option value="">Tutte</option></select></div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Stato</label><select id="audStatus"><option value="any">Qualsiasi</option><option value="active">Attivo</option><option value="inactive">Inattivo</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Wallet</label><select id="audWallet"><option value="any">Qualsiasi</option><option value="installed">Installato</option><option value="apple">Apple</option><option value="google">Google</option><option value="samsung">Samsung</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Push Apple</label><select id="audApplePush"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Email</label><select id="audHasEmail"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Telefono</label><select id="audHasPhone"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">UTM</label><input type="text" id="audUtmSource"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato dal</label><input type="date" id="audCreatedAfter"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato fino</label><input type="date" id="audCreatedBefore"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Instant Win</label><select id="audPlayedIw"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Gamification</label><select id="audPlayedGam"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="sec-title" style="font-size:14px;margin:12px 0 6px;">Comportamento</div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Azione</label><select id="audBehaviorAction"><option value="">—</option><option value="opened">Aperto pass</option><option value="link_click">Click link retro</option><option value="installed">Installato</option><option value="instant_win_played">Instant Win</option><option value="gamification_played">Gamification</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Target key</label><input type="text" id="audBehaviorTargetKey" placeholder="link_0"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Giorni</label><input type="number" id="audBehaviorSinceDays" value="30" min="1" max="365"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Min count</label><input type="number" id="audBehaviorMinCount" value="1" min="1"></div>
+                    </div>
+                    <div style="background:var(--bg2);padding:12px;border-radius:8px;margin:12px 0;">Anteprima: <strong id="audPreviewCount">—</strong></div>
+                    <div style="display:flex;gap:8px;"><button class="btn sec" onclick="previewAudienceRules()">Anteprima</button><button class="btn" onclick="saveAudience()">Salva</button></div>
+                </div>
+            </div>
+
 
             <!-- ANALYTICS -->
             <div id="analytics" class="section">
@@ -2095,6 +2205,7 @@ function nav(id) {
             const rest = () => {
                 loadPushCampaignSelect();
                 loadSchedCampaignSelect();
+                loadPushAudienceSelect();
                 loadPushIwSelect();
                 loadPushGamSelect();
                 loadGeofencing();
@@ -2111,6 +2222,7 @@ function nav(id) {
         'instant-win': loadInstantWin,
         'gamification': loadGamification,
         'leads': loadLeads,
+        audiences: loadAudiences,
         users: loadUsers
     };
     if (loaders[id]) loaders[id]();
@@ -3783,11 +3895,44 @@ async function loadSchedCampaignSelect() {
     campaignsCache.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
 }
 
+let audiencesCache = [];
+
+async function loadPushAudienceSelect() {
+    if (!brandId) return;
+    const ids = ['pushAudienceTarget', 'schedAudienceTarget'];
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/audiences`, { headers: getAuthHeaders() });
+        audiencesCache = res.ok ? await res.json() : [];
+    } catch (_) { audiencesCache = []; }
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">— Nessuna (usa campagna o tutti) —</option>';
+        audiencesCache.forEach(a => {
+            const o = document.createElement('option');
+            o.value = a.id;
+            o.textContent = `${a.name} (${a.member_count ?? '?'})`;
+            sel.appendChild(o);
+        });
+        if (cur) sel.value = cur;
+    });
+    const audSel = document.getElementById('audCampaign');
+    if (audSel && audSel.options.length <= 1 && campaignsCache.length) {
+        campaignsCache.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id; o.textContent = c.name;
+            audSel.appendChild(o);
+        });
+    }
+}
+
 // --- TAB 1: Push Immediata ---
 async function sendImmediatePush() {
     const title = document.getElementById('pushTitle').value;
     const message = document.getElementById('pushMessage').value;
     const campaignId = document.getElementById('pushCampaignTarget').value || null;
+    const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
     const channel = document.getElementById('pushChannel').value || 'apple';
     const updatePass = document.getElementById('pushUpdatePass').checked;
 
@@ -3795,7 +3940,8 @@ async function sendImmediatePush() {
     if (!brandId) return alert('Seleziona un brand');
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
-    if (campaignId) body.campaign_id = campaignId;
+    if (audienceId) body.audience_id = audienceId;
+    else if (campaignId) body.campaign_id = campaignId;
     const iwId = document.getElementById('pushInstantWin').value;
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification').value;
@@ -3844,6 +3990,7 @@ async function createScheduledPush() {
     const title = document.getElementById('schedTitle').value;
     const message = document.getElementById('schedMessage').value;
     const campaignId = document.getElementById('schedCampaignTarget').value || null;
+    const audienceId = document.getElementById('schedAudienceTarget')?.value || null;
     const updatePass = document.getElementById('schedUpdatePass').checked;
     const channel = document.getElementById('schedChannel').value || 'apple';
     const schedType = document.getElementById('schedType').value;
@@ -3853,7 +4000,8 @@ async function createScheduledPush() {
     if (!brandId) return alert('Seleziona un brand');
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
-    if (campaignId) body.campaign_id = campaignId;
+    if (audienceId) body.audience_id = audienceId;
+    else if (campaignId) body.campaign_id = campaignId;
     if (schedType === 'once') {
         body.date = document.getElementById('schedDate').value;
         if (!body.date) return alert('Seleziona una data');
@@ -4451,6 +4599,335 @@ async function deleteIwCampaign(id) {
         loadInstantWin();
     } catch(e) { toast('Errore di rete'); }
 }
+
+
+// ==================== AUDIENCES ====================
+
+function switchAudienceTab(tab) {
+    ['overview', 'behavior', 'wai', 'saved'].forEach(t => {
+        const panel = document.getElementById('audPanel_' + t);
+        if (panel) panel.style.display = t === tab ? 'block' : 'none';
+        const btn = document.getElementById('audTab_' + t);
+        if (btn) {
+            const on = t === tab;
+            btn.style.borderBottomColor = on ? 'var(--teal)' : 'transparent';
+            btn.style.color = on ? 'var(--teal)' : 'var(--text2)';
+            btn.style.fontWeight = on ? '700' : '600';
+        }
+    });
+    if (tab === 'behavior') loadAudienceBehavior();
+    if (tab === 'saved' && !audiencesCache.length) loadAudiences();
+}
+
+let lastWaiAudienceProposal = null;
+
+async function loadAudienceBehavior() {
+    if (!brandId) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/audiences/insights?days=30`, { headers: getAuthHeaders() });
+        const data = res.ok ? await res.json() : {};
+        const b = data.behavior || {};
+        const f = b.funnel || {};
+        document.getElementById('audienceBehaviorStats').innerHTML = `
+            <div class="stat-card"><div class="stat-num">${b.total_events ?? 0}</div><div class="stat-label">Eventi (30 gg)</div></div>
+            <div class="stat-card"><div class="stat-num">${b.unique_holders_active ?? 0}</div><div class="stat-label">Possessori attivi</div></div>
+            <div class="stat-card"><div class="stat-num">${f.opened ?? 0}</div><div class="stat-label">Aperture pass</div></div>
+            <div class="stat-card"><div class="stat-num">${f.link_clicks ?? 0}</div><div class="stat-label">Click link retro</div></div>
+            <div class="stat-card"><div class="stat-num">${f.unique_clickers ?? 0}</div><div class="stat-label">Utenti unici click</div></div>
+        `.replace(/<div/g, '<div').replace(/<\/motion>/g, '</div>');
+
+        const links = b.top_link_clicks || [];
+        document.getElementById('audienceTopLinks').innerHTML = links.length ? links.map(l =>
+            `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+                <span>${esc(l.target_label || l.target_key || 'Link')} <span style="color:var(--text2);font-size:11px;">${esc((l.target_url || '').slice(0,40))}</span></span>
+                <strong>${l.clicks}</strong>
+            </div>`
+        ).join('') : '<span>Nessun click registrato ancora. I nuovi pass tracciano i link del retro.</span>';
+
+        const evRes = await fetch(`${API}/brands/${brandId}/holder-events?limit=40`, { headers: getAuthHeaders() });
+        const events = evRes.ok ? await evRes.json() : [];
+        document.getElementById('audienceRecentEvents').innerHTML = events.length ? events.map(e =>
+            `<div style="padding:6px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--teal);">${esc(e.event_action)}</span>
+                ${e.target_label ? ' · ' + esc(e.target_label) : ''}
+                <span style="float:right;color:var(--text2);">${e.created_at ? new Date(e.created_at).toLocaleString('it-IT') : ''}</span>
+            </div>`
+        ).join('') : 'Nessun evento';
+    } catch (e) {
+        console.error('loadAudienceBehavior', e);
+    }
+}
+
+async function runAudienceWaiQuery() {
+    if (!brandId) return;
+    const prompt = (document.getElementById('audWaiPrompt')?.value || '').trim();
+    if (!prompt) return toast('Scrivi una domanda per W.AI');
+    const el = document.getElementById('audWaiResult');
+    el.innerHTML = '<span>Analisi in corso...</span>';
+    document.getElementById('audWaiSaveBtn').disabled = true;
+    lastWaiAudienceProposal = null;
+    try {
+        const res = await fetch(`${API}/wai/ask`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brand_id: brandId, prompt: `[Audience platform] ${prompt}` })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Errore W.AI');
+        lastWaiAudienceProposal = data;
+        const count = data.preview?.details?.member_count;
+        const warnings = (data.preview?.warnings || []).map(w => `<li>${esc(w)}</li>`).join('');
+        el.innerHTML = `
+            <div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:8px;">
+                <strong>${esc(data.preview?.summary || data.answer || 'Risultato')}</strong>
+                ${count !== undefined ? `<div style="margin-top:8px;font-size:22px;font-weight:700;color:var(--teal);">${count} possessori</div>` : ''}
+            </div>
+            ${warnings ? `<ul style="margin:8px 0;padding-left:18px;color:var(--text2);">${warnings}</ul>` : ''}
+            <pre style="font-size:11px;overflow:auto;max-height:160px;background:var(--bg2);padding:8px;border-radius:6px;">${esc(JSON.stringify(data.payload?.query_spec || data.payload, null, 2))}</pre>
+        `.replace(/<div/g, '<div').replace(/<\/motion>/g, '</div>');
+        if (data.payload?.query_spec && (data.intent === 'audience.query' || data.intent === 'audience.create')) {
+            document.getElementById('audWaiSaveBtn').disabled = false;
+        }
+    } catch (e) {
+        el.innerHTML = `<span style="color:#e55;">${esc(e.message)}</span>`;
+    }
+}
+
+async function saveWaiAudienceFromQuery() {
+    if (!lastWaiAudienceProposal?.payload?.query_spec) return toast('Esegui prima una query W.AI');
+    const name = prompt('Nome per questa audience:', lastWaiAudienceProposal.preview?.summary?.slice(0, 60) || 'Audience W.AI');
+    if (!name) return;
+    const res = await fetch(`${API}/brands/${brandId}/audiences`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name,
+            description: lastWaiAudienceProposal.preview?.summary || '',
+            query_spec: lastWaiAudienceProposal.payload.query_spec,
+            source_prompt: document.getElementById('audWaiPrompt')?.value || ''
+        })
+    });
+    const data = await res.json();
+    if (!res.ok) return toast(data.error || 'Errore salvataggio');
+    toast(`Audience salvata (${data.member_count} possessori)`);
+    switchAudienceTab('saved');
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+
+let editingAudienceId = null;
+
+function triSelectVal(elId) {
+    const v = document.getElementById(elId)?.value;
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return null;
+}
+
+function collectAudienceRulesFromForm() {
+    const rules = {
+        campaign_id: document.getElementById('audCampaign')?.value || null,
+        status: document.getElementById('audStatus')?.value || 'any',
+        wallet: document.getElementById('audWallet')?.value || 'any',
+        has_apple_push: triSelectVal('audApplePush'),
+        has_email: triSelectVal('audHasEmail'),
+        has_phone: triSelectVal('audHasPhone'),
+        created_after: document.getElementById('audCreatedAfter')?.value || null,
+        created_before: document.getElementById('audCreatedBefore')?.value || null,
+        utm_source: (document.getElementById('audUtmSource')?.value || '').trim() || null,
+        played_instant_win: triSelectVal('audPlayedIw'),
+        played_gamification: triSelectVal('audPlayedGam')
+    };
+    if (!rules.campaign_id) delete rules.campaign_id;
+    if (rules.created_after) rules.created_after = new Date(rules.created_after + 'T00:00:00').toISOString();
+    if (rules.created_before) rules.created_before = new Date(rules.created_before + 'T23:59:59').toISOString();
+    const didAction = document.getElementById('audBehaviorAction')?.value;
+    if (didAction) {
+        rules.behavior = {
+            did_action: didAction,
+            since_days: parseInt(document.getElementById('audBehaviorSinceDays')?.value, 10) || 30,
+            min_count: parseInt(document.getElementById('audBehaviorMinCount')?.value, 10) || 1
+        };
+        const tk = (document.getElementById('audBehaviorTargetKey')?.value || '').trim();
+        if (tk) rules.behavior.target_key = tk;
+    }
+    return rules;
+}
+
+function fillAudienceForm(rules = {}) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+    set('audCampaign', rules.campaign_id || '');
+    set('audStatus', rules.status || 'any');
+    set('audWallet', rules.wallet || 'any');
+    const tri = (id, v) => set(id, v === true ? 'true' : v === false ? 'false' : '');
+    tri('audApplePush', rules.has_apple_push);
+    tri('audHasEmail', rules.has_email);
+    tri('audHasPhone', rules.has_phone);
+    tri('audPlayedIw', rules.played_instant_win);
+    tri('audPlayedGam', rules.played_gamification);
+    set('audUtmSource', rules.utm_source || '');
+    if (rules.created_after) {
+        const d = new Date(rules.created_after);
+        set('audCreatedAfter', d.toISOString().slice(0, 10));
+    } else set('audCreatedAfter', '');
+    if (rules.created_before) {
+        const d = new Date(rules.created_before);
+        set('audCreatedBefore', d.toISOString().slice(0, 10));
+    } else set('audCreatedBefore', '');
+    if (rules.behavior) {
+        set('audBehaviorAction', rules.behavior.did_action || '');
+        set('audBehaviorTargetKey', rules.behavior.target_key || '');
+        set('audBehaviorSinceDays', rules.behavior.since_days || 30);
+        set('audBehaviorMinCount', rules.behavior.min_count || 1);
+    } else {
+        set('audBehaviorAction', ''); set('audBehaviorTargetKey', '');
+        set('audBehaviorSinceDays', 30); set('audBehaviorMinCount', 1);
+    }
+}
+
+async function loadAudiences() {
+    if (!brandId) return;
+    await loadPushAudienceSelect();
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/audiences/insights`, { headers: getAuthHeaders() });
+        const ins = res.ok ? await res.json() : {};
+        document.getElementById('audienceInsightsStats').innerHTML = `
+            <div class="stat-card"><div class="stat-num">${ins.total_holders ?? 0}</div><div class="stat-label">Possessori pass</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.apple_push_reachable ?? 0}</div><div class="stat-label">Raggiungibili APNs</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.installed_any_wallet ?? 0}</div><div class="stat-label">Wallet installato</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.with_email ?? 0}</div><div class="stat-label">Con email</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.new_last_7_days ?? 0}</div><div class="stat-label">Nuovi (7 gg)</div></div>
+        `;
+
+        const campEl = document.getElementById('audienceCampaignBreakdown');
+        const camps = ins.by_campaign || [];
+        campEl.innerHTML = camps.length ? camps.map(c =>
+            `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${esc(c.name || 'Senza nome')}</span><span>${c.pass_count} pass · ${c.apple_installs} Apple</span></div>`
+        ).join('') : '<span>Nessuna campagna con pass</span>';
+
+        const listRes = await fetch(`${API}/brands/${brandId}/audiences`, { headers: getAuthHeaders() });
+        const list = listRes.ok ? await listRes.json() : [];
+        audiencesCache = list;
+        renderAudiencesList(list);
+    } catch (e) {
+        console.error('loadAudiences', e);
+        document.getElementById('audiencesList').innerHTML = '<span style="color:var(--text2);">Errore caricamento audience</span>';
+    }
+}
+
+function renderAudiencesList(list) {
+    const el = document.getElementById('audiencesList');
+    if (!list.length) {
+        el.innerHTML = '<p style="color:var(--text2);font-size:13px;">Nessuna audience salvata. Crea un segmento con i filtri sui possessori del pass.</p>';
+        return;
+    }
+    el.innerHTML = `<table class="table"><thead><tr><th>Nome</th><th>Membri</th><th>Aggiornata</th><th></th></tr></thead><tbody>${
+        list.map(a => `<tr>
+            <td><strong>${esc(a.name)}</strong><br><span style="font-size:11px;color:var(--text2);">${esc(a.description || '')}</span></td>
+            <td>${a.member_count ?? '—'}</td>
+            <td style="font-size:12px;">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('it-IT') : '—'}</td>
+            <td style="white-space:nowrap;">
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="useAudienceInPush('${a.id}')">Push</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="exportAudienceCsv('${a.id}')">CSV</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="editAudience('${a.id}')">Modifica</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;color:#e55;" onclick="deleteAudienceItem('${a.id}')">Elimina</button>
+            </td>
+        </tr>`).join('')
+    }</tbody></table>`;
+}
+
+function openAudienceEditor(id) {
+    editingAudienceId = id || null;
+    document.getElementById('audienceEditorTitle').textContent = id ? 'Modifica audience' : 'Nuova audience';
+    document.getElementById('audName').value = '';
+    document.getElementById('audDescription').value = '';
+    fillAudienceForm({});
+    document.getElementById('audPreviewCount').textContent = '—';
+    const modal = document.getElementById('audienceEditorModal');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    if (id) {
+        const a = audiencesCache.find(x => x.id === id);
+        if (a) {
+            document.getElementById('audName').value = a.name || '';
+            document.getElementById('audDescription').value = a.description || '';
+            fillAudienceForm(a.rules || {});
+            previewAudienceRules();
+        }
+    }
+}
+
+function closeAudienceEditor() {
+    document.getElementById('audienceEditorModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+    editingAudienceId = null;
+}
+
+function editAudience(id) { openAudienceEditor(id); }
+
+async function previewAudienceRules() {
+    if (!brandId) return;
+    const rules = collectAudienceRulesFromForm();
+    const res = await fetch(`${API}/brands/${brandId}/audiences/preview`, {
+        method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        document.getElementById('audPreviewCount').textContent = data.error || 'Errore';
+        return;
+    }
+    document.getElementById('audPreviewCount').textContent = String(data.count ?? 0);
+}
+
+async function saveAudience() {
+    if (!brandId) return;
+    const name = (document.getElementById('audName').value || '').trim();
+    if (!name) return toast('Inserisci un nome per l'audience');
+    const rules = collectAudienceRulesFromForm();
+    const body = { name, description: (document.getElementById('audDescription').value || '').trim(), rules };
+    const url = editingAudienceId ? `${API}/audiences/${editingAudienceId}` : `${API}/brands/${brandId}/audiences`;
+    const res = await fetch(url, {
+        method: editingAudienceId ? 'PUT' : 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error || 'Errore salvataggio');
+    toast('Audience salvata');
+    closeAudienceEditor();
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+async function deleteAudienceItem(id) {
+    if (!confirm('Eliminare questa audience?')) return;
+    const res = await fetch(`${API}/audiences/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); return toast(d.error || 'Errore'); }
+    toast('Audience eliminata');
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+function useAudienceInPush(id) {
+    nav('push');
+    switchPushTab('immediate');
+    const sel = document.getElementById('pushAudienceTarget');
+    if (sel) sel.value = id;
+}
+
+async function exportAudienceCsv(id) {
+    const res = await fetch(`${API}/audiences/${id}/export`, { headers: getAuthHeaders() });
+    if (!res.ok) return toast('Export non riuscito');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `audience_${id}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV esportato');
+}
+
 
 // ==================== LEADS DATABASE ====================
 let allLeads = [];

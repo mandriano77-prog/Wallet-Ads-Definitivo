@@ -16,7 +16,8 @@ const EXECUTABLE_INTENTS = new Set([
   'push.send',
   'campaign.create',
   'strip.create',
-  'strip.generate'
+  'strip.generate',
+  'audience.create'
 ]);
 
 const STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
@@ -58,11 +59,16 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - strip.create — Crea una strip promo (cambio immagine pass temporaneo)
 - strip.generate — Genera una nuova immagine strip con AI (Flux)
 
-### Lettura
+### Lettura / Audience platform
 - analytics.query — Rispondi a domande su metriche e performance
+- audience.query — Segmenta possessori del pass con filtri demografici + comportamentali (aperture, click link retro, giochi). Restituisci count nel answer e query_spec nel payload.
+- audience.insights — Sintesi engagement (click, aperture, funnel) usando audience_behavior_30d nel contesto
 - pass.count — Conta pass attivi/installati
 - push.history — Mostra storico push inviate
 - member.search — Cerca un membro per nome/email o conta per segmento
+
+### Audience salvate
+- audience.create — Crea audience salvata da query_spec (type create, eseguibile)
 
 ### Sistema
 - help — L'utente chiede cosa puoi fare. Rispondi con la lista delle capacità.
@@ -128,10 +134,46 @@ Stili: commercial_photo (default), lifestyle, food, minimal, seasonal, abstract.
 Nel payload: prompt_en, style_prompt null, width 1125, height 432, model "fal-ai/flux-pro/v1.1".
 In preview.details includi description_it, prompt_en, style, dimensions "1125x432 (@3x Apple Wallet)".
 
-### analytics.query / pass.count / push.history / member.search
+### analytics.query / audience.insights / pass.count / push.history / member.search
 - Usa i dati nel contesto brand per rispondere.
 - Metti la risposta nel campo "answer" in italiano.
 - Non inventare numeri — usa solo i dati forniti nel contesto.
+
+### audience.query
+- type: "query"
+- payload.query_spec schema (JSON, NO SQL):
+  {
+    "description": "testo breve del segmento",
+    "rules": {
+      "campaign_id": null,
+      "status": "any|active|inactive",
+      "wallet": "any|installed|apple|google|samsung",
+      "has_apple_push": true|false|null,
+      "has_email": true|false|null,
+      "has_phone": true|false|null,
+      "created_after": "ISO date|null",
+      "created_before": "ISO date|null",
+      "utm_source": "string|null",
+      "played_instant_win": true|false|null,
+      "played_gamification": true|false|null
+    },
+    "behavior": {
+      "did_action": "opened|link_click|installed|instant_win_played|gamification_played|...|null",
+      "never_did_action": "link_click|...|null",
+      "target_key": "link_0|link_1|link_2|null",
+      "since_days": 30,
+      "min_count": 1
+    }
+  }
+- Usa solo event_action presenti in allowed_event_actions del contesto.
+- Per "ha cliccato link 1 / link out / retro" → did_action: "link_click", target_key: "link_0".
+- Per "ha aperto il pass" → did_action: "opened".
+- answer: spiega il segmento e indica che il conteggio è in preview.details.member_count (stima se non hai eseguito query).
+
+### audience.create
+- type: "create"
+- payload: { name, description, query_spec, source_prompt }
+- name obbligatorio; query_spec come audience.query
 
 ## Principi di copy per push
 1. BREVITÀ: ogni parola deve giustificare la sua presenza
@@ -197,7 +239,9 @@ function sanitizeStripPrompt(text) {
 }
 
 async function buildWaiContext(brandId) {
-  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos, mediaItems] = await Promise.all([
+  const { getHolderBehaviorInsights } = require('./holder-events');
+  const { ALLOWED_EVENT_ACTIONS } = require('./audiences');
+  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos, mediaItems, behavior30d] = await Promise.all([
     getBrand(brandId),
     pool.query('SELECT COUNT(*)::int AS total FROM pass_instances WHERE brand_id = $1', [brandId]),
     pool.query(
@@ -211,7 +255,8 @@ async function buildWaiContext(brandId) {
     listPushes(brandId),
     listInstantWinCampaigns(brandId),
     listStripPromos(brandId),
-    listMedia(brandId, 'strip')
+    listMedia(brandId, 'strip'),
+    getHolderBehaviorInsights(brandId, 30).catch(() => null)
   ]);
 
   if (!brand) throw new Error('Brand non trovato');
@@ -254,7 +299,9 @@ async function buildWaiContext(brandId) {
       title: s.title,
       start_date: s.start_date,
       end_date: s.end_date
-    }))
+    })),
+    allowed_event_actions: [...ALLOWED_EVENT_ACTIONS],
+    audience_behavior_30d: behavior30d
   };
 }
 
@@ -509,6 +556,20 @@ function validateWaiResponse(raw, brandId) {
     }
     if (!payload.strip_base64) {
       preview.warnings.push('Manca strip_base64: carica l’immagine strip dal back office prima di confermare.');
+    }
+  }
+
+  if (intent === 'audience.create') {
+    payload.name = String(payload.name || '').trim();
+    if (!payload.name) throw new Error('Nome audience obbligatorio');
+    payload.description = String(payload.description || preview.summary || '').trim();
+    payload.source_prompt = String(payload.source_prompt || '').trim();
+    if (!payload.query_spec || typeof payload.query_spec !== 'object') {
+      payload.query_spec = {
+        description: preview.summary,
+        rules: payload.rules || {},
+        behavior: payload.behavior || null
+      };
     }
   }
 
