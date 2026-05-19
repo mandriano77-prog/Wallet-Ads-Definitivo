@@ -125,6 +125,36 @@ CREATE TABLE IF NOT EXISTS push_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS audiences (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  rules JSONB NOT NULL DEFAULT '{}',
+  query_spec JSONB DEFAULT '{}',
+  source_prompt TEXT DEFAULT '',
+  cached_count INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS holder_events (
+  id BIGSERIAL PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  pass_id TEXT REFERENCES pass_instances(id) ON DELETE SET NULL,
+  serial_number TEXT,
+  event_category TEXT NOT NULL,
+  event_action TEXT NOT NULL,
+  target_type TEXT,
+  target_key TEXT,
+  target_label TEXT,
+  target_url TEXT,
+  device_id TEXT,
+  session_id TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
@@ -344,6 +374,13 @@ async function getDb() {
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS update_pass BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS audience_id TEXT`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_audiences_brand ON audiences(brand_id)`).catch(()=>{});
+    await pool.query(`ALTER TABLE audiences ADD COLUMN IF NOT EXISTS query_spec JSONB DEFAULT '{}'`).catch(()=>{});
+    await pool.query(`ALTER TABLE audiences ADD COLUMN IF NOT EXISTS source_prompt TEXT DEFAULT ''`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_holder_events_brand_created ON holder_events(brand_id, created_at DESC)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_holder_events_serial ON holder_events(serial_number, created_at DESC)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_holder_events_action ON holder_events(brand_id, event_action)`).catch(()=>{});
     await pool.query(`CREATE TABLE IF NOT EXISTS push_assistant_log (
       id TEXT PRIMARY KEY,
       brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
@@ -568,6 +605,8 @@ async function deleteBrand(id) {
   await pool.query('DELETE FROM events WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM push_log WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM scheduled_push WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM audiences WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM holder_events WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM pass_instances WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM campaigns WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM strip_promos WHERE brand_id = $1', [id]);
@@ -791,11 +830,18 @@ async function deletePass(id) {
 async function logEvent(data) {
   const { pass_id, brand_id, event_type, device_id = null, metadata = {} } = data;
   if (!brand_id || !event_type) throw new Error('Brand ID and event type are required');
-  await pool.query(
-    `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES ($1, $2, $3, $4, $5)`,
-    [pass_id || null, brand_id, event_type, device_id, JSON.stringify(metadata)]
+  const metaObj = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata || {});
+  const result = await pool.query(
+    `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [pass_id || null, brand_id, event_type, device_id, JSON.stringify(metaObj)]
   );
-  return { success: true };
+  try {
+    const { mirrorLegacyEvent } = require('../engine/holder-events');
+    await mirrorLegacyEvent(result.rows[0]);
+  } catch (err) {
+    console.error('[logEvent] holder_events mirror:', err.message);
+  }
+  return { success: true, id: result.rows[0]?.id };
 }
 
 async function listEvents(brandId, limit = 50) {
@@ -957,14 +1003,14 @@ async function clearPushHistory(brandId) {
 
 async function createScheduledPush(data) {
   const id = data.id || uuidv4();
-  const { brand_id, title, message, campaign_id = null, channel = 'apple', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
+  const { brand_id, title, message, campaign_id = null, audience_id = null, channel = 'apple', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
   if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
   await pool.query(
-    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
+    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
   );
-  return { id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
+  return { id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
 }
 
 async function listScheduledPush(brand_id) {
@@ -981,7 +1027,7 @@ async function updateScheduledPush(id, data) {
   const fields = [];
   const values = [id];
   let idx = 2;
-  for (const key of ['title', 'message', 'campaign_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
+  for (const key of ['title', 'message', 'campaign_id', 'audience_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
     if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
   }
   if (fields.length === 0) return getScheduledPush(id);
@@ -999,6 +1045,67 @@ async function getDueScheduledPush() {
     `SELECT * FROM scheduled_push WHERE active = true AND next_run_at <= NOW()`
   );
   return result.rows;
+}
+
+// ─── Audiences ───────────────────────────────────────────────────────────────
+
+async function createAudience(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, name, description = '', rules = {}, query_spec = {}, source_prompt = '' } = data;
+  if (!brand_id || !name) throw new Error('brand_id e name sono obbligatori');
+  const rulesObj = typeof rules === 'string' ? JSON.parse(rules) : rules;
+  const specObj = typeof query_spec === 'string' ? JSON.parse(query_spec) : query_spec;
+  const result = await pool.query(
+    `INSERT INTO audiences (id, brand_id, name, description, rules, query_spec, source_prompt)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [id, brand_id, name, description, JSON.stringify(rulesObj || {}), JSON.stringify(specObj || {}), source_prompt || '']
+  );
+  return result.rows[0];
+}
+
+async function getAudience(id) {
+  const result = await pool.query('SELECT * FROM audiences WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+async function listAudiences(brandId) {
+  const result = await pool.query(
+    'SELECT * FROM audiences WHERE brand_id = $1 ORDER BY updated_at DESC, created_at DESC',
+    [brandId]
+  );
+  return result.rows;
+}
+
+async function updateAudience(id, data) {
+  const fields = [];
+  const values = [];
+  let idx = 1;
+  if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
+  if (data.description !== undefined) { fields.push(`description = $${idx++}`); values.push(data.description); }
+  if (data.rules !== undefined) {
+    fields.push(`rules = $${idx++}`);
+    values.push(JSON.stringify(typeof data.rules === 'string' ? JSON.parse(data.rules) : data.rules));
+  }
+  if (data.query_spec !== undefined) {
+    fields.push(`query_spec = $${idx++}`);
+    values.push(JSON.stringify(typeof data.query_spec === 'string' ? JSON.parse(data.query_spec) : data.query_spec));
+  }
+  if (data.source_prompt !== undefined) { fields.push(`source_prompt = $${idx++}`); values.push(data.source_prompt); }
+  if (data.cached_count !== undefined) { fields.push(`cached_count = $${idx++}`); values.push(data.cached_count); }
+  if (!fields.length) return getAudience(id);
+  fields.push('updated_at = NOW()');
+  values.push(id);
+  const result = await pool.query(
+    `UPDATE audiences SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+    values
+  );
+  return result.rows[0] || null;
+}
+
+async function deleteAudience(id) {
+  await pool.query('DELETE FROM audiences WHERE id = $1', [id]);
+  return { success: true };
 }
 
 async function logPushAssistantInteraction({ brand_id, user_id = null, prompt, proposal = null, final_payload = null, action = 'planned' }) {
@@ -1762,6 +1869,11 @@ module.exports = {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  createAudience,
+  getAudience,
+  listAudiences,
+  updateAudience,
+  deleteAudience,
   logPushAssistantInteraction,
   logWaiInteraction,
   listWaiLog,

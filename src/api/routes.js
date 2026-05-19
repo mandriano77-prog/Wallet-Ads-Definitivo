@@ -32,8 +32,25 @@ const {
   updateSamsungWalletStatus,
   getPassBySamsungRefId,
   registerWalletCallbackEvent,
-  finalizeWalletCallbackEvent
+  finalizeWalletCallbackEvent,
+  createAudience,
+  getAudience,
+  listAudiences,
+  updateAudience,
+  deleteAudience
 } = require('../db');
+const {
+  getPassHoldersInsights,
+  countAudienceMembers,
+  listAudienceMembers,
+  normalizeRules,
+  hasActiveRules,
+  getTargetPassesForPush,
+  getAppleDevicesForAudience,
+  ALLOWED_EVENT_ACTIONS
+} = require('../engine/audiences');
+const { executeAudienceQuery, mergeSpecToAudienceRules } = require('../engine/audience-query');
+const { getHolderBehaviorInsights, listRecentHolderEvents } = require('../engine/holder-events');
 const { createPkpass } = require('../engine/passkit');
 const googleWallet = require('../engine/google-wallet');
 const samsungWallet = require('../engine/samsung-wallet');
@@ -877,6 +894,44 @@ router.get('/pixel/:campaign_id', async (req, res) => {
   res.send(PIXEL_1x1);
 });
 
+// Pass back-link click tracking (retro Wallet → redirect)
+router.get('/track/pass-link', async (req, res) => {
+  try {
+    const serial = String(req.query.sn || '').trim();
+    const destination = String(req.query.to || '').trim();
+    const key = String(req.query.key || 'link').trim();
+    const label = String(req.query.label || '').trim();
+    if (!destination) return res.status(400).send('Link non valido');
+    if (serial) {
+      const pass = await getPassBySerial(serial);
+      if (pass) {
+        const { logHolderEvent } = require('../engine/holder-events');
+        await logHolderEvent({
+          brand_id: pass.brand_id,
+          pass_id: pass.id,
+          serial_number: pass.serial_number,
+          event_category: 'link',
+          event_action: 'link_click',
+          target_type: 'pass_back_link',
+          target_key: key,
+          target_label: label || null,
+          target_url: destination,
+          metadata: {
+            user_agent: req.headers['user-agent'],
+            referer: req.headers.referer || req.headers.referrer
+          }
+        });
+      }
+    }
+    res.redirect(302, destination);
+  } catch (err) {
+    console.error('track/pass-link error:', err);
+    const fallback = String(req.query.to || '').trim();
+    if (fallback) return res.redirect(302, fallback);
+    res.status(400).send('Errore link');
+  }
+});
+
 // Click redirect + tracking
 router.get('/click/:campaign_id', async (req, res) => {
   try {
@@ -1649,7 +1704,7 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 router.post('/push/send', async (req, res) => {
   try {
     const {
-      brand_id, title, message, campaign_id, update_pass, field_values,
+      brand_id, title, message, campaign_id, audience_id, update_pass, field_values,
       instant_win_id, gamification_id, channel = 'apple',
       back_link_label, back_link_url
     } = req.body;
@@ -1660,36 +1715,22 @@ router.post('/push/send', async (req, res) => {
     }
     const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
 
-    console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
+    console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}" | audience_id: "${audience_id || 'none'}"`);
 
     // Debug: check what's in the DB
     const allDevices = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
     const allPasses = await pool.query('SELECT DISTINCT brand_id FROM pass_instances');
     console.log(`[PUSH DEBUG] Total devices in DB: ${allDevices.rows[0].count} | Brand IDs in passes: ${JSON.stringify(allPasses.rows.map(r => r.brand_id))}`);
 
-    // Get all targeted passes once (used by Apple and Google channels)
-    const passQuery = campaign_id
-      ? await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])
-      : await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id]);
-    const targetPasses = passQuery.rows;
+    const pushTargetOpts = { campaign_id, audience_id };
+    const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
     const googleEligible = targetPasses.filter(p => p.google_wallet_object_id);
     const samsungEligible = targetPasses.filter(p => p.samsung_wallet_ref_id && p.samsung_wallet_saved);
 
     // Get Apple APNs devices only if requested
     let devices = [];
     if (sendApple) {
-      if (campaign_id) {
-        const result = await pool.query(
-          `SELECT DISTINCT dr.push_token, dr.serial_number
-           FROM device_registrations dr
-           JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-           WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
-          [brand_id, campaign_id]
-        );
-        devices = result.rows;
-      } else {
-        devices = await getDevicesForBrand(brand_id);
-      }
+      devices = await getAppleDevicesForAudience(brand_id, pushTargetOpts);
     }
 
     console.log(`[PUSH DEBUG] Devices found for brand: ${devices.length}`);
@@ -2081,6 +2122,174 @@ router.put('/brands/:id/geofencing', async (req, res) => {
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Analytics ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
+
+// ─── Audiences (pass holders segmentation) ─────────────────────────────────────
+
+router.get('/brands/:brand_id/audiences/insights', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const days = parseInt(req.query.days, 10) || 30;
+    const [insights, behavior] = await Promise.all([
+      getPassHoldersInsights(brand_id),
+      getHolderBehaviorInsights(brand_id, days)
+    ]);
+    res.json({ ...insights, behavior });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/holder-events', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const events = await listRecentHolderEvents(brand_id, {
+      limit: req.query.limit,
+      action: req.query.action || null
+    });
+    res.json(events);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/audiences/event-actions', async (req, res) => {
+  try {
+    if (!requireBrandId(req, res, req.params.brand_id)) return;
+    res.json({ actions: [...ALLOWED_EVENT_ACTIONS] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences/query', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const result = await executeAudienceQuery(brand_id, req.body.spec || req.body);
+    res.json(result);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/audiences', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const rows = await listAudiences(brand_id);
+    const enriched = await Promise.all(rows.map(async (a) => {
+      const count = await countAudienceMembers(brand_id, a.rules || {});
+      return { ...a, member_count: count };
+    }));
+    res.json(enriched);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const { name, description, rules, query_spec, source_prompt } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome audience obbligatorio' });
+    const normalized = query_spec
+      ? mergeSpecToAudienceRules(query_spec)
+      : normalizeRules(rules || {});
+    if (!hasActiveRules(normalized)) {
+      return res.status(400).json({ error: 'Seleziona almeno un filtro per l\'audience' });
+    }
+    const count = await countAudienceMembers(brand_id, normalized);
+    const row = await createAudience({
+      brand_id, name, description, rules: normalized,
+      query_spec: query_spec || { rules: normalized },
+      source_prompt: source_prompt || ''
+    });
+    await updateAudience(row.id, { cached_count: count });
+    res.json({ ...row, rules: normalized, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences/preview', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    if (req.body.spec) {
+      const result = await executeAudienceQuery(brand_id, req.body.spec, { limit: 10, offset: 0 });
+      return res.json({ count: result.count, sample: result.members, rules: result.rules, spec: req.body.spec });
+    }
+    const rules = normalizeRules(req.body.rules || {});
+    const count = await countAudienceMembers(brand_id, rules);
+    const sample = await listAudienceMembers(brand_id, rules, { limit: 10, offset: 0 });
+    res.json({ count, sample, rules });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const count = await countAudienceMembers(row.brand_id, row.rules || {});
+    res.json({ ...row, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/audiences/:id', async (req, res) => {
+  try {
+    const prev = await getAudience(req.params.id);
+    if (!prev) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, prev.brand_id)) return;
+    const patch = { ...req.body };
+    if (patch.rules !== undefined) patch.rules = normalizeRules(patch.rules);
+    const row = await updateAudience(req.params.id, patch);
+    const rules = row.rules || {};
+    const count = await countAudienceMembers(row.brand_id, rules);
+    await updateAudience(row.id, { cached_count: count });
+    res.json({ ...row, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/audiences/:id', async (req, res) => {
+  try {
+    const prev = await getAudience(req.params.id);
+    if (!prev) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, prev.brand_id)) return;
+    await deleteAudience(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id/members', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const lim = parseInt(req.query.limit, 10) || 100;
+    const off = parseInt(req.query.offset, 10) || 0;
+    const count = await countAudienceMembers(row.brand_id, row.rules || {});
+    const members = await listAudienceMembers(row.brand_id, row.rules || {}, { limit: lim, offset: off });
+    res.json({ count, members });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id/export', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const members = await listAudienceMembers(row.brand_id, row.rules || {}, { limit: 5000, offset: 0 });
+    const header = 'Nome,Cognome,Email,Telefono,Serial,Campagna,Stato,Apple push,Google,Samsung,Creato';
+    const lines = members.map((m) => [
+      m.contact_first_name || '',
+      m.contact_last_name || '',
+      m.contact_email || '',
+      m.contact_phone || '',
+      m.serial_number || '',
+      m.campaign_name || '',
+      m.status || '',
+      m.has_apple_push ? 'si' : 'no',
+      m.google_wallet_saved ? 'si' : 'no',
+      m.samsung_wallet_saved ? 'si' : 'no',
+      m.created_at ? new Date(m.created_at).toISOString() : ''
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audience_${row.id}.csv"`);
+    res.send('\uFEFF' + [header, ...lines].join('\n'));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 router.get('/analytics/:brand_id', async (req, res) => {
   try {
@@ -3575,27 +3784,16 @@ async function maybeGenerateAndApplyWaiStrip(payload) {
 }
 
 async function performImmediatePushForWai(payload) {
-  const { brand_id, title, message, campaign_id = null, update_pass = true, channel = 'apple' } = payload;
+  const { brand_id, title, message, campaign_id = null, audience_id = null, update_pass = true, channel = 'apple' } = payload;
   if (!assertPushChannel(channel)) throw new Error('channel non valido');
   const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
 
-  const targetPasses = campaign_id
-    ? (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])).rows
-    : (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id])).rows;
+  const pushTargetOpts = { campaign_id, audience_id };
+  const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
 
   let devices = [];
   if (sendApple) {
-    if (campaign_id) {
-      devices = (await pool.query(
-        `SELECT DISTINCT dr.push_token, dr.serial_number
-         FROM device_registrations dr
-         JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-         WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
-        [brand_id, campaign_id]
-      )).rows;
-    } else {
-      devices = await getDevicesForBrand(brand_id);
-    }
+    devices = await getAppleDevicesForAudience(brand_id, pushTargetOpts);
   }
 
   if (payload.strip_base64) {
@@ -3685,6 +3883,25 @@ const WAI_EXECUTORS = {
       dimensions: `${payload.width}x${payload.height}`,
       needs_name: true
     };
+  },
+  'audience.create': async (payload) => {
+    const { brand_id, name, description = '', query_spec, rules, source_prompt = '' } = payload;
+    if (!name) throw new Error('Nome audience obbligatorio');
+    const normalized = query_spec
+      ? mergeSpecToAudienceRules(query_spec)
+      : normalizeRules(rules || payload);
+    if (!hasActiveRules(normalized)) throw new Error('Filtri audience non validi');
+    const count = await countAudienceMembers(brand_id, normalized);
+    const row = await createAudience({
+      brand_id,
+      name,
+      description,
+      rules: normalized,
+      query_spec: query_spec || { rules: normalized, behavior: normalized.behavior },
+      source_prompt
+    });
+    await updateAudience(row.id, { cached_count: count });
+    return { message: `Audience "${name}" creata (${count} possessori)`, data: { ...row, member_count: count } };
   }
 };
 
@@ -3701,6 +3918,22 @@ router.post('/wai/ask', async (req, res) => {
       followup,
       previousProposal: previous_proposal
     });
+    if (proposal.intent === 'audience.query' && proposal.payload?.query_spec) {
+      try {
+        const result = await executeAudienceQuery(brand_id, proposal.payload.query_spec, { limit: 8, offset: 0 });
+        proposal.preview.details = {
+          ...(proposal.preview.details || {}),
+          member_count: result.count,
+          sample_members: result.members,
+          query_spec: proposal.payload.query_spec
+        };
+        const baseAnswer = proposal.answer || proposal.preview.summary || '';
+        proposal.answer = `${baseAnswer}\n\nPossessori che corrispondono: **${result.count}**.`.trim();
+        proposal.preview.summary = proposal.answer.slice(0, 280);
+      } catch (qErr) {
+        proposal.preview.warnings = [...(proposal.preview.warnings || []), qErr.message];
+      }
+    }
     const loggedPrompt = String(followup || '').trim()
       ? `${String(prompt || '').trim()}\n\nIntegrazione:\n${String(followup || '').trim()}`
       : String(prompt || '').trim();
