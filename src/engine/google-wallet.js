@@ -1,7 +1,7 @@
 /**
  * Google Wallet Pass Engine
  *
- * Creates and manages Google Wallet passes (Generic type).
+ * Creates and manages Google Wallet passes (Loyalty type).
  * Uses JWT-based "Add to Google Wallet" links — no file download needed.
  *
  * Flow (no pre-registration):
@@ -10,7 +10,7 @@
  * 3. generateSaveLink() — embed both class+object in JWT → "Add to Google Wallet" URL
  * 4. updatePassObject() — update pass content in real-time (still uses API for updates)
  *
- * NOTE: By embedding genericClasses inside the JWT payload (same as the Laravel approach),
+ * NOTE: By embedding loyaltyClasses inside the JWT payload (same as the Laravel approach),
  * we skip Google's class pre-registration/approval flow and avoid the
  * "This pass is only used for testing" restriction.
  */
@@ -137,7 +137,7 @@ async function getAccessToken() {
  * Create a signed JWT for "Add to Google Wallet" save link.
  *
  * KEY CHANGE: Now accepts both classObject and passObject and embeds
- * genericClasses + genericObjects in the payload — exactly like the Laravel code.
+ * loyaltyClasses + loyaltyObjects in the payload — exactly like the Laravel code.
  * This avoids the "testing only" restriction from pre-registered classes.
  */
 function createSaveJWT(classObject, passObject) {
@@ -152,8 +152,8 @@ function createSaveJWT(classObject, passObject) {
     typ: 'savetowallet',
     iat: now,
     payload: {
-      genericClasses: [classObject],  // ← embed class (skips pre-registration)
-      genericObjects: [passObject]    // ← embed object
+      loyaltyClasses: [classObject],  // embed class (skips pre-registration)
+      loyaltyObjects: [passObject]    // embed object
     }
   };
 
@@ -181,6 +181,8 @@ function buildPassClass(brand, template) {
 
   const classObj = {
     id: classId,
+    issuerName: brand.name,
+    programName: template.name || brand.name,
     classTemplateInfo: {
       cardTemplateOverride: {
         cardRowTemplateInfos: [
@@ -250,15 +252,8 @@ function buildPassObject(brand, template, instance, member) {
     id: objectId,
     classId: classId,
     state: 'ACTIVE',
-    cardTitle: {
-      defaultValue: { language: 'it', value: brand.name }
-    },
-    subheader: {
-      defaultValue: { language: 'it', value: 'Membro' }
-    },
-    header: {
-      defaultValue: { language: 'it', value: `${firstName} ${lastName}`.trim() }
-    },
+    accountId: instance.serial_number,
+    accountName: `${firstName} ${lastName}`.trim(),
     barcode: {
       type: 'QR_CODE',
       value: instance.serial_number,
@@ -351,7 +346,7 @@ function generateSaveLinkLegacy(passObject) {
     origins: [],
     typ: 'savetowallet',
     iat: now,
-    payload: { genericObjects: [passObject] }
+    payload: { loyaltyObjects: [passObject] }
   };
 
   const headerB64 = base64url(JSON.stringify(header));
@@ -371,9 +366,9 @@ function generateSaveLinkLegacy(passObject) {
  */
 async function createPassObjectOnServer(passObject) {
   try {
-    const existing = await walletApiGet(`/genericObject/${passObject.id}`);
+    const existing = await walletApiGet(`/loyaltyObject/${passObject.id}`);
     if (existing && existing.id) {
-      const updated = await walletApiPatch(`/genericObject/${passObject.id}`, passObject);
+      const updated = await walletApiPatch(`/loyaltyObject/${passObject.id}`, passObject);
       console.log(`[GoogleWallet] Updated object ${passObject.id}`);
       return updated;
     }
@@ -381,7 +376,7 @@ async function createPassObjectOnServer(passObject) {
     // 404 = doesn't exist
   }
 
-  const created = await walletApiPost('/genericObject', passObject);
+  const created = await walletApiPost('/loyaltyObject', passObject);
   console.log(`[GoogleWallet] Created object ${passObject.id}`);
   return created;
 }
@@ -390,7 +385,7 @@ async function updatePassObject(serialNumber, updates) {
   const objectId = `${ISSUER_ID}.${serialNumber}`;
 
   try {
-    const updated = await walletApiPatch(`/genericObject/${objectId}`, updates);
+    const updated = await walletApiPatch(`/loyaltyObject/${objectId}`, updates);
     console.log(`[GoogleWallet] Updated object ${objectId}`);
     return updated;
   } catch (e) {

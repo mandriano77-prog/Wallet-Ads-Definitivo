@@ -3196,7 +3196,7 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
       google_installed_at: null
     });
 
-    const saveLink = googleWallet.generateSaveLink(passObject);
+    const saveLink = googleWallet.generateSaveLink(brand, template, passObject);
 
     await logEvent({
       brand_id: instance.brand_id,
