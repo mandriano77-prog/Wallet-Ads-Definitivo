@@ -14,7 +14,7 @@
  * we skip Google's class pre-registration/approval flow and avoid the
  * "This pass is only used for testing" restriction.
  */
- 
+
 const crypto = require('crypto');
 const https = require('https');
 const fs = require('fs');
@@ -88,6 +88,20 @@ const API_BASE = resolveApiBase();
 function walletPublicBrandAssetUri(brand, asset) {
   if (!API_BASE || !brand?.slug) return null;
   return `${API_BASE}/brands/by-slug/${encodeURIComponent(brand.slug)}/${asset}`;
+}
+
+function buildLoyaltyClassId(brand, template) {
+  // Use a loyalty-specific namespace to avoid collisions with legacy Generic classes.
+  return `${ISSUER_ID}.loyalty_${brand.slug}_${template.id}`;
+}
+
+function buildLoyaltyObjectId(serialNumber) {
+  // Keep object IDs in the same loyalty namespace for type-safe uniqueness.
+  return `${ISSUER_ID}.loyalty_${serialNumber}`;
+}
+
+function buildLegacyObjectId(serialNumber) {
+  return `${ISSUER_ID}.${serialNumber}`;
 }
 
 // ── JWT helpers ───────────────────────────────────────────────────────
@@ -186,7 +200,7 @@ function createSaveJWT(classObject, passObject) {
  * It just returns the class object to be embedded in the JWT.
  */
 function buildPassClass(brand, template) {
-  const classId = `${ISSUER_ID}.${brand.slug}_${template.id}`;
+  const classId = buildLoyaltyClassId(brand, template);
 
   const classObj = {
     id: classId,
@@ -222,8 +236,8 @@ async function createOrUpdatePassClass(brand, template) {
 // ── Pass Object (instance) ────────────────────────────────────────────
 
 function buildPassObject(brand, template, instance, member) {
-  const classId = `${ISSUER_ID}.${brand.slug}_${template.id}`;
-  const objectId = `${ISSUER_ID}.${instance.serial_number}`;
+  const classId = buildLoyaltyClassId(brand, template);
+  const objectId = buildLoyaltyObjectId(instance.serial_number);
 
   const firstName = member?.first_name || instance.customer_data?.name || 'Guest';
   const lastName = member?.last_name || '';
@@ -359,13 +373,25 @@ async function createPassObjectOnServer(passObject) {
 }
 
 async function updatePassObject(serialNumber, updates) {
-  const objectId = `${ISSUER_ID}.${serialNumber}`;
+  const objectId = buildLoyaltyObjectId(serialNumber);
 
   try {
     const updated = await walletApiPatch(`/loyaltyObject/${objectId}`, updates);
     console.log(`[GoogleWallet] Updated object ${objectId}`);
     return updated;
   } catch (e) {
+    // Backward compatibility for old objects created before loyalty namespace migration.
+    const legacyObjectId = buildLegacyObjectId(serialNumber);
+    if (legacyObjectId !== objectId) {
+      try {
+        const updatedLegacy = await walletApiPatch(`/loyaltyObject/${legacyObjectId}`, updates);
+        console.log(`[GoogleWallet] Updated legacy object ${legacyObjectId}`);
+        return updatedLegacy;
+      } catch (legacyErr) {
+        console.error(`[GoogleWallet] Failed to update ${objectId} and legacy ${legacyObjectId}:`, legacyErr.message);
+        throw legacyErr;
+      }
+    }
     console.error(`[GoogleWallet] Failed to update ${objectId}:`, e.message);
     throw e;
   }
