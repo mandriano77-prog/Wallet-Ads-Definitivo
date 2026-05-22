@@ -74,6 +74,21 @@ const SERVICE_ACCOUNT_JSON = loadServiceAccount();
 const WALLET_API_BASE = 'https://walletobjects.googleapis.com/walletobjects/v1';
 const SAVE_LINK_BASE = 'https://pay.google.com/gp/v/save';
 
+function isDebugEnabled() {
+  const raw = String(process.env.GOOGLE_WALLET_DEBUG || '').trim().toLowerCase();
+  if (!raw) return true;
+  return !['0', 'false', 'off', 'no'].includes(raw);
+}
+
+function logWalletDebug(event, payload) {
+  if (!isDebugEnabled()) return;
+  try {
+    console.log(`[GoogleWallet][Debug] ${event} ${JSON.stringify(payload)}`);
+  } catch (e) {
+    console.log(`[GoogleWallet][Debug] ${event}`);
+  }
+}
+
 function resolveApiBase() {
   const rawHost =
     (process.env.CUSTOM_DOMAIN && process.env.CUSTOM_DOMAIN.trim()) ||
@@ -180,6 +195,18 @@ function createSaveJWT(classObject, passObject) {
     }
   };
 
+  logWalletDebug('createSaveJWT.payload', {
+    iss: SERVICE_ACCOUNT_JSON.client_email,
+    aud: payload.aud,
+    origin,
+    iat: now,
+    classId: classObject?.id || null,
+    objectId: passObject?.id || null,
+    classReviewStatus: classObject?.reviewStatus || null,
+    objectClassId: passObject?.classId || null,
+    registrationMode: 'jwt-embedded'
+  });
+
   const headerB64 = base64url(JSON.stringify(header));
   const payloadB64 = base64url(JSON.stringify(payload));
   const signInput = `${headerB64}.${payloadB64}`;
@@ -220,6 +247,14 @@ function buildPassClass(brand, template) {
 
   // Background color
   classObj.hexBackgroundColor = rgbToHex(template.style?.backgroundColor || '#0D0B1A');
+
+  logWalletDebug('buildPassClass', {
+    classId,
+    reviewStatus: classObj.reviewStatus,
+    issuerName: classObj.issuerName,
+    programName: classObj.programName,
+    hasProgramLogo: !!classObj.programLogo
+  });
 
   return classObj;
 }
@@ -297,6 +332,15 @@ function buildPassObject(brand, template, instance, member) {
     });
   }
 
+  logWalletDebug('buildPassObject', {
+    objectId,
+    classId,
+    state: obj.state,
+    accountId: obj.accountId,
+    textModulesCount: obj.textModulesData.length,
+    linksCount: obj.linksModuleData?.uris?.length || 0
+  });
+
   return obj;
 }
 
@@ -309,6 +353,12 @@ function buildPassObject(brand, template, instance, member) {
 function generateSaveLink(brand, template, passObject) {
   const classObject = buildPassClass(brand, template);
   const jwt = createSaveJWT(classObject, passObject);
+  logWalletDebug('generateSaveLink', {
+    classId: classObject?.id || null,
+    objectId: passObject?.id || null,
+    reviewStatus: classObject?.reviewStatus || null,
+    jwtLength: jwt.length
+  });
   return `${SAVE_LINK_BASE}/${jwt}`;
 }
 
@@ -364,7 +414,10 @@ async function createPassObjectOnServer(passObject) {
       return updated;
     }
   } catch (e) {
-    // 404 = doesn't exist
+    const status = e?.statusCode || null;
+    if (status && status !== 404) {
+      console.warn(`[GoogleWallet] lookup loyaltyObject failed for ${passObject.id}: ${e.message}`);
+    }
   }
 
   const created = await walletApiPost('/loyaltyObject', passObject);
