@@ -14,7 +14,7 @@
  * we skip Google's class pre-registration/approval flow and avoid the
  * "This pass is only used for testing" restriction.
  */
-
+ 
 const crypto = require('crypto');
 const https = require('https');
 const fs = require('fs');
