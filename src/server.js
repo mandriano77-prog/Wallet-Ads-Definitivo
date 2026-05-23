@@ -124,11 +124,17 @@ function getDeployDashboardProductLine() {
 app.get('/dashboard/boot.js', (req, res) => {
   const lock = getDeployDashboardProductLine();
   const title = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
+  const bylineEnv = String(process.env.DASHBOARD_CHROME_BYLINE ?? '').trim();
+  const chromeByline = bylineEnv || (lock === 'hr' ? '' : 'by Underdogs Group');
+  const allowlistRaw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
+  const loginAllowlist = allowlistRaw || (lock === 'hr' ? 'admin@nudj.studio' : '');
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
   res.send(
     `window.__2WALLET_PRODUCT_LOCK__=${JSON.stringify(lock)};` +
-    `window.__2WALLET_PRODUCT_TITLE__=${JSON.stringify(title)};`
+    `window.__2WALLET_PRODUCT_TITLE__=${JSON.stringify(title)};` +
+    `window.__2WALLET_CHROME_BYLINE__=${JSON.stringify(chromeByline)};` +
+    `window.__2WALLET_LOGIN_ALLOWLIST__=${JSON.stringify(loginAllowlist)};`
   );
 });
 

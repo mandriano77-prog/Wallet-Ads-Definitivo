@@ -93,6 +93,30 @@ function brandAllowedOnDeploy(brand) {
   return brandProductLine(brand) === lock;
 }
 
+/** Comma-separated emails allowed to log in on this deploy (e.g. Filo Diretto → admin@nudj.studio). */
+function dashboardLoginAllowlist() {
+  const raw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
+  if (raw) {
+    return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  }
+  if (deployProductLineLock() === 'hr') return ['admin@nudj.studio'];
+  return null;
+}
+
+function isDashboardLoginAllowed(email) {
+  const list = dashboardLoginAllowlist();
+  if (!list) return true;
+  return list.includes(String(email || '').trim().toLowerCase());
+}
+
+function rejectIfDeployLoginNotAllowed(req, res) {
+  if (!isDashboardLoginAllowed(req.user?.email)) {
+    res.status(403).json({ error: 'Accesso non autorizzato su questa istanza dashboard' });
+    return true;
+  }
+  return false;
+}
+
 /** Canali ammessi su API/dashboard (solo singoli + all). Legacy `both` resta nei record DB ma non è più selezionabile. */
 const PUSH_CHANNELS = ['apple', 'google', 'samsung', 'all'];
 function assertPushChannel(ch) {
@@ -203,6 +227,9 @@ router.post('/auth/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email e password richiesti' });
     const user = await getUserByEmail(email);
     if (!user) return res.status(401).json({ error: 'Credenziali non valide' });
+    if (!isDashboardLoginAllowed(user.email)) {
+      return res.status(403).json({ error: 'Accesso non autorizzato su questa istanza dashboard' });
+    }
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Credenziali non valide' });
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, brand_id: user.brand_id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
@@ -1014,6 +1041,9 @@ function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Token mancante. Effettua il login.' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (!isDashboardLoginAllowed(decoded.email)) {
+      return res.status(403).json({ error: 'Accesso non autorizzato su questa istanza dashboard' });
+    }
     req.user = decoded;
     next();
   } catch (err) {
@@ -1145,6 +1175,11 @@ router.get('/users', async (req, res) => {
 router.post('/users', async (req, res) => {
   try {
     if (!requireAdmin(req, res)) return;
+    if (rejectIfDeployLoginNotAllowed(req, res)) return;
+    const newEmail = String(req.body.email || '').trim().toLowerCase();
+    if (dashboardLoginAllowlist() && !isDashboardLoginAllowed(newEmail)) {
+      return res.status(403).json({ error: 'Su questa istanza sono ammessi solo gli account autorizzati dal deploy' });
+    }
     const tempPassword = req.body.password || Math.random().toString(36).slice(-10);
     req.body.password = tempPassword;
     const user = await createUser(req.body);
@@ -1201,6 +1236,16 @@ router.put('/users/:id', async (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   try {
     if (!requireAdmin(req, res)) return;
+    if (rejectIfDeployLoginNotAllowed(req, res)) return;
+    const target = await getUser(req.params.id);
+    if (!target) return res.status(404).json({ error: 'Utente non trovato' });
+    if (String(target.id) === String(req.user.id)) {
+      return res.status(400).json({ error: 'Non puoi eliminare il tuo account mentre sei connesso' });
+    }
+    const allowlist = dashboardLoginAllowlist();
+    if (allowlist && isDashboardLoginAllowed(target.email)) {
+      return res.status(400).json({ error: 'Non puoi eliminare un account amministratore autorizzato su questo deploy' });
+    }
     await deleteUser(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ads2Wallet — by Underdogs Group</title>
+    <title>Ads2Wallet</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="/dashboard/boot.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -369,8 +369,8 @@
             .sidebar { display: none; }
             .form-row { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
-            .table tbody td:nth-child(6),
-            .table thead th:nth-child(6) { display: none; }
+            .table:not(.table-keep-actions) tbody td:nth-child(6),
+            .table:not(.table-keep-actions) thead th:nth-child(6) { display: none; }
         }
         @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
     </style>
@@ -381,7 +381,7 @@
 <div id="loginGate" class="login-gate" role="dialog" aria-labelledby="loginTitle">
     <div class="login-card card" id="loginPanel">
         <div class="sec-title" id="loginTitle">Accedi</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.45;">Dashboard Ads2Wallet — utenti abilitati: accedi con email e password.</p>
+        <p id="loginSubtitle" style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.45;">Dashboard — accedi con email e password.</p>
         <div id="loginError" class="login-error" role="alert"></div>
         <div class="form-group"><label class="form-label">Email</label><input type="email" id="loginEmail" autocomplete="username" placeholder="nome@azienda.it"></div>
         <div class="form-group"><label class="form-label">Password</label><input type="password" id="loginPassword" autocomplete="current-password"></div>
@@ -416,7 +416,7 @@
 
 <div class="layout" id="mainLayout" style="display:none;">
     <div class="sidebar">
-        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small>by Underdogs Group</small></div>
+        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small class="chrome-byline">by Underdogs Group</small></div>
         <div class="nav-label" id="navLabelDashboard">Dashboard</div>
         <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
         <div class="nav-label">Brand</div>
@@ -438,10 +438,10 @@
         <div class="nav-item" onclick="nav('analytics')">Analytics</div>
         <div class="nav-item" onclick="nav('activity-log')">Attività</div>
         <div class="nav-label">Setup</div>
-        <div class="nav-item" onclick="nav('users')">Utenti</div>
+        <div class="nav-item" onclick="nav('users')" data-role-min="admin">Utenti</div>
 
         <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text2);"><span class="chrome-product-title">Ads2Wallet</span><br>by Underdogs Group</div>
+            <div style="font-size:11px; color:var(--text2);"><span class="chrome-product-title">Ads2Wallet</span><br><span class="chrome-byline">by Underdogs Group</span></div>
         </div>
     </div>
 
@@ -1483,9 +1483,9 @@
                 <div class="sec-title">Gestione Utenti</div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard.</p>
-                    <button class="btn" onclick="openCreateUserModal()">+ Nuovo Utente</button>
+                    <button class="btn" onclick="openCreateUserModal()" data-role-min="admin" id="createUserBtn">+ Nuovo Utente</button>
                 </div>
-                <table class="table" id="usersTable">
+                <table class="table table-keep-actions" id="usersTable">
                     <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Brand</th><th>Stato</th><th>Azioni</th></tr></thead>
                     <tbody></tbody>
                 </table>
@@ -2200,16 +2200,22 @@ function updateNavState() {
     const isAdmin = role === 'admin';
     const hasBrand = !!brandId;
 
-    // Hide/show nav items based on role
+    // Hide users nav for non-admin; hide create-user when deploy has login allowlist
     document.querySelectorAll('.nav-item').forEach(n => {
         const section = n.getAttribute('onclick')?.match(/nav\('(.+?)'\)/)?.[1];
-        // Viewers cannot access: users, brand-identity (edit), pass-wizard (create)
         if (isViewer && ['users'].includes(section)) {
+            n.style.display = 'none';
+        } else if (section === 'users' && !isAdmin) {
             n.style.display = 'none';
         } else {
             n.style.display = '';
         }
     });
+    const createUserBtn = document.getElementById('createUserBtn');
+    if (createUserBtn) {
+        const allowlist = getDashboardLoginAllowlist();
+        createUserBtn.style.display = (isAdmin && !allowlist) ? '' : 'none';
+    }
 
     // Hide Dashboard/Inizio once a brand is selected.
     const dashboardLabel = document.getElementById('navLabelDashboard');
@@ -2593,9 +2599,59 @@ function syncProductLineSelector() {
             : 'Seleziona la linea per filtrare i brand disponibili');
 }
 
+function syncChromeByline() {
+    let byline = 'by Underdogs Group';
+    try {
+        if (typeof window.__2WALLET_CHROME_BYLINE__ === 'string') byline = window.__2WALLET_CHROME_BYLINE__.trim();
+    } catch (_) {}
+    document.querySelectorAll('.chrome-byline').forEach((el) => {
+        if (!byline) {
+            el.textContent = '';
+            el.style.display = 'none';
+        } else {
+            el.textContent = byline;
+            el.style.display = '';
+        }
+    });
+}
+
+function bylineForTitle(productTitle) {
+    let byline = 'by Underdogs Group';
+    try {
+        if (typeof window.__2WALLET_CHROME_BYLINE__ === 'string') byline = window.__2WALLET_CHROME_BYLINE__.trim();
+    } catch (_) {}
+    return byline ? `${productTitle} — ${byline}` : productTitle;
+}
+
+function getDashboardLoginAllowlist() {
+    try {
+        const raw = window.__2WALLET_LOGIN_ALLOWLIST__;
+        if (!raw || !String(raw).trim()) return null;
+        return String(raw).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    } catch (_) {
+        return null;
+    }
+}
+
+function syncLoginGateCopy() {
+    const subtitle = document.getElementById('loginSubtitle');
+    if (!subtitle) return;
+    const title = getDashboardProductDisplayTitle(getDashboardProductLine());
+    const allowlist = getDashboardLoginAllowlist();
+    if (allowlist && allowlist.length === 1) {
+        subtitle.textContent = `${title} — accesso riservato agli account autorizzati.`;
+    } else if (allowlist && allowlist.length > 1) {
+        subtitle.textContent = `${title} — solo utenti autorizzati possono accedere.`;
+    } else {
+        subtitle.textContent = `${title} — accedi con email e password.`;
+    }
+}
+
 function syncChromeProductTitles(line) {
     const title = getDashboardProductDisplayTitle(line);
     document.querySelectorAll('.chrome-product-title').forEach((el) => { el.textContent = title; });
+    syncChromeByline();
+    syncLoginGateCopy();
 }
 
 function applyProductShellTheme(line) {
@@ -2667,7 +2723,7 @@ function applyBrandTheme() {
             headerBrandLogo.style.display = 'none';
             headerBrandLogo.removeAttribute('src');
         }
-        document.title = productTitle + ' — by Underdogs Group';
+        document.title = bylineForTitle(productTitle);
         return;
     }
     const targetBrandId = brandId;
@@ -2719,7 +2775,11 @@ function adjustAlpha(hex, alpha) {
 async function deleteBrandAction() {
     if (!brandId) return alert('Seleziona una brand');
     if (!confirm('Eliminare la brand e TUTTI i dati? Non si puo annullare.')) return;
-    await fetch(`${API}/brands/${brandId}`, {method:'DELETE'});
+    const res = await fetch(`${API}/brands/${brandId}`, { method: 'DELETE', headers: getAuthHeaders() });
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        return toast('Errore: ' + (e.error || 'eliminazione fallita'));
+    }
     toast('Brand eliminata'); brandId = null; await loadBrands();
 }
 
@@ -6816,22 +6876,34 @@ async function savePassDesign() {
 
 // ==================== USERS ====================
 async function loadUsers() {
-    const res = await fetch(`${API}/users`);
+    const res = await fetch(`${API}/users`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast('Errore utenti: ' + (e.error || res.status));
+        return;
+    }
     const users = await res.json();
+    const allowlist = getDashboardLoginAllowlist();
     const tbody = document.querySelector('#usersTable tbody');
-    tbody.innerHTML = users.map(u => `
+    if (!tbody) return;
+    tbody.innerHTML = users.map(u => {
+        const protectedAdmin = allowlist && allowlist.includes(String(u.email || '').toLowerCase());
+        const deleteBtn = protectedAdmin
+            ? '<span style="font-size:11px;color:var(--text2);">Protetto</span>'
+            : `<button class="btn small danger" onclick="deleteUser('${u.id}')">Elimina</button>`;
+        return `
         <tr>
             <td>${esc(u.name)}</td>
             <td>${esc(u.email)}</td>
             <td><span class="badge ${u.role==='admin'?'active':'inactive'}">${{admin:'Admin',manager:'Manager',viewer:'Viewer'}[u.role]||u.role}</span></td>
             <td>${u.brand_id ? esc(u.brand_id).substring(0,8)+'...' : 'Tutti'}</td>
             <td><span class="badge active">Attivo</span></td>
-            <td style="display:flex;gap:6px;">
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="btn sec" style="font-size:11px;padding:4px 10px;" onclick="resendInvite('${u.id}')">Reinvia Mail</button>
-                <button class="btn small danger" onclick="deleteUser('${u.id}')">Elimina</button>
+                ${deleteBtn}
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 function openCreateUserModal() {
@@ -6856,7 +6928,15 @@ async function createUser() {
         brand_id: document.getElementById('userBrand').value || null
     };
     if (!body.name || !body.email || !body.password) return alert('Compila tutti i campi');
-    await fetch(`${API}/users`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch(`${API}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        return toast('Errore: ' + (e.error || 'creazione fallita'));
+    }
     closeModal('userModal');
     toast('Utente creato!');
     loadUsers();
@@ -6871,8 +6951,12 @@ async function resendInvite(id) {
 }
 
 async function deleteUser(id) {
-    if (!confirm('Eliminare questo utente?')) return;
-    await fetch(`${API}/users/${id}`, { method: 'DELETE' });
+    if (!confirm('Eliminare questo utente? L\'operazione vale per tutto il database condiviso.')) return;
+    const res = await fetch(`${API}/users/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        return toast('Errore: ' + (e.error || 'eliminazione fallita'));
+    }
     toast('Utente eliminato');
     loadUsers();
 }
