@@ -28,6 +28,8 @@
     <link rel="stylesheet" href="/dashboard/styles/tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
+    <script src="/dashboard/lib/utils.js"></script>
+    <script src="/dashboard/lib/nav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1138,43 +1140,43 @@
 
         <details class="nav-group" open data-nav-group="brand">
             <summary class="nav-group-label">Brand</summary>
-            <div class="nav-item" onclick="nav('brand-identity')">Identità</div>
-            <div class="nav-item" onclick="nav('media-library')">Media Library</div>
+            <div class="nav-item" onclick="nav('brand-identity')" data-section-id="brand-identity">Identità Brand</div>
+            <div class="nav-item" onclick="nav('media-library')" data-section-id="media-library">Media Library</div>
         </details>
 
         <details class="nav-group" open data-nav-group="pass">
             <summary class="nav-group-label">Pass</summary>
-            <div class="nav-item" onclick="nav('templates')">Template Pass</div>
-            <div class="nav-item" onclick="nav('passes')">Pass Emessi</div>
+            <div class="nav-item" onclick="nav('templates')" data-section-id="templates">Template Pass</div>
+            <div class="nav-item" onclick="nav('passes')" data-section-id="passes">Pass Emessi</div>
         </details>
 
         <details class="nav-group" open data-nav-group="comunicazione">
             <summary class="nav-group-label">Comunicazione</summary>
-            <div class="nav-item" onclick="nav('campaigns')">Campagne</div>
-            <div class="nav-item" onclick="nav('push')">Push Notification</div>
+            <div class="nav-item" onclick="nav('campaigns')" data-section-id="campaigns">Campagne</div>
+            <div class="nav-item" onclick="nav('push')" data-section-id="push">Push &amp; Notifiche</div>
         </details>
 
         <details class="nav-group" open data-nav-group="engagement">
             <summary class="nav-group-label">Engagement</summary>
-            <div class="nav-item" onclick="nav('instant-win')">Instant Win</div>
-            <div class="nav-item" onclick="nav('gamification')">Gamification</div>
+            <div class="nav-item" onclick="nav('instant-win')" data-section-id="instant-win">Instant Win</div>
+            <div class="nav-item" onclick="nav('gamification')" data-section-id="gamification">Gamification</div>
         </details>
 
         <details class="nav-group" open data-nav-group="database">
             <summary class="nav-group-label">Database</summary>
-            <div class="nav-item" onclick="nav('leads')" data-menu-key="nav_leads" data-menu-default="Leads">Leads</div>
-            <div class="nav-item" onclick="nav('audiences')">Audience</div>
+            <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-menu-key="nav_leads" data-menu-default="Contatti">Contatti</div>
+            <div class="nav-item" onclick="nav('audiences')" data-section-id="audiences">Audience</div>
         </details>
 
         <details class="nav-group" open data-nav-group="insights">
             <summary class="nav-group-label">Insights</summary>
-            <div class="nav-item" onclick="nav('analytics')">Analytics</div>
-            <div class="nav-item" onclick="nav('activity-log')">Attività</div>
+            <div class="nav-item" onclick="nav('analytics')" data-section-id="analytics">Analytics</div>
+            <div class="nav-item" onclick="nav('activity-log')" data-section-id="activity-log">Log Attività</div>
         </details>
 
         <details class="nav-group" open data-nav-group="setup">
             <summary class="nav-group-label">Setup</summary>
-            <div class="nav-item" onclick="nav('users')" data-role-min="admin">Utenti</div>
+            <div class="nav-item" onclick="nav('users')" data-section-id="users" data-role-min="admin">Utenti</div>
         </details>
 
         <div class="sidebar-footer">
@@ -2031,7 +2033,7 @@
 
             <!-- LEADS DATABASE -->
             <div id="leads" class="section">
-                <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Lista contatti">Lista contatti</h1>
+                <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Contatti">Contatti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
                     <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
                     <div style="display:flex;gap:8px;align-items:center;">
@@ -2051,7 +2053,7 @@
 
             <!-- AUDIENCES -->
                         <div id="audiences" class="section">
-                <h1 class="sec-title page-title">Audience Platform</h1>
+                <h1 class="sec-title page-title">Audience</h1>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Segmentazione possessori pass, statistiche di apertura e click sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
                 <button type="button" class="btn sec" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
 
@@ -2214,7 +2216,7 @@
             <div id="activity-log" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
                     <div>
-                        <h1 class="sec-title page-title">Log attività</h1>
+                        <h1 class="sec-title page-title">Log Attività</h1>
                         <p style="font-size:12px;color:var(--text2);margin-top:8px;max-width:42rem;line-height:1.45;">
                             Cronologia eventi del brand (pass creati, installazioni, wallet, landing, ecc.) registrati dal server.<br>Righe più recenti in alto · massimo 500 per richiesta.</p>
                     </div>
@@ -2236,7 +2238,7 @@
 
             <!-- USERS -->
             <div class="section" id="users">
-                <h1 class="sec-title page-title">Gestione Utenti</h1>
+                <h1 class="sec-title page-title">Utenti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard.</p>
                     <button class="btn" onclick="openCreateUserModal()" data-role-min="admin" id="createUserBtn">+ Nuovo Utente</button>
@@ -2655,7 +2657,7 @@ function syncBreadcrumb(sectionId) {
     const sectionEl = document.getElementById('breadcrumbSection');
     if (!brandEl || !sectionEl) return;
     const sid = sectionId || getActiveSectionId();
-    sectionEl.textContent = SECTION_PAGE_TITLES[sid] || sid;
+    sectionEl.textContent = typeof getSectionPageTitle === 'function' ? getSectionPageTitle(sid) : (SECTION_PAGE_TITLES[sid] || sid);
     const productTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
     brandEl.textContent = (brandId && currentBrandName) ? currentBrandName : productTitle;
 }
@@ -3077,25 +3079,38 @@ document.addEventListener('DOMContentLoaded', () => {
     bootstrapSession();
 });
 
-// ==================== SECTION TITLES (Filo / a11y) ====================
-const SECTION_PAGE_TITLES = {
-    welcome: 'Inizio',
-    'brand-identity': 'Identità Brand',
-    'media-library': 'Media Library',
-    templates: 'Template Pass',
-    passes: 'Pass Emessi',
-    campaigns: 'Campagne',
-    push: 'Push & Notifiche',
-    'instant-win': 'Instant Win',
-    gamification: 'Gamification',
-    leads: 'People',
-    audiences: 'Audience',
-    analytics: 'Analytics',
-    'activity-log': 'Attività',
-    users: 'Utenti',
-    'pass-design': 'Design Pass',
-    'pass-wizard': 'Crea Pass'
-};
+// ==================== SECTION TITLES (Filo / a11y) — source: /dashboard/lib/nav.js ====================
+const SECTION_PAGE_TITLES = (typeof window !== 'undefined' && window.FD_NAV && window.FD_NAV.buildSectionPageTitles)
+    ? window.FD_NAV.buildSectionPageTitles()
+    : {
+        welcome: 'Inizio',
+        'brand-identity': 'Identità Brand',
+        'media-library': 'Media Library',
+        templates: 'Template Pass',
+        passes: 'Pass Emessi',
+        campaigns: 'Campagne',
+        push: 'Push & Notifiche',
+        'instant-win': 'Instant Win',
+        gamification: 'Gamification',
+        leads: 'Contatti',
+        audiences: 'Audience',
+        analytics: 'Analytics',
+        'activity-log': 'Log Attività',
+        users: 'Utenti',
+        'pass-design': 'Design Pass',
+        'pass-wizard': 'Crea Pass'
+    };
+
+function getSectionPageTitle(sectionId) {
+    const copy = typeof getMergedProductMenuCopy === 'function'
+        ? getMergedProductMenuCopy(getDashboardProductLine())
+        : {};
+    if (sectionId === 'leads' && copy.leads_page_title) return copy.leads_page_title;
+    if (window.FD_NAV && typeof window.FD_NAV.getPageTitle === 'function') {
+        return window.FD_NAV.getPageTitle(sectionId);
+    }
+    return SECTION_PAGE_TITLES[sectionId] || sectionId;
+}
 
 function getActiveSectionId() {
     const el = document.querySelector('.section.active');
@@ -3104,12 +3119,17 @@ function getActiveSectionId() {
 
 function syncSectionDocumentTitle(sectionId) {
     const sid = sectionId || getActiveSectionId();
-    const sectionLabel = SECTION_PAGE_TITLES[sid] || sid;
+    const sectionLabel = getSectionPageTitle(sid);
     const appTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
     const brand = brandId && currentBrandName ? currentBrandName : null;
-    document.title = brand
-        ? `${sectionLabel} · ${brand} · ${appTitle}`
-        : `${sectionLabel} · ${appTitle}`;
+    const lightShell = document.documentElement.getAttribute('data-shell') === 'light';
+    if (lightShell) {
+        document.title = `${sectionLabel} · ${appTitle}`;
+    } else {
+        document.title = brand
+            ? `${sectionLabel} · ${brand} · ${appTitle}`
+            : `${sectionLabel} · ${appTitle}`;
+    }
 }
 
 function syncNavAriaCurrent(sectionId) {
@@ -3411,8 +3431,8 @@ const PRODUCT_THEMES = {
 };
 
 const PRODUCT_MENU_DEFAULTS = {
-    nav_leads: 'Leads',
-    leads_page_title: 'Lista contatti',
+    nav_leads: 'Contatti',
+    leads_page_title: 'Contatti',
     leads_page_blurb: 'Elenco delle persone collegate ai pass di questo brand.',
     leads_stat_total: 'Contatti totali',
     leads_stat_device: 'Con device registrato',
@@ -3427,12 +3447,12 @@ const PRODUCT_MENU_COPY = {
     ads: {},
     live: {},
     hr: {
-        nav_leads: 'People',
-        leads_page_title: 'Dipendenti',
-        leads_page_blurb: 'Elenco dei dipendenti: nominativi, contatti e pass associati al brand.',
-        leads_stat_total: 'Dipendenti totali',
-        leads_empty: 'Nessun dipendente registrato',
-        leads_export_empty: 'Nessun dipendente da esportare',
+        nav_leads: 'Contatti',
+        leads_page_title: 'Contatti',
+        leads_page_blurb: 'Elenco contatti collegati ai pass di questo brand.',
+        leads_stat_total: 'Contatti totali',
+        leads_empty: 'Nessun contatto registrato',
+        leads_export_empty: 'Nessun contatto da esportare',
     },
     engage: {
         nav_leads: 'Customer',
@@ -3686,6 +3706,9 @@ function initDashboardProductTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     syncDocumentTitle(line);
+    if (window.FD_NAV && typeof window.FD_NAV.applyNavNaming === 'function') {
+        window.FD_NAV.applyNavNaming();
+    }
     applyProductMenuCopy(line);
     syncProductLineSelector();
     syncFiloHeaderChrome();
