@@ -1369,6 +1369,51 @@ async function listEmployeesForBrand(brandId) {
   return result.rows;
 }
 
+async function getEmployeeFieldOptionsForBrand(brandId) {
+  await ensureMembersHrSchema();
+  const [depts, sites, managers] = await Promise.all([
+    pool.query(
+      `SELECT DISTINCT TRIM(department) AS v
+       FROM members
+       WHERE brand_id = $1 AND department IS NOT NULL AND TRIM(department) <> ''
+       ORDER BY v`,
+      [brandId]
+    ),
+    pool.query(
+      `SELECT DISTINCT TRIM(office_location) AS v
+       FROM members
+       WHERE brand_id = $1 AND office_location IS NOT NULL AND TRIM(office_location) <> ''
+       ORDER BY v`,
+      [brandId]
+    ),
+    pool.query(
+      `SELECT DISTINCT TRIM(manager_email) AS v
+       FROM members
+       WHERE brand_id = $1 AND manager_email IS NOT NULL AND TRIM(manager_email) <> ''
+       ORDER BY v`,
+      [brandId]
+    )
+  ]);
+  return {
+    departments: depts.rows.map((r) => r.v),
+    sites: sites.rows.map((r) => r.v),
+    manager_emails: managers.rows.map((r) => r.v)
+  };
+}
+
+async function isEmployeeMatricolaAvailable(brandId, value) {
+  const v = String(value || '').trim();
+  if (!v) return true;
+  await ensureMembersHrSchema();
+  const r = await pool.query(
+    `SELECT 1 FROM members
+     WHERE brand_id = $1 AND LOWER(TRIM(employee_id)) = LOWER(TRIM($2))
+     LIMIT 1`,
+    [brandId, v]
+  );
+  return r.rows.length === 0;
+}
+
 async function findMemberByBrandKey(brandId, { employee_id, email }) {
   if (employee_id) {
     const r = await pool.query(
@@ -2706,6 +2751,8 @@ module.exports = {
   touchPass,
   getMemberForPass,
   listEmployeesForBrand,
+  getEmployeeFieldOptionsForBrand,
+  isEmployeeMatricolaAvailable,
   findMemberByBrandKey,
   createMemberRecord,
   updateMemberRecord,
