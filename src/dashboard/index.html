@@ -7263,7 +7263,9 @@ function renderLeadsTable(leads) {
             const actBadge = act === 'activated' ? 'var(--accent)' : (act === 'invited' ? '#f5a623' : 'var(--text2)');
             const resendBtn = l.player_email && act !== 'activated'
                 ? `<button type="button" class="btn small sec" onclick="resendMemberActivation('${l.id}')">Reinvia</button>`
-                : '—';
+                : '';
+            const deleteBtn = `<button type="button" class="btn small danger" onclick="deleteMemberContact('${l.id}')">Elimina</button>`;
+            const actions = [resendBtn, deleteBtn].filter(Boolean).join(' ');
             return `<tr>
             <td>${esc(l.player_first_name || '-')}</td>
             <td>${esc(l.player_last_name || '-')}</td>
@@ -7274,7 +7276,7 @@ function renderLeadsTable(leads) {
             <td style="font-size:12px;color:${actBadge};">${esc(activationStatusLabel(act))}</td>
             <td style="font-size:11px;font-family:monospace;">${l.pass_id ? esc(String(l.pass_id).substring(0, 8)) + '…' : '—'}</td>
             <td style="font-size:12px;">${esc(walletStatusLabel(l))}</td>
-            <td>${resendBtn}</td>
+            <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">${actions}</td>
         </tr>`;
         }).join('');
         return;
@@ -7324,6 +7326,32 @@ async function saveMemberMatricola(memberId, btnEl) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Salvataggio fallito');
         toast(data.wallet_push_sent ? 'Matricola salvata — pass aggiornato' : 'Matricola salvata');
+        await loadLeads();
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+async function deleteMemberContact(memberId) {
+    if (!ensureBrandIdFromContext()) return toast('Seleziona un brand');
+    const member = allLeads.find((l) => String(l.id) === String(memberId));
+    const label = member
+        ? [member.player_first_name, member.player_last_name].filter(Boolean).join(' ') || member.employee_id || member.player_email || memberId
+        : memberId;
+    if (!await appConfirm({
+        title: 'Elimina dipendente',
+        message: `Eliminare ${label} dalla rubrica? Verrà rimosso anche il pass associato, se presente.`,
+        confirmLabel: 'Elimina',
+        tone: 'danger'
+    })) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/members/${memberId}`, {
+            method: 'DELETE',
+            headers: getDashboardFetchHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Eliminazione fallita');
+        toast('Dipendente eliminato');
         await loadLeads();
     } catch (e) {
         toast(e.message);

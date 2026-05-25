@@ -1493,6 +1493,20 @@ async function updateMemberRecord(id, data) {
   return row.rows[0] || null;
 }
 
+async function deleteMemberRecord(brandId, memberId) {
+  await ensureMembersHrSchema();
+  const r = await pool.query(
+    'SELECT * FROM members WHERE id = $1 AND brand_id = $2',
+    [memberId, brandId]
+  );
+  const member = r.rows[0];
+  if (!member) return null;
+  const passId = member.pass_id || null;
+  if (passId) await deletePass(passId);
+  await pool.query('DELETE FROM members WHERE id = $1 AND brand_id = $2', [memberId, brandId]);
+  return { deleted: true, member_id: memberId, pass_deleted: !!passId };
+}
+
 async function importEmployeesBatch(brandId, employees, options = {}) {
   await ensureMembersHrSchema();
   const {
@@ -2759,6 +2773,7 @@ module.exports = {
   findMemberByBrandKey,
   createMemberRecord,
   updateMemberRecord,
+  deleteMemberRecord,
   importEmployeesBatch,
   updatePassDynamicLinks,
   touchPassesForTemplate,

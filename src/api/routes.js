@@ -11,7 +11,7 @@ const {
   createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesForTemplate, listPasses, countPasses, deletePass,
   getMemberForPass, listEmployeesForBrand, getEmployeeFieldOptionsForBrand,
   isEmployeeMatricolaAvailable, importEmployeesBatch,
-  findMemberByBrandKey, updateMemberRecord,
+  findMemberByBrandKey, updateMemberRecord, deleteMemberRecord,
   logEnrollmentAttempt,
   createImportError, listImportErrors,
   updatePassDynamicLinks,
@@ -3773,6 +3773,21 @@ router.patch('/brands/:brand_id/members/:member_id', async (req, res) => {
     }
 
     res.json({ member: updated, wallet_push_sent });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/brands/:brand_id/members/:member_id', async (req, res) => {
+  try {
+    if (!requireWriteAccess(req, res)) return;
+    const { brand_id, member_id } = req.params;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const brand = await getBrand(brand_id);
+    if (!brand || !isHrBrand(brand, req)) {
+      return res.status(400).json({ error: 'Eliminazione dipendente disponibile solo per brand HR' });
+    }
+    const result = await deleteMemberRecord(brand_id, member_id);
+    if (!result) return res.status(404).json({ error: 'Dipendente non trovato' });
+    res.json({ success: true, ...result });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
