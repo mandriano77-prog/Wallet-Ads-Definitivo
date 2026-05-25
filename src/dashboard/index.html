@@ -3260,6 +3260,7 @@ const SECTIONS_NO_BRAND = new Set(['welcome', 'users', 'brand-identity']);
 const brandDataCache = new Map();
 let passPageIndex = 0;
 let passHasNextPage = false;
+let passTotalCount = null;
 let passSearchQuery = '';
 /** sessionStorage filters per brand (campagna · ricerca · pagina) */
 const PASSES_FILTER_STORAGE_PREFIX = 'ads2wallet:passFilters:v1:';
@@ -4554,6 +4555,8 @@ async function loadPassWalletChannelsDiag() {
 // ==================== PASSES ====================
 async function loadPasses(resetPage = false) {
     if (!brandId) return;
+    const el = document.getElementById('passesContent');
+    try {
     loadPassWalletChannelsDiag();
     ensurePassFiltersFromStorage();
     if (resetPage) passPageIndex = 0;
@@ -4562,12 +4565,25 @@ async function loadPasses(resetPage = false) {
     const campaignFilter = document.getElementById('passFilterCampaign')?.value || '';
     const effectiveLimit = PASSES_PAGE_SIZE + 1;
     const offset = passPageIndex * PASSES_PAGE_SIZE;
-    let url = `${API}/passes?brand_id=${brandId}&limit=${effectiveLimit}&offset=${offset}`;
+    let url = `${API}/passes?brand_id=${brandId}&limit=${effectiveLimit}&offset=${offset}&include_total=1`;
     if (campaignFilter) url += `&campaign_id=${campaignFilter}`;
-    const res = await fetch(url);
-    const rawPasses = await res.json();
-    passHasNextPage = rawPasses.length > PASSES_PAGE_SIZE;
-    const passes = passHasNextPage ? rawPasses.slice(0, PASSES_PAGE_SIZE) : rawPasses;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Errore caricamento pass');
+    const payload = await res.json();
+    let rawPasses;
+    if (Array.isArray(payload)) {
+        rawPasses = payload;
+        passTotalCount = null;
+    } else {
+        rawPasses = payload.passes || [];
+        passTotalCount = typeof payload.total === 'number' ? payload.total : null;
+    }
+    if (passTotalCount != null) {
+        passHasNextPage = (offset + rawPasses.length) < passTotalCount;
+    } else {
+        passHasNextPage = rawPasses.length > PASSES_PAGE_SIZE;
+    }
+    const passes = rawPasses.length > PASSES_PAGE_SIZE ? rawPasses.slice(0, PASSES_PAGE_SIZE) : rawPasses;
     const q = (passSearchQuery || '').trim().toLowerCase();
     const filteredPasses = q ? passes.filter(p => {
         const camp = campaignsCache.find(c => c.id === p.campaign_id);
@@ -4578,7 +4594,6 @@ async function loadPasses(resetPage = false) {
         return haystack.includes(q);
     }) : passes;
     window._lastPassesForExport = filteredPasses;
-    const el = document.getElementById('passesContent');
 
     if (!passes.length) {
         el.innerHTML = renderEmptyState({ title: 'Nessun pass emesso', description: 'I pass compariranno qui dopo la pubblicazione o l\'iscrizione.', icon: 'inbox' });
@@ -4595,8 +4610,15 @@ async function loadPasses(resetPage = false) {
     }).length;
     const reachableWallet = filteredPasses.filter(p => !!p.push_token || passGoogleSaved(p) || passGooglePending(p) || passSamsungSaved(p) || passSamsungPending(p)).length;
     const pushSent = filteredPasses.filter(p => p.push_count > 0).length;
+    const pageFrom = passes.length ? offset + 1 : 0;
+    const pageTo = offset + passes.length;
+    const totalLabel = passTotalCount != null ? String(passTotalCount) : '—';
+    const rangeHint = passTotalCount != null && passes.length
+        ? `Mostrati ${pageFrom}–${pageTo} di ${passTotalCount}`
+        : (passes.length ? `${passes.length} in questa pagina` : '');
     const statsHtml = `<div class="stats-grid" style="margin-bottom:16px;">
-        <div class="stat-card"><div class="stat-label">Pass visibili</div><div class="stat-value">${filteredPasses.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Pass totali (brand)</div><div class="stat-value">${totalLabel}</div>${rangeHint ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">${rangeHint}</div>` : ''}</div>
+        <div class="stat-card"><div class="stat-label">In questa pagina</div><div class="stat-value">${filteredPasses.length}</div></div>
         <div class="stat-card"><div class="stat-label">Installazioni wallet confermate</div><div class="stat-value">${installed}</div></div>
         <div class="stat-card"><div class="stat-label">Download da desktop (info)</div><div class="stat-value">${desktopPasses}</div></div>
         <div class="stat-card"><div class="stat-label">Raggiungibili (Apple / Google / Samsung)</div><div class="stat-value">${reachableWallet}</div></div>
@@ -4696,15 +4718,21 @@ async function loadPasses(resetPage = false) {
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;flex-wrap:wrap;">
             <div style="font-size:12px;color:var(--text2);">
-                Pagina ${passPageIndex + 1} · ${filteredPasses.length} risultati (${passes.length} caricati)
+                Pagina ${passPageIndex + 1}
+                ${passTotalCount != null ? ` · ${pageFrom}–${pageTo} di ${passTotalCount} pass` : ` · ${filteredPasses.length} risultati`}
+                ${passHasNextPage ? ' · <strong style="color:var(--accent);">Ci sono altri pass — usa Successiva</strong>' : ''}
             </div>
-            <div style="display:flex;gap:8px;">
-                <button type="button" class="btn small sec" onclick="goPrevPassesPage()" ${passPageIndex === 0 ? 'disabled' : ''}>Precedente</button>
-                <button type="button" class="btn small sec" onclick="goNextPassesPage()" ${!passHasNextPage ? 'disabled' : ''}>Successiva</button>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button type="button" class="btn small sec" onclick="goPrevPassesPage()" ${passPageIndex === 0 ? 'disabled' : ''}>← Precedente</button>
+                <button type="button" class="btn small" onclick="goNextPassesPage()" ${!passHasNextPage ? 'disabled' : ''} style="${passHasNextPage ? '' : 'opacity:0.5'}">Successiva →</button>
             </div>
         </div>
     `;
     persistPassFilters();
+    } catch (e) {
+        console.error('loadPasses', e);
+        if (el) el.innerHTML = `<p style="color:var(--danger);padding:16px;">${esc(e.message || 'Errore caricamento pass')}</p>`;
+    }
 }
 
 function handlePassSearchInput(value) {
