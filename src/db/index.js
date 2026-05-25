@@ -786,6 +786,11 @@ async function getDb() {
     await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_resources JSONB DEFAULT '[]'::jsonb`).catch(() => {});
     await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_documents JSONB DEFAULT '[]'::jsonb`).catch(() => {});
 
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS brand_id TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS pass_id TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS first_name TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS last_name TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS email TEXT`).catch(() => {});
     await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS employee_id VARCHAR(64)`).catch(() => {});
     await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS department VARCHAR(128)`).catch(() => {});
     await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS office_location VARCHAR(255)`).catch(() => {});
@@ -1148,18 +1153,17 @@ async function listEmployeesForBrand(brandId) {
       m.updated_at,
       pi.serial_number,
       pi.status AS pass_status,
-      pi.google_wallet_saved,
-      pi.samsung_wallet_saved,
-      dr.device_library_id AS device_id
+      COALESCE(pi.google_wallet_saved, false) AS google_wallet_saved,
+      COALESCE(pi.samsung_wallet_saved, false) AS samsung_wallet_saved,
+      (
+        SELECT dr.device_library_id
+        FROM device_registrations dr
+        WHERE pi.serial_number IS NOT NULL AND dr.serial_number = pi.serial_number
+        ORDER BY dr.created_at DESC NULLS LAST
+        LIMIT 1
+      ) AS device_id
     FROM members m
     LEFT JOIN pass_instances pi ON pi.id = m.pass_id
-    LEFT JOIN LATERAL (
-      SELECT device_library_id
-      FROM device_registrations
-      WHERE serial_number = pi.serial_number
-      ORDER BY created_at DESC NULLS LAST
-      LIMIT 1
-    ) dr ON true
     WHERE m.brand_id = $1
     ORDER BY m.created_at DESC`,
     [brandId]
