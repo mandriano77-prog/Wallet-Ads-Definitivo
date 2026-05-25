@@ -1083,6 +1083,106 @@ router.get('/click/:campaign_id', async (req, res) => {
   }
 });
 
+const {
+  findBrandForPublicJoin,
+  publicJoinByEmail,
+  getMemberForActivationToken,
+  confirmMemberActivation,
+  distributeActivationEmails,
+  issueMemberActivation,
+  joinUrl
+} = require('../engine/hr-activation');
+const { sendActivationEmail } = require('../engine/mailer');
+
+function hrActivationDb() {
+  return {
+    pool,
+    getBrand,
+    getTemplate,
+    listTemplates,
+    updateMemberRecord,
+    updatePassInstance,
+    createPassInstance,
+    logEvent,
+    logEnrollmentAttempt
+  };
+}
+
+function clientIp(req) {
+  return (
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ''
+  );
+}
+
+router.get('/join/:slug/info', async (req, res) => {
+  try {
+    const brand = await findBrandForPublicJoin(hrActivationDb(), req.params.slug);
+    if (!brand) return res.status(404).json({ error: 'Programma non disponibile' });
+    res.json({
+      brand_name: brand.name,
+      slug: brand.public_qr_slug || brand.slug
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/join/:slug', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const result = await publicJoinByEmail(hrActivationDb(), {
+      slug: req.params.slug,
+      email,
+      ip: clientIp(req),
+      userAgent: req.headers['user-agent'] || ''
+    });
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/activate/:token', async (req, res) => {
+  try {
+    const member = await getMemberForActivationToken(hrActivationDb(), req.params.token);
+    if (!member) return res.status(404).json({ error: 'Link non valido o scaduto' });
+    const templates = await listTemplates(member.brand_id);
+    const hrTemplates = templates.filter((t) => t.pass_type === 'employee_pass');
+    res.json({
+      member: {
+        first_name: member.first_name,
+        last_name: member.last_name,
+        email: member.email,
+        employee_id: member.employee_id,
+        brand_name: member.brand_name
+      },
+      templates: hrTemplates.map((t) => ({ id: t.id, name: t.name })),
+      consent_types: ['birthday', 'welfare_geo', 'gamification', 'climate_survey', 'partner_offers'],
+      already_activated: member.activation_status === 'activated'
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/activate/:token', async (req, res) => {
+  try {
+    const { consents, template_id } = req.body || {};
+    const result = await confirmMemberActivation(hrActivationDb(), req.params.token, {
+      consents: consents || {},
+      template_id,
+      ip: clientIp(req),
+      userAgent: req.headers['user-agent'] || ''
+    });
+    res.json({
+      success: true,
+      pass_id: result.pass.id,
+      download_url: result.download_url,
+      brand_name: result.brand_name
+    });
+  } catch (err) {
+    const status = /non valido|scaduto/i.test(err.message) ? 404 : 400;
+    res.status(status).json({ error: err.message });
+  }
+});
+
 // ============================================================================
 // AUTH MIDDLEWARE ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ everything below requires JWT
 // ============================================================================
@@ -1172,6 +1272,10 @@ function isJwtBypassRoute(req) {
   if (path === '/google-wallet/callback' && (m === 'GET' || m === 'POST')) return true;
   if (m === 'GET' && path.startsWith('/samsung-wallet/pass/')) return true;
   if ((m === 'GET' || m === 'POST') && /^\/samsung-wallet\/cards\//.test(path)) return true;
+  if (m === 'GET' && /^\/join\/[^/]+\/info$/.test(path)) return true;
+  if (m === 'POST' && /^\/join\/[^/]+$/.test(path)) return true;
+  if (m === 'GET' && /^\/activate\/[^/]+$/.test(path)) return true;
+  if (m === 'POST' && /^\/activate\/[^/]+$/.test(path)) return true;
   return false;
 }
 
@@ -3541,6 +3645,93 @@ router.patch('/brands/:brand_id/members/:member_id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.get('/brands/:brand_id/activation/stats', async (req, res) => {
+  try {
+    const { brand_id } = req.params;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const brand = await getBrand(brand_id);
+    if (!brand || !isHrBrand(brand, req)) {
+      return res.status(400).json({ error: 'Statistiche attivazione solo per brand HR' });
+    }
+    const r = await pool.query(
+      `SELECT activation_status, COUNT(*)::int AS c
+       FROM members WHERE brand_id = $1
+       GROUP BY activation_status`,
+      [brand_id]
+    );
+    const counts = { candidate: 0, invited: 0, activated: 0 };
+    for (const row of r.rows) {
+      const k = row.activation_status || 'candidate';
+      counts[k] = (counts[k] || 0) + row.c;
+    }
+    const joinSlug = brand.public_qr_slug || brand.slug;
+    res.json({
+      counts,
+      total: Object.values(counts).reduce((a, b) => a + b, 0),
+      public_qr_enabled: !!brand.public_qr_enabled,
+      public_qr_slug: brand.public_qr_slug,
+      allowed_email_domains: brand.allowed_email_domains || [],
+      join_url: brand.public_qr_enabled ? joinUrl(joinSlug) : null
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/employees/distribute', async (req, res) => {
+  try {
+    const { brand_id } = req.params;
+    if (!requireBrandId(req, res, brand_id)) return;
+    if (!requireWriteAccess(req, res)) return;
+    const brand = await getBrand(brand_id);
+    if (!brand || !isHrBrand(brand, req)) {
+      return res.status(400).json({ error: 'Distribuzione solo per brand HR' });
+    }
+    const { member_ids, all_pending, resend } = req.body || {};
+    let ids = Array.isArray(member_ids) ? member_ids.map(String) : [];
+    if (all_pending) {
+      const r = await pool.query(
+        `SELECT id FROM members
+         WHERE brand_id = $1
+           AND email IS NOT NULL AND TRIM(email) <> ''
+           AND (activation_status IS NULL OR activation_status IN ('candidate', 'invited'))
+         ORDER BY created_at`,
+        [brand_id]
+      );
+      ids = r.rows.map((row) => row.id);
+    }
+    if (!ids.length) return res.status(400).json({ error: 'Nessun dipendente da invitare' });
+    const summary = await distributeActivationEmails(hrActivationDb(), brand_id, ids, { resend: !!resend });
+    res.json(summary);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/members/:member_id/activation/resend', async (req, res) => {
+  try {
+    const { brand_id, member_id } = req.params;
+    if (!requireBrandId(req, res, brand_id)) return;
+    if (!requireWriteAccess(req, res)) return;
+    const brand = await getBrand(brand_id);
+    if (!brand || !isHrBrand(brand, req)) {
+      return res.status(400).json({ error: 'Solo brand HR' });
+    }
+    const r = await pool.query(
+      'SELECT * FROM members WHERE id = $1 AND brand_id = $2',
+      [member_id, brand_id]
+    );
+    const member = r.rows[0];
+    if (!member) return res.status(404).json({ error: 'Dipendente non trovato' });
+    if (!member.email) return res.status(400).json({ error: 'Email mancante' });
+    const { url } = await issueMemberActivation(hrActivationDb(), member, { source: 'manual_resend' });
+    await sendActivationEmail({
+      to: member.email,
+      firstName: member.first_name,
+      brandName: brand.name,
+      activateUrl: url,
+      dpoEmail: brand.dpo_email
+    });
+    res.json({ success: true, activation_url: url });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/brands/:brand_id/leads', async (req, res) => {
   try {
     const { brand_id } = req.params;
@@ -3565,7 +3756,10 @@ router.get('/brands/:brand_id/leads', async (req, res) => {
         registered_at: m.created_at,
         pass_status: m.pass_status,
         google_wallet_saved: m.google_wallet_saved,
-        samsung_wallet_saved: m.samsung_wallet_saved
+        samsung_wallet_saved: m.samsung_wallet_saved,
+        activation_status: m.activation_status || 'candidate',
+        invited_at: m.invited_at,
+        activated_at: m.activated_at
       }));
       return res.json({
         leads,

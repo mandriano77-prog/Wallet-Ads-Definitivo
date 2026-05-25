@@ -2155,7 +2155,32 @@
                         <input type="text" id="leadsSearch" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
                         <button type="button" class="btn sec" id="leadsImportBtn" onclick="openEmployeeImportModal()" style="display:none;white-space:nowrap;">✨ Importa da file</button>
                         <button type="button" class="btn sec" id="leadsNoMatricolaBtn" onclick="filterLeadsNoMatricola()" style="display:none;white-space:nowrap;">⚠ Senza matricola</button>
+                        <button type="button" class="btn sec" id="leadsDistributeBtn" onclick="distributeActivationAll()" style="display:none;white-space:nowrap;">✉ Invia attivazione</button>
                         <button class="btn" onclick="exportLeadsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+                    </div>
+                </div>
+                <div id="hrActivationPanel" class="card" style="display:none;margin-bottom:16px;padding:16px 20px;">
+                    <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Distribuzione pass (ibrida)</div>
+                    <div class="stats-grid" id="activationStats" style="margin-bottom:12px;"></div>
+                    <div class="form-row" style="align-items:flex-end;gap:12px;flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:200px;">
+                            <label class="form-label">Join pubblico / QR</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                                <input type="checkbox" id="hrPublicQrEnabled" onchange="saveHrDistributionSettings()"> Abilita pagina <code>/join/{slug}</code>
+                            </label>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label class="form-label">Slug join (opz.)</label>
+                            <input type="text" id="hrPublicQrSlug" placeholder="es. acme-hr" onblur="saveHrDistributionSettings()">
+                        </div>
+                        <div class="form-group" style="flex:2;min-width:220px;">
+                            <label class="form-label">Domini email ammessi (virgola)</label>
+                            <input type="text" id="hrAllowedDomains" placeholder="acme.it, acme.com" onblur="saveHrDistributionSettings()">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                        <input type="text" id="hrJoinUrl" readonly style="flex:1;min-width:200px;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);">
+                        <button type="button" class="btn small sec" onclick="copyHrJoinUrl()">Copia link join</button>
                     </div>
                 </div>
                 <div class="stats-grid" id="leadsStats"></div>
@@ -6837,8 +6862,13 @@ function isHrBrandContext() {
 }
 
 function updateLeadsImportButton() {
+    const hr = isHrBrandContext();
     const btn = document.getElementById('leadsImportBtn');
-    if (btn) btn.style.display = isHrBrandContext() ? '' : 'none';
+    if (btn) btn.style.display = hr ? '' : 'none';
+    const distBtn = document.getElementById('leadsDistributeBtn');
+    if (distBtn) distBtn.style.display = hr ? '' : 'none';
+    const panel = document.getElementById('hrActivationPanel');
+    if (panel) panel.style.display = hr ? '' : 'none';
 }
 
 function setLeadsTableHead(hr) {
@@ -6847,7 +6877,7 @@ function setLeadsTableHead(hr) {
     if (hr) {
         thead.innerHTML = `<tr>
             <th>Nome</th><th>Cognome</th><th>Matricola</th><th>Reparto</th><th>Sede</th>
-            <th>Email</th><th>Pass</th><th>Wallet</th><th>Creato</th>
+            <th>Email</th><th>Attivazione</th><th>Pass</th><th>Wallet</th><th>Azioni</th>
         </tr>`;
     } else {
         thead.innerHTML = `<tr>
@@ -6894,12 +6924,112 @@ async function loadLeads() {
 
         updateLeadsNoMatricolaBadge();
         renderLeadsTable(allLeads);
+        if (leadsHrMode) loadActivationStats();
     } catch(e) {
         console.error('loadLeads error:', e);
         toast(e.message || mc.leads_load_error);
-        const cols = leadsHrMode ? 9 : 7;
+        const cols = leadsHrMode ? 10 : 7;
         document.getElementById('leadsTable').querySelector('tbody').innerHTML =
             `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(e.message || mc.leads_load_error)}</td></tr>`;
+    }
+}
+
+function activationStatusLabel(status) {
+    const map = { candidate: 'Da invitare', invited: 'Invitato', activated: 'Attivo' };
+    return map[status] || status || '—';
+}
+
+async function loadActivationStats() {
+    if (!brandId || !leadsHrMode) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/activation/stats`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const c = data.counts || {};
+        const el = document.getElementById('activationStats');
+        if (el) {
+            el.innerHTML = `
+                <div class="stat-card"><div class="stat-num">${c.candidate || 0}</div><div class="stat-label">Da invitare</div></div>
+                <div class="stat-card"><div class="stat-num">${c.invited || 0}</div><div class="stat-label">Invitati</div></div>
+                <div class="stat-card"><div class="stat-num">${c.activated || 0}</div><div class="stat-label">Attivi</div></div>
+            `;
+        }
+        const chk = document.getElementById('hrPublicQrEnabled');
+        const slugIn = document.getElementById('hrPublicQrSlug');
+        const domIn = document.getElementById('hrAllowedDomains');
+        const joinIn = document.getElementById('hrJoinUrl');
+        if (chk) chk.checked = !!data.public_qr_enabled;
+        if (slugIn) slugIn.value = data.public_qr_slug || '';
+        if (domIn) domIn.value = (data.allowed_email_domains || []).join(', ');
+        if (joinIn) joinIn.value = data.join_url || '';
+    } catch (e) {
+        console.warn('activation stats', e.message);
+    }
+}
+
+async function saveHrDistributionSettings() {
+    if (!brandId) return;
+    const domainsRaw = (document.getElementById('hrAllowedDomains')?.value || '').trim();
+    const allowed_email_domains = domainsRaw
+        ? domainsRaw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
+        : [];
+    const body = {
+        public_qr_enabled: !!document.getElementById('hrPublicQrEnabled')?.checked,
+        public_qr_slug: (document.getElementById('hrPublicQrSlug')?.value || '').trim() || null,
+        allowed_email_domains
+    };
+    try {
+        const res = await fetch(`${API}/brands/${brandId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        await loadActivationStats();
+        toast('Impostazioni distribuzione salvate');
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+function copyHrJoinUrl() {
+    const v = document.getElementById('hrJoinUrl')?.value;
+    if (!v) return toast('Abilita join pubblico e salva');
+    navigator.clipboard.writeText(v).then(() => toast('Link copiato')).catch(() => toast(v));
+}
+
+async function distributeActivationAll() {
+    if (!brandId) return;
+    if (!await appConfirm({ title: 'Invia email attivazione', message: 'Inviare il link di attivazione a tutti i dipendenti non ancora attivi (con email)?', confirmLabel: 'Invia' })) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/employees/distribute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ all_pending: true })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        toast(`Inviate ${data.sent || 0} email (${data.skipped || 0} saltate)`);
+        await loadLeads();
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+async function resendMemberActivation(memberId) {
+    if (!brandId) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/members/${memberId}/activation/resend`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        toast('Email di attivazione inviata');
+        await loadLeads();
+    } catch (e) {
+        toast(e.message);
     }
 }
 
@@ -6915,7 +7045,7 @@ function walletStatusLabel(l) {
 function renderLeadsTable(leads) {
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
     const tbody = document.getElementById('leadsTable').querySelector('tbody');
-    const cols = leadsHrMode ? 9 : 7;
+    const cols = leadsHrMode ? 10 : 7;
     if (!leads.length) {
         tbody.innerHTML = '<tr><td colspan="' + cols + '">' + renderEmptyState({
             title: mc.leads_empty,
@@ -6933,6 +7063,11 @@ function renderLeadsTable(leads) {
             const matCell = l.employee_id
                 ? esc(l.employee_id)
                 : `<span style="display:inline-flex;gap:6px;align-items:center;"><input type="text" class="hr-inline-matricola" placeholder="Matricola" style="width:88px;padding:4px 8px;font-size:12px;"><button type="button" class="btn small" onclick="saveMemberMatricola('${l.id}', this)">Salva</button></span>`;
+            const act = l.activation_status || 'candidate';
+            const actBadge = act === 'activated' ? 'var(--accent)' : (act === 'invited' ? '#f5a623' : 'var(--text2)');
+            const resendBtn = l.player_email && act !== 'activated'
+                ? `<button type="button" class="btn small sec" onclick="resendMemberActivation('${l.id}')">Reinvia</button>`
+                : '—';
             return `<tr>
             <td>${esc(l.player_first_name || '-')}</td>
             <td>${esc(l.player_last_name || '-')}</td>
@@ -6940,9 +7075,10 @@ function renderLeadsTable(leads) {
             <td>${esc(l.department || '-')}</td>
             <td>${esc(l.office_location || '-')}</td>
             <td>${l.player_email ? `<a href="mailto:${esc(l.player_email)}" style="color:var(--accent);">${esc(l.player_email)}</a>` : '—'}</td>
+            <td style="font-size:12px;color:${actBadge};">${esc(activationStatusLabel(act))}</td>
             <td style="font-size:11px;font-family:monospace;">${l.pass_id ? esc(String(l.pass_id).substring(0, 8)) + '…' : '—'}</td>
             <td style="font-size:12px;">${esc(walletStatusLabel(l))}</td>
-            <td style="font-size:12px;">${l.registered_at ? new Date(l.registered_at).toLocaleDateString('it-IT') : '-'}</td>
+            <td>${resendBtn}</td>
         </tr>`;
         }).join('');
         return;
@@ -7020,10 +7156,11 @@ function exportLeadsCSV() {
     let header;
     let rows;
     if (leadsHrMode) {
-        header = 'Nome,Cognome,Matricola,Reparto,Sede,Email,Pass ID,Wallet,Creato';
+        header = 'Nome,Cognome,Matricola,Reparto,Sede,Email,Attivazione,Pass ID,Wallet,Creato';
         rows = allLeads.map(l => [
             l.player_first_name || '', l.player_last_name || '', l.employee_id || '',
             l.department || '', l.office_location || '', l.player_email || '',
+            activationStatusLabel(l.activation_status),
             l.pass_id || '', walletStatusLabel(l),
             l.registered_at ? new Date(l.registered_at).toISOString().split('T')[0] : ''
         ]);

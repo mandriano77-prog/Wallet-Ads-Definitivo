@@ -1273,6 +1273,7 @@ async function ensureMembersHrSchema() {
   await addColumn('invited_at', 'TIMESTAMPTZ');
   await addColumn('activated_at', 'TIMESTAMPTZ');
   await addColumn('activation_source', 'VARCHAR(32)');
+  await addColumn('activation_reminder_count', 'INTEGER DEFAULT 0');
 
   if (have.has('name') && have.has('first_name')) {
     await pool.query(`
@@ -1343,6 +1344,11 @@ async function listEmployeesForBrand(brandId) {
       m.manager_email,
       m.created_at,
       m.updated_at,
+      m.activation_status,
+      m.invited_at,
+      m.activated_at,
+      m.activation_source,
+      m.activation_reminder_count,
       pi.serial_number,
       pi.status AS pass_status,
       COALESCE(pi.google_wallet_saved, false) AS google_wallet_saved,
