@@ -5,6 +5,8 @@
 (function () {
   'use strict';
 
+  const A2W = window.A2W = window.A2W || {};
+
   function isA2wDeploy() {
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
     try {
@@ -20,6 +22,9 @@
   function isA2wActive() {
     return isA2wDeploy() && document.documentElement.classList.contains('a2w-shell');
   }
+
+  if (!isA2wDeploy()) return;
+  console.debug('[A2W] shell loaded — FiloDiretto safe mode: ON');
 
   // UX-AUDIT[a2w]: activate ads shell chrome once per session
   function initA2wShell() {
@@ -359,12 +364,13 @@
       `;
     }).join('');
 
+    const accentData = getComputedStyle(document.documentElement).getPropertyValue('--a2w-accent-data').trim() || '#3FE0C8';
     el.innerHTML = `
       <svg id="analyticsTrendSvg" viewBox="0 0 ${width} ${height}" width="100%" height="280" role="img" aria-label="Trend download e install">
         <defs>
           <linearGradient id="trendDlGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="#34D399"></stop>
-            <stop offset="100%" stop-color="#10B981"></stop>
+            <stop offset="0%" stop-color="${accentData}"></stop>
+            <stop offset="100%" stop-color="${accentData}"></stop>
           </linearGradient>
           <linearGradient id="trendInGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stop-color="#60a5fa"></stop>
@@ -378,7 +384,7 @@
         ${xTicks}
       </svg>
       <div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,0.6);margin-top:8px;padding-bottom:4px;">
-        ${activeDownload ? '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#34D399;border-radius:50%;display:inline-block;"></span>Download</span>' : ''}
+        ${activeDownload ? `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:${accentData};border-radius:50%;display:inline-block;"></span>Download</span>` : ''}
         ${activeInstall ? '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#3b82f6;border-radius:50%;display:inline-block;"></span>Install</span>' : ''}
       </div>
     `;
@@ -451,9 +457,10 @@
     if (card) card.classList.toggle('a2w-top-campaigns--single', ranked.length <= 1);
 
     const maxConv = Math.max(1, ...ranked.map((r) => r.conv));
+    const accentData = getComputedStyle(document.documentElement).getPropertyValue('--a2w-accent-data').trim() || '#3FE0C8';
     el.innerHTML = `<div class="a2w-top-campaigns-inner">${ranked.map((r, idx) => {
       const w = ((r.conv / maxConv) * 100).toFixed(1);
-      const rowColor = idx === 0 ? '#34D399' : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#a78bfa';
+      const rowColor = idx === 0 ? accentData : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#a78bfa';
       return `
         <div style="margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px;">
@@ -512,6 +519,14 @@
     renderA2wTopCampaigns(campaigns);
     renderA2wCampaignTable(campaigns);
   }
+
+  A2W.ensureA2wLeadsLayout = ensureA2wLeadsLayout;
+  A2W.initA2wShell = initA2wShell;
+  A2W.syncA2wHeaderChrome = syncA2wHeaderChrome;
+  A2W.syncA2wWaiPadding = syncA2wWaiPadding;
+  A2W.isA2wDeploy = isA2wDeploy;
+  A2W.isA2wActive = isA2wActive;
+  A2W.a2wLoadAnalytics = a2wLoadAnalytics;
 
   window.ensureA2wLeadsLayout = ensureA2wLeadsLayout;
   window.initA2wShell = initA2wShell;

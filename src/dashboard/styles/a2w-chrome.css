@@ -133,15 +133,40 @@ html[data-shell="dark"].a2w-shell .brand-sel--header {
 /* UX-AUDIT[a2w]: dark buttons/cards — no hardcoded light fills */
 html[data-shell="dark"].a2w-shell .btn.sec,
 html[data-shell="dark"].a2w-shell .btn-secondary {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--a2w-border-default);
+  background: var(--a2w-action-secondary);
+  border-color: var(--a2w-action-secondary-border);
   color: var(--a2w-text-primary);
 }
 
 html[data-shell="dark"].a2w-shell .btn.sec:hover,
 html[data-shell="dark"].a2w-shell .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: var(--a2w-action-secondary-hover);
+  border-color: var(--a2w-action-secondary-border);
+}
+
+html[data-shell="dark"].a2w-shell .btn:not(.sec):not(.danger):not(.btn-secondary):not(.btn-link),
+html[data-shell="dark"].a2w-shell .a2w-btn-primary {
+  background: var(--a2w-action-primary);
+  border-color: var(--a2w-action-primary);
+  color: #05211d;
+}
+
+html[data-shell="dark"].a2w-shell .btn:not(.sec):not(.danger):not(.btn-secondary):not(.btn-link):hover:not(:disabled),
+html[data-shell="dark"].a2w-shell .a2w-btn-primary:hover:not(:disabled) {
+  background: var(--a2w-action-primary-hover);
+  border-color: var(--a2w-action-primary-hover);
+  color: #021512;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-btn-secondary {
+  background: var(--a2w-action-secondary);
+  border: 1px solid var(--a2w-action-secondary-border);
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-btn-secondary:hover:not(:disabled) {
+  background: var(--a2w-action-secondary-hover);
+  border-color: var(--a2w-action-secondary-border);
 }
 
 html[data-shell="dark"].a2w-shell .stat-card,
@@ -214,6 +239,19 @@ html[data-shell="dark"].a2w-shell .sidebar > .nav-label:first-of-type {
 html[data-shell="dark"].a2w-shell .nav-item {
   font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.80);
+}
+
+html[data-shell="dark"].a2w-shell .sidebar .nav-item.active,
+html[data-shell="dark"].a2w-shell .sidebar .nav-item[aria-current="page"] {
+  background: var(--a2w-nav-active-bg);
+  color: var(--a2w-text-primary);
+  box-shadow: inset 3px 0 0 var(--a2w-action-primary);
+  font-weight: 600;
+}
+
+html[data-shell="dark"].a2w-shell .sidebar .nav-item:hover:not(.disabled):not(.active):not([aria-current="page"]) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--a2w-text-primary);
 }
 
 html[data-shell="dark"].a2w-shell .sidebar-footer {
