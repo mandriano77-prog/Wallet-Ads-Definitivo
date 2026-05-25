@@ -49,6 +49,10 @@ html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .form-
   border-color: var(--filo-modal-success);
 }
 
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready input[list] {
+  padding-right: 12px;
+}
+
 html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-field-wrap {
   position: relative;
 }

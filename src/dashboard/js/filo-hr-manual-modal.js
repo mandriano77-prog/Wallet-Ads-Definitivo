@@ -1,5 +1,5 @@
 /**
- * FiloDiretto HR — modale Aggiungi dipendente (PR-A).
+ * FiloDiretto HR — modale Aggiungi dipendente (PR-A + PR-B).
  * Namespace unico: filoHrContatti.manualModal
  */
 (function (global) {
@@ -12,6 +12,7 @@
     requiredNote: 'I campi con * sono obbligatori',
     matricolaRequired: 'Matricola obbligatoria',
     matricolaDup: 'Matricola già in coda',
+    matricolaTaken: 'Matricola già assegnata a un dipendente',
     emailInvalid: 'Email non valida',
     saveTooltip: 'Aggiungi almeno un dipendente alla lista',
     sendActivationTooltip: 'Inserisci email per inviare l\'attivazione',
@@ -31,6 +32,15 @@
   edit: '<path d="M12.5 4.5l1 1L7 12H5v-2l6.5-6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
   };
 
+  var FIELD_OPTIONS_TTL_MS = 5 * 60 * 1000;
+  var MATRICOLA_DEBOUNCE_MS = 400;
+
+  var COMBO_FIELDS = [
+    { inputId: 'manualDepartment', listId: 'filoManualDeptList', key: 'departments' },
+    { inputId: 'manualOffice', listId: 'filoManualOfficeList', key: 'sites' },
+    { inputId: 'manualManagerEmail', listId: 'filoManualManagerList', key: 'manager_emails' }
+  ];
+
   var state = {
     queue: [],
     bound: false,
@@ -40,7 +50,13 @@
     backdropHandler: null,
     fieldHandlers: [],
     dirty: false,
-    saving: false
+    saving: false,
+    fieldOptionsCache: { data: null, ts: 0, failed: false },
+    matricolaTouched: false,
+    matricolaCheckTimer: null,
+    matricolaCheckAbort: null,
+    matricolaServerAvailable: null,
+    matricolaChecking: false
   };
 
   function deps() {
@@ -98,12 +114,151 @@
     };
   }
 
+  function resetMatricolaCheckState() {
+    if (state.matricolaCheckTimer) {
+      clearTimeout(state.matricolaCheckTimer);
+      state.matricolaCheckTimer = null;
+    }
+    if (state.matricolaCheckAbort) {
+      state.matricolaCheckAbort.abort();
+      state.matricolaCheckAbort = null;
+    }
+    state.matricolaServerAvailable = null;
+    state.matricolaChecking = false;
+  }
+
   function clearForm() {
     ['manualEmployeeId', 'manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate', 'manualManagerEmail'].forEach(function (id) {
       var node = el(id);
       if (node) node.value = '';
     });
+    resetMatricolaCheckState();
     clearFieldErrors();
+  }
+
+  function removeDatalist(listId) {
+    var existing = el(listId);
+    if (existing) existing.remove();
+  }
+
+  function wireCombobox(inputId, listId, values) {
+    var input = el(inputId);
+    if (!input) return;
+    removeDatalist(listId);
+    if (!values || !values.length) {
+      input.removeAttribute('list');
+      return;
+    }
+    var dl = document.createElement('datalist');
+    dl.id = listId;
+    values.forEach(function (v) {
+      var opt = document.createElement('option');
+      opt.value = v;
+      dl.appendChild(opt);
+    });
+    var modal = el('employeeManualModal');
+    if (modal) modal.appendChild(dl);
+    input.setAttribute('list', listId);
+    input.setAttribute('autocomplete', 'off');
+  }
+
+  function removeFieldOptionComboboxes() {
+    COMBO_FIELDS.forEach(function (cfg) {
+      var input = el(cfg.inputId);
+      if (input) input.removeAttribute('list');
+      removeDatalist(cfg.listId);
+    });
+  }
+
+  function applyFieldOptions(opts) {
+    if (!opts) {
+      removeFieldOptionComboboxes();
+      return;
+    }
+    COMBO_FIELDS.forEach(function (cfg) {
+      wireCombobox(cfg.inputId, cfg.listId, opts[cfg.key] || []);
+    });
+  }
+
+  async function fetchFieldOptions() {
+    var d = deps();
+    if (!d.brandId) return;
+    var now = Date.now();
+    var cache = state.fieldOptionsCache;
+    if (cache.data && (now - cache.ts) < FIELD_OPTIONS_TTL_MS) {
+      applyFieldOptions(cache.data);
+      return;
+    }
+    try {
+      var res = await fetch(d.API + '/brands/' + d.brandId + '/employee-field-options', {
+        headers: Object.assign({}, d.getAuthHeaders())
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'field-options');
+      cache.data = data;
+      cache.ts = now;
+      cache.failed = false;
+      applyFieldOptions(data);
+    } catch (_) {
+      cache.failed = true;
+      removeFieldOptionComboboxes();
+    }
+  }
+
+  function touchMatricolaField() {
+    state.matricolaTouched = true;
+  }
+
+  function scheduleMatricolaCheck() {
+    if (!state.matricolaTouched) return;
+    var val = (el('manualEmployeeId') && el('manualEmployeeId').value || '').trim();
+    if (state.matricolaCheckTimer) clearTimeout(state.matricolaCheckTimer);
+    state.matricolaCheckTimer = setTimeout(function () {
+      state.matricolaCheckTimer = null;
+      runMatricolaCheck(val);
+    }, MATRICOLA_DEBOUNCE_MS);
+  }
+
+  async function runMatricolaCheck(value) {
+    var d = deps();
+    if (!d.brandId || !state.matricolaTouched) return;
+    if (!value) {
+      state.matricolaServerAvailable = null;
+      resetMatricolaCheckState();
+      return;
+    }
+    if (state.queue.some(function (q) { return String(q.employee_id).toLowerCase() === value.toLowerCase(); })) {
+      state.matricolaServerAvailable = null;
+      return;
+    }
+    if (state.matricolaCheckAbort) state.matricolaCheckAbort.abort();
+    var ac = new AbortController();
+    state.matricolaCheckAbort = ac;
+    state.matricolaChecking = true;
+    try {
+      var url = d.API + '/brands/' + d.brandId + '/employees/check-matricola?value=' + encodeURIComponent(value);
+      var res = await fetch(url, {
+        headers: Object.assign({}, d.getAuthHeaders()),
+        signal: ac.signal
+      });
+      var data = await res.json();
+      if (ac.signal.aborted) return;
+      if (!res.ok) throw new Error(data.error || 'check-matricola');
+      var current = (el('manualEmployeeId') && el('manualEmployeeId').value || '').trim();
+      if (current.toLowerCase() !== value.toLowerCase()) return;
+      state.matricolaServerAvailable = !!data.available;
+      if (data.available) {
+        if (current) showFieldSuccess('manualEmployeeId');
+      } else {
+        showFieldError('manualEmployeeId', COPY.matricolaTaken);
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      state.matricolaServerAvailable = null;
+    } finally {
+      if (state.matricolaCheckAbort === ac) state.matricolaCheckAbort = null;
+      state.matricolaChecking = false;
+    }
   }
 
   function clearFieldErrors() {
@@ -157,6 +312,10 @@
     }
     if (state.queue.some(function (q) { return String(q.employee_id).toLowerCase() === emp.employee_id.toLowerCase(); })) {
       showFieldError('manualEmployeeId', COPY.matricolaDup);
+      return false;
+    }
+    if (state.matricolaTouched && state.matricolaServerAvailable === false) {
+      showFieldError('manualEmployeeId', COPY.matricolaTaken);
       return false;
     }
     showFieldSuccess('manualEmployeeId');
@@ -273,7 +432,9 @@
     syncActivationCheckbox();
   }
 
-  function addToQueue() {
+  async function addToQueue() {
+    var matricolaVal = (el('manualEmployeeId') && el('manualEmployeeId').value || '').trim();
+    if (state.matricolaTouched && matricolaVal) await runMatricolaCheck(matricolaVal);
     if (!validateFormForQueue()) return;
     var emp = readForm();
     state.queue.push(emp);
@@ -494,18 +655,37 @@
     var createPasses = el('manualCreatePasses');
     if (createPasses) createPasses.addEventListener('change', togglePassOptions);
 
-    ['manualEmployeeId', 'manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate', 'manualManagerEmail'].forEach(function (id) {
+    ['manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate', 'manualManagerEmail'].forEach(function (id) {
       var node = el(id);
       if (!node) return;
       var onInput = function () { markDirtyFromInput(); syncActivationCheckbox(); };
       var onBlur = function () {
-        if (id === 'manualEmployeeId') validateMatricolaField();
         if (id === 'manualEmail') validateEmailField();
       };
       node.addEventListener('input', onInput);
       node.addEventListener('blur', onBlur);
       state.fieldHandlers.push({ node: node, onInput: onInput, onBlur: onBlur });
     });
+
+    var matricolaInput = el('manualEmployeeId');
+    if (matricolaInput) {
+      var onMatricolaInput = function () {
+        touchMatricolaField();
+        markDirtyFromInput();
+        state.matricolaServerAvailable = null;
+        scheduleMatricolaCheck();
+      };
+      var onMatricolaFocus = function () { touchMatricolaField(); };
+      var onMatricolaBlur = function () {
+        var val = (matricolaInput.value || '').trim();
+        if (state.matricolaTouched && val) runMatricolaCheck(val);
+        validateMatricolaField();
+      };
+      matricolaInput.addEventListener('input', onMatricolaInput);
+      matricolaInput.addEventListener('focus', onMatricolaFocus);
+      matricolaInput.addEventListener('blur', onMatricolaBlur);
+      state.fieldHandlers.push({ node: matricolaInput, onInput: onMatricolaInput, onBlur: onMatricolaBlur, onFocus: onMatricolaFocus });
+    }
 
     state.backdropHandler = function (e) {
       if (e.target === modal) close(false);
@@ -526,6 +706,7 @@
     state.fieldHandlers.forEach(function (h) {
       h.node.removeEventListener('input', h.onInput);
       h.node.removeEventListener('blur', h.onBlur);
+      if (h.onFocus) h.node.removeEventListener('focus', h.onFocus);
     });
     state.fieldHandlers = [];
     var modal = el('employeeManualModal');
@@ -655,11 +836,14 @@
     state.queue = [];
     state.dirty = false;
     state.saving = false;
+    state.matricolaTouched = false;
+    resetMatricolaCheckState();
     clearForm();
     clearFieldErrors();
     renderQueue();
     togglePassOptions();
     populateTemplates();
+    fetchFieldOptions();
     var modal = el('employeeManualModal');
     if (modal) {
       modal.style.display = 'flex';
