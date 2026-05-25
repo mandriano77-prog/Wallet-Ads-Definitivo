@@ -1,4 +1,5 @@
 /**
+ * FILE A2W-ONLY — NON IMPORTARE DA FILODIRETTO
  * Ads2Wallet shell tokens — scoped to dark deploy (studio.ads2wallet.com).
  * UX-AUDIT[a2w]: tenant-specific tokens; does not alter :root or light shell.
  */
@@ -6,6 +7,13 @@ html[data-shell="dark"].a2w-shell {
   --a2w-accent: #34D399;
   --a2w-accent-hover: #10B981;
   --a2w-accent-subtle: rgba(52, 211, 153, 0.14);
+  --a2w-action-primary: #3FE0C8;
+  --a2w-action-primary-hover: #2fd0b8;
+  --a2w-action-secondary: rgba(255, 255, 255, 0.04);
+  --a2w-action-secondary-hover: rgba(255, 255, 255, 0.08);
+  --a2w-action-secondary-border: rgba(255, 255, 255, 0.18);
+  --a2w-nav-active-bg: #1e293b;
+  --a2w-accent-data: #3FE0C8;
   --a2w-text-primary: rgba(255, 255, 255, 0.92);
   --a2w-text-secondary: rgba(255, 255, 255, 0.60);
   --a2w-text-tertiary: rgba(255, 255, 255, 0.40);
@@ -13,4 +21,7 @@ html[data-shell="dark"].a2w-shell {
   --a2w-border-default: rgba(255, 255, 255, 0.10);
   --a2w-radius-card: 16px;
   --a2w-fab-clearance: 96px;
+  --a2w-z-toast: 9000;
+  --a2w-z-dropdown: 9200;
+  --a2w-z-modal: 9500;
 }
