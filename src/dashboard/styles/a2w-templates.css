@@ -1,0 +1,364 @@
+/**
+ * Ads2Wallet — Template Pass page (scoped dark shell).
+ */
+
+html[data-shell="dark"].a2w-shell .a2w-templates-section {
+  max-width: 1200px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-legacy-header {
+  display: none !important;
+}
+
+html[data-shell="dark"].a2w-shell #a2wTemplatesToolbar {
+  margin-bottom: 4px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-search {
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: var(--a2w-radius-control, 8px);
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--a2w-text-primary);
+  font-size: 14px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-layout-filter {
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: var(--a2w-radius-control, 8px);
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--a2w-text-primary);
+  font-size: 14px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--a2w-border-default);
+  border-radius: var(--a2w-radius-control, 8px);
+  overflow: hidden;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-view-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--a2w-text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-view-btn + .a2w-tpl-view-btn {
+  border-left: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-view-btn--active {
+  background: var(--a2w-accent-soft);
+  color: var(--a2w-accent);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-list-host {
+  padding-top: 8px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--a2w-radius-card, 12px);
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card:hover {
+  border-color: hsl(var(--a2w-accent-hsl, 262 83% 58%) / 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__preview-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+  line-height: 1.3;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  line-height: 1.3;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-badge--layout {
+  background: var(--a2w-accent-soft);
+  color: var(--a2w-accent);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-badge--usage {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__edit {
+  flex: 1;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-card__menu-host {
+  flex-shrink: 0;
+}
+
+/* Mini Wallet preview (~280×175) */
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview {
+  width: 100%;
+  max-width: 280px;
+  height: 175px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--a2w-tpl-bg, #1a1a1a);
+  color: var(--a2w-tpl-fg, #fff);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__strip {
+  height: 52px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.2));
+  background-size: cover;
+  background-position: center;
+}
+
+html[data-shell="dark"].a2w-shell .pass-type-generic .a2w-tpl-preview__strip {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px 4px;
+  position: relative;
+  z-index: 1;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__logo-text {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.95;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__logo-img {
+  max-height: 18px;
+  max-width: 80px;
+  object-fit: contain;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__hf {
+  text-align: right;
+  min-width: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__fl {
+  display: block;
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+  line-height: 1.2;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__fv {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__body {
+  flex: 1;
+  padding: 4px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__row {
+  display: flex;
+  gap: 12px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview__field {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview--thumb {
+  width: 56px;
+  height: 36px;
+  max-width: none;
+  border-radius: 6px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview--thumb .a2w-tpl-preview__header,
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview--thumb .a2w-tpl-preview__body {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview--thumb .a2w-tpl-preview__strip {
+  height: 100%;
+}
+
+/* List table */
+html[data-shell="dark"].a2w-shell .a2w-tpl-list-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--a2w-border-default);
+  border-radius: var(--a2w-radius-card, 12px);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--a2w-text-tertiary);
+  border-bottom: 1px solid var(--a2w-border-default);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--a2w-border-default);
+  color: var(--a2w-text-primary);
+  vertical-align: middle;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-list__name-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--a2w-text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-list__name-btn:hover {
+  color: var(--a2w-accent);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-list__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-filter-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-filter-empty p {
+  margin: 0 0 12px;
+}
+
+/* Skeleton */
+html[data-shell="dark"].a2w-shell .a2w-tpl-card--skeleton {
+  pointer-events: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-preview-skeleton {
+  width: 100%;
+  max-width: 280px;
+  height: 175px;
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-title-skeleton {
+  width: 70%;
+  height: 14px;
+  margin-top: 4px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-tpl-badge-skeleton {
+  width: 45%;
+  height: 10px;
+  margin-top: 8px;
+}
+
+html[data-shell="dark"].a2w-shell #templates .a2w-skeleton {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 200% 100%;
+  animation: a2w-skeleton-shimmer 1.2s linear infinite;
+  border-radius: 8px;
+}

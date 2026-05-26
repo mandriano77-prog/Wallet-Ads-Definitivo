@@ -1,0 +1,256 @@
+/* Pass Emessi — Ads2Wallet shell only */
+html[data-shell="dark"].a2w-shell .a2w-passes-page .a2w-passes-legacy-chrome {
+  display: none !important;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-page #passesContent {
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1200px) {
+  html[data-shell="dark"].a2w-shell .a2w-passes-kpi-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-shell="dark"].a2w-shell .a2w-passes-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-stat-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-stat-card__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--a2w-border-default);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--a2w-text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-stat-card__help:hover {
+  color: var(--a2w-text-secondary);
+  border-color: var(--a2w-text-tertiary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-toolbar-filters select,
+html[data-shell="dark"].a2w-shell .a2w-passes-toolbar-filters input[type="search"],
+html[data-shell="dark"].a2w-shell .a2w-passes-toolbar-filters input[type="date"] {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--a2w-text-primary);
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-toolbar-filters input[type="search"] {
+  min-width: 220px;
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--a2w-border-default);
+  border-radius: var(--a2w-radius-card);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--a2w-text-tertiary);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--a2w-border-default);
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--a2w-border-subtle, rgba(255, 255, 255, 0.06));
+  vertical-align: middle;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--installed {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--not-installed {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--a2w-text-secondary);
+  border: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--error {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--push-on {
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--push-off {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--a2w-text-tertiary);
+  border: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-badge--push-error {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill--apple-ok,
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill--google-ok,
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill--samsung-ok {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill--pending {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-wallet-pill--off {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--a2w-text-tertiary);
+  border: 1px solid transparent;
+  opacity: 0.55;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-campaign-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--a2w-accent);
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-campaign-link:hover {
+  color: #99f6e4;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-device {
+  font-size: 12px;
+  color: var(--a2w-text-secondary);
+  max-width: 180px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-skeleton-row td {
+  padding: 12px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-skeleton-row .a2w-skeleton-line {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 200% 100%;
+  animation: a2w-skeleton-shimmer 1.2s linear infinite;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-passes-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell #passWalletDiagModal .modal-content {
+  max-width: 720px;
+  max-height: min(88vh, 900px);
+  overflow: auto;
+}
+
+html[data-shell="dark"].a2w-shell #passWalletDiagModal .wallet-diag-shell {
+  margin: 0;
+}

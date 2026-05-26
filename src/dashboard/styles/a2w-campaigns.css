@@ -1,0 +1,202 @@
+/* Ads2Wallet — Campagne list page */
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-legacy-header[hidden] {
+  display: none !important;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-list {
+  margin-top: 4px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-toolbar {
+  margin-bottom: 8px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-search {
+  min-width: min(280px, 100%);
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--a2w-text-primary);
+  font-size: 13px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-select {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--a2w-border-default);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--a2w-text-primary);
+  font-size: 12px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__row {
+  align-items: flex-start;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__title {
+  margin: 0;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-status--active {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-status--paused {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-status--ended {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-status--draft {
+  background: rgba(100, 116, 139, 0.25);
+  color: #94a3b8;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__metrics {
+  font-size: 12px;
+  color: var(--a2w-text-secondary);
+  margin: 4px 0 6px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__metrics strong {
+  color: var(--a2w-text-primary);
+  font-weight: 600;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card__desc {
+  font-size: 12px;
+  color: var(--a2w-text-tertiary);
+  margin-bottom: 4px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-type-chip {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--a2w-text-tertiary);
+  margin-bottom: 6px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaign-card .card-actions {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-ui-action-menu {
+  position: relative;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-ui-action-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-skeleton-card {
+  border: 1px solid var(--a2w-border-default);
+  border-radius: var(--a2w-radius-card, 12px);
+  padding: 16px;
+  min-height: 88px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+  width: 70%;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-skeleton-line--title {
+  width: 45%;
+  height: 14px;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-skeleton-line--short {
+  width: 35%;
+  margin-bottom: 0;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-campaigns-error {
+  color: var(--a2w-destructive);
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+html[data-shell="dark"].a2w-shell #campaigns .a2w-ui-page-header__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

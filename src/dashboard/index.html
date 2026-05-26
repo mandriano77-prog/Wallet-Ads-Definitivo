@@ -35,6 +35,9 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-passes.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-templates.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-campaigns.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
@@ -1346,11 +1349,12 @@
 
             <!-- CAMPAIGNS -->
             <div id="campaigns" class="section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <div class="a2w-campaigns-legacy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                     <h1 class="sec-title page-title" style="margin-bottom:0">Campagne</h1>
                     <button class="btn" onclick="openCampaignModal()">+ Nuova Campagna</button>
                 </div>
-                <div id="campaignsList" style="color:var(--text2)">Caricamento...</div>
+                <div id="a2wCampaignsChrome"></div>
+                <div id="campaignsList" class="a2w-campaigns-list" style="color:var(--text2)">Caricamento...</div>
             </div>
 
             <!-- CREATIVES -->
@@ -1395,7 +1399,7 @@
 
             <!-- PASSES -->
             <div id="passes" class="section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <div class="a2w-passes-legacy-chrome" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                     <h1 class="sec-title page-title" style="margin-bottom:0">Pass Emessi</h1>
                     <div style="display:flex;gap:8px;">
                         <select id="passFilterCampaign" onchange="loadPasses(true)" style="width:auto;min-width:160px;">
@@ -1403,8 +1407,8 @@
                         </select>
                     </div>
                 </div>
-                <p id="passFilterSessionHint" style="font-size:11px;color:var(--text2);margin:-8px 0 14px;">Campagna, ricerca e pagina sono ricordati per questo brand finché il tab del browser è aperto.</p>
-                <div id="passWalletChannelsDiag" style="margin-bottom:14px;"></div>
+                <p id="passFilterSessionHint" class="a2w-passes-legacy-chrome" style="font-size:11px;color:var(--text2);margin:-8px 0 14px;">Campagna, ricerca e pagina sono ricordati per questo brand finché il tab del browser è aperto.</p>
+                <div id="passWalletChannelsDiag" class="a2w-passes-legacy-chrome" style="margin-bottom:14px;"></div>
                 <div id="passesContent" style="color:var(--text2)">Caricamento...</div>
             </div>
 
@@ -3031,6 +3035,9 @@
 <script src="/dashboard/js/components/ui/danger-action-button.js"></script>
 <script src="/dashboard/js/components/ui/action-menu.js"></script>
 <script src="/dashboard/js/components/ui/index.js"></script>
+<script src="/dashboard/js/a2w-templates-page.js"></script>
+<script src="/dashboard/js/a2w-campaigns.js"></script>
+<script src="/dashboard/js/a2w-passes.js"></script>
 <script src="/dashboard/js/a2w-shell.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
