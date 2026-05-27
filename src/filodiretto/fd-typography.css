@@ -1,0 +1,115 @@
+/**
+ * FD-10 — FiloDiretto typography scale (scoped to [data-app="filodiretto"]).
+ * H1 30px bold · H2 20px semibold · H3 16px semibold · body 14px regular
+ */
+html[data-app='filodiretto'] .content,
+html[data-app='filodiretto'] .section {
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-body);
+  color: var(--fd-color-text-body);
+}
+
+/* H1 — page titles */
+html[data-app='filodiretto'] .section > h1.page-title,
+html[data-app='filodiretto'] .section > .page-title,
+html[data-app='filodiretto'] .section > h1.sec-title.page-title,
+html[data-app='filodiretto'] #brand-identity .a2w-bi-title {
+  font-size: var(--fd-font-size-h1);
+  font-weight: var(--fd-font-weight-bold);
+  line-height: var(--fd-line-height-tight);
+  letter-spacing: -0.02em;
+  color: var(--fd-color-text-primary);
+}
+
+/* H2 — section / card titles */
+html[data-app='filodiretto'] .section h2.block-title,
+html[data-app='filodiretto'] .section .sec-title:not(.page-title),
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head h2,
+html[data-app='filodiretto'] .contacts-card__title,
+html[data-app='filodiretto'] .modal-header,
+html[data-app='filodiretto'] .empty-state__title {
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  line-height: var(--fd-line-height-tight);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .section h2.block-title--sm {
+  font-size: var(--fd-font-size-h3);
+}
+
+/* H3 — sub-blocks */
+html[data-app='filodiretto'] .section h3.block-title,
+html[data-app='filodiretto'] .a2w-bi-asset-title,
+html[data-app='filodiretto'] .fd-home-card__title {
+  font-size: var(--fd-font-size-h3);
+  font-weight: var(--fd-font-weight-semibold);
+  line-height: var(--fd-line-height-tight);
+  color: var(--fd-color-text-primary);
+}
+
+/* Lead & subtitles */
+html[data-app='filodiretto'] .section .page-lead,
+html[data-app='filodiretto'] .a2w-bi-subtitle,
+html[data-app='filodiretto'] .contacts-page-blurb,
+html[data-app='filodiretto'] .fd-home-lead,
+html[data-app='filodiretto'] .a2w-bi-section__head p {
+  font-size: var(--fd-font-size-body);
+  font-weight: var(--fd-font-weight-regular);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+}
+
+/* Body copy & forms */
+html[data-app='filodiretto'] .form-label,
+html[data-app='filodiretto'] .table,
+html[data-app='filodiretto'] .table td,
+html[data-app='filodiretto'] .table th,
+html[data-app='filodiretto'] .btn,
+html[data-app='filodiretto'] .nav-item,
+html[data-app='filodiretto'] .form-hint,
+html[data-app='filodiretto'] .a2w-bi-field-help,
+html[data-app='filodiretto'] .fd-helper-text,
+html[data-app='filodiretto'] .empty-state__desc {
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-body);
+}
+
+html[data-app='filodiretto'] .form-label {
+  font-weight: var(--fd-font-weight-medium);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] input,
+html[data-app='filodiretto'] select,
+html[data-app='filodiretto'] textarea {
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-body);
+}
+
+html[data-app='filodiretto'] .table thead th {
+  font-size: var(--fd-font-size-sm);
+  font-weight: var(--fd-font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+html[data-app='filodiretto'] .app-header .breadcrumb,
+html[data-app='filodiretto'] .a2w-bi-breadcrumb {
+  font-size: var(--fd-font-size-sm);
+  line-height: var(--fd-line-height-body);
+}
+
+/* KPI / stats */
+html[data-app='filodiretto'] .fd-home-kpi__value,
+html[data-app='filodiretto'] .contacts-kpi-strip__value {
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-bold);
+  line-height: var(--fd-line-height-tight);
+}
+
+html[data-app='filodiretto'] .contacts-kpi-strip__label,
+html[data-app='filodiretto'] .fd-home-kpi__label {
+  font-size: var(--fd-font-size-sm);
+  line-height: var(--fd-line-height-body);
+}

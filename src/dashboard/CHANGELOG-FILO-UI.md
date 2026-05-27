@@ -1,5 +1,18 @@
 # Filo Diretto UI Changelog
 
+## FD-10 — Tipografia (`[FD] typography`)
+
+### Added
+- `src/filodiretto/fd-typography.css` — scala H1/H2/H3/body su `[data-app=filodiretto]`
+- Token tipografici in `tokens.css` (`--fd-font-size-*`, line-height, pesi)
+
+### Changed
+- HR deploy injects `fd-typography.css`
+- Titoli pagina 30px bold, sezioni 20px semibold, sotto-sezioni 16px, corpo 14px con line-height 1.5–1.6
+- Form, tabelle, KPI strip e empty state allineati alla scala
+
+---
+
 ## FD-09 — Design tokens (`[FD] tokens`)
 
 ### Added
