@@ -2327,30 +2327,38 @@
 
             <div id="a2wAddContactModal" class="import-modal-overlay a2w-add-contact-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="a2wAddContactTitle" aria-hidden="true">
                 <div class="card import-modal-card a2w-add-contact-modal__dialog">
-                    <header class="import-wizard__header" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;">
+                    <header class="import-wizard__header a2w-add-contact-modal__header">
                         <div class="import-wizard__title-row">
                             <div class="import-wizard__title-block">
                                 <h2 id="a2wAddContactTitle" class="import-wizard__title">Aggiungi contatto</h2>
                                 <p class="import-wizard__subtitle">Inserimento manuale per il brand selezionato. Serve almeno email o telefono.</p>
                             </div>
-                            <button type="button" class="import-wizard__close" id="a2wAddContactCloseBtn" aria-label="Chiudi modale aggiungi contatto">×</button>
+                            <button type="button" class="import-wizard__close a2w-add-contact-modal__close" id="a2wAddContactCloseBtn" aria-label="Chiudi">×</button>
                         </div>
                     </header>
                     <form id="a2wAddContactForm" class="import-wizard__body" novalidate>
-                        <div class="form-row">
-                            <div class="form-group"><label class="form-label" for="a2wAddContactFirstName">Nome</label><input type="text" id="a2wAddContactFirstName" name="firstName" autocomplete="given-name"></div>
-                            <div class="form-group"><label class="form-label" for="a2wAddContactLastName">Cognome</label><input type="text" id="a2wAddContactLastName" name="lastName" autocomplete="family-name"></div>
+                        <div class="a2w-add-contact-grid" role="group" aria-label="Dati contatto">
+                          <div class="form-group"><label class="form-label" for="a2wAddContactFirstName">Nome</label><input type="text" id="a2wAddContactFirstName" name="firstName" autocomplete="given-name"></div>
+                          <div class="form-group"><label class="form-label" for="a2wAddContactLastName">Cognome</label><input type="text" id="a2wAddContactLastName" name="lastName" autocomplete="family-name"></div>
+                          <div class="form-group"><label class="form-label" for="a2wAddContactEmail">Email</label><input type="email" id="a2wAddContactEmail" name="email" autocomplete="email" placeholder="nome@esempio.it"></div>
+                          <div class="form-group"><label class="form-label" for="a2wAddContactPhone">Telefono</label><input type="tel" id="a2wAddContactPhone" name="phone" autocomplete="tel" placeholder="+39 …"></div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group"><label class="form-label" for="a2wAddContactEmail">Email</label><input type="email" id="a2wAddContactEmail" name="email" autocomplete="email" placeholder="nome@esempio.it"></div>
-                            <div class="form-group"><label class="form-label" for="a2wAddContactPhone">Telefono</label><input type="tel" id="a2wAddContactPhone" name="phone" autocomplete="tel" placeholder="+39 …"></div>
+
+                        <div class="a2w-add-contact-consent-row">
+                          <label class="a2w-add-contact-checkbox">
+                              <input type="checkbox" id="a2wAddContactConsent" name="consent">
+                              <span>Il contatto ha acconsentito al trattamento dei dati per comunicazioni legate al pass.</span>
+                          </label>
+                          <details class="a2w-add-contact-consent-help">
+                            <summary>Cosa significa?</summary>
+                            <div class="a2w-add-contact-consent-help__panel">
+                              Conferma che hai raccolto il consenso (es. via form o contratto) per contattare la persona in relazione al pass e alle comunicazioni collegate.
+                            </div>
+                          </details>
                         </div>
-                        <label class="a2w-add-contact-consent" style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;margin-top:4px;">
-                            <input type="checkbox" id="a2wAddContactConsent" name="consent" style="width:auto;min-height:auto;margin-top:3px;">
-                            <span>Il contatto ha acconsentito al trattamento dei dati per comunicazioni legate al pass.</span>
-                        </label>
-                        <label class="a2w-add-contact-pass" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:12px;">
-                            <input type="checkbox" id="a2wAddContactCreatePass" style="width:auto;min-height:auto;">
+
+                        <label class="a2w-add-contact-checkbox a2w-add-contact-pass">
+                            <input type="checkbox" id="a2wAddContactCreatePass">
                             <span>Crea anche un pass Wallet</span>
                         </label>
                         <div class="form-group" id="a2wAddContactTemplateWrap" style="display:none;margin-top:8px;">
@@ -2359,7 +2367,7 @@
                         </div>
                         <p id="a2wAddContactError" class="import-wizard__warn" style="display:none;" role="alert"></p>
                     </form>
-                    <footer class="import-wizard__footer">
+                    <footer class="import-wizard__footer a2w-add-contact-modal__footer">
                         <div class="import-wizard__footer-inner">
                             <button type="button" class="btn import-wizard__btn-back" id="a2wAddContactCancelBtn">Annulla</button>
                             <button type="submit" class="btn import-wizard__cta" id="a2wAddContactSubmitBtn" form="a2wAddContactForm">Salva contatto</button>
@@ -7351,6 +7359,10 @@ function ensureA2wLeadsHeaderChrome() {
 
     const title = header.querySelector('h1.page-title');
     if (title && !title.querySelector('.a2w-contacts-help-trigger')) {
+        const blurb = header.querySelector('.contacts-page-blurb');
+        const blurbText = (blurb?.textContent || 'I contatti vengono raccolti automaticamente da landing page, pass emessi e form di iscrizione.').trim();
+        if (blurb) blurb.hidden = true;
+
         const helpBtn = document.createElement('button');
         helpBtn.type = 'button';
         helpBtn.className = 'a2w-contacts-help-trigger';
@@ -7363,7 +7375,7 @@ function ensureA2wLeadsHeaderChrome() {
         helpTip.className = 'a2w-contacts-help-tooltip';
         helpTip.id = 'a2wContactsHelpTooltip';
         helpTip.setAttribute('role', 'tooltip');
-        helpTip.textContent = 'I contatti vengono raccolti automaticamente da landing page, pass emessi e form di iscrizione.';
+        helpTip.textContent = blurbText;
 
         const wrap = document.createElement('span');
         wrap.className = 'a2w-contacts-help-wrap';
@@ -7419,7 +7431,12 @@ function openA2wAddContactModal() {
     const modal = document.getElementById('a2wAddContactModal');
     const form = document.getElementById('a2wAddContactForm');
     const errEl = document.getElementById('a2wAddContactError');
+    const submitBtn = document.getElementById('a2wAddContactSubmitBtn');
     if (!modal || !form) return;
+    window.__a2wAddContactState = {
+        dirty: false,
+        opener: document.activeElement
+    };
     form.reset();
     if (errEl) {
         errEl.style.display = 'none';
@@ -7431,13 +7448,29 @@ function openA2wAddContactModal() {
     populateA2wAddContactTemplates();
     const first = document.getElementById('a2wAddContactFirstName');
     if (first) first.focus();
+    if (submitBtn) submitBtn.disabled = true;
+    a2wAddContactSyncValidity();
 }
 
-function closeA2wAddContactModal() {
+async function closeA2wAddContactModal(force) {
     const modal = document.getElementById('a2wAddContactModal');
     if (!modal) return;
+    const state = window.__a2wAddContactState || {};
+    if (!force && state.dirty) {
+        const confirmFn = typeof appConfirm === 'function'
+            ? appConfirm
+            : async (o) => window.confirm(o.message || 'Chiudere?');
+        const ok = await confirmFn({
+            title: 'Chiudere senza salvare?',
+            message: 'Hai modifiche non salvate. Vuoi chiudere la modale?',
+            confirmLabel: 'Chiudi'
+        });
+        if (!ok) return;
+    }
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
+    const opener = state.opener;
+    if (opener && typeof opener.focus === 'function') opener.focus();
 }
 
 function toggleA2wAddContactPassFields() {
@@ -7495,6 +7528,7 @@ async function submitA2wAddContact(event) {
             errEl.textContent = 'Inserisci almeno email o telefono.';
             errEl.style.display = 'block';
         }
+        a2wAddContactMarkFieldValidity();
         return;
     }
     if (!consent) {
@@ -7533,7 +7567,9 @@ async function submitA2wAddContact(event) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Impossibile creare il contatto');
         toast('Contatto aggiunto');
-        closeA2wAddContactModal();
+        window.__a2wAddContactState = window.__a2wAddContactState || {};
+        window.__a2wAddContactState.dirty = false;
+        await closeA2wAddContactModal(true);
         await loadLeads();
     } catch (e) {
         if (errEl) {
@@ -7544,6 +7580,7 @@ async function submitA2wAddContact(event) {
         }
     } finally {
         if (submitBtn) submitBtn.disabled = false;
+        a2wAddContactSyncValidity();
     }
 }
 
@@ -7551,17 +7588,85 @@ async function submitA2wAddContact(event) {
     const modal = document.getElementById('a2wAddContactModal');
     if (!modal || modal.dataset.bound === '1') return;
     modal.dataset.bound = '1';
-    document.getElementById('a2wAddContactCloseBtn')?.addEventListener('click', closeA2wAddContactModal);
-    document.getElementById('a2wAddContactCancelBtn')?.addEventListener('click', closeA2wAddContactModal);
+    document.getElementById('a2wAddContactCloseBtn')?.addEventListener('click', () => closeA2wAddContactModal(false));
+    document.getElementById('a2wAddContactCancelBtn')?.addEventListener('click', () => closeA2wAddContactModal(false));
     document.getElementById('a2wAddContactCreatePass')?.addEventListener('change', toggleA2wAddContactPassFields);
     document.getElementById('a2wAddContactForm')?.addEventListener('submit', submitA2wAddContact);
+    document.getElementById('a2wAddContactForm')?.addEventListener('input', function () {
+        window.__a2wAddContactState = window.__a2wAddContactState || {};
+        window.__a2wAddContactState.dirty = true;
+        a2wAddContactSyncValidity();
+    });
+    ['a2wAddContactEmail', 'a2wAddContactPhone'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('blur', a2wAddContactMarkFieldValidity);
+    });
     modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeA2wAddContactModal();
+        if (e.target === modal) closeA2wAddContactModal(false);
     });
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && modal.style.display !== 'none') closeA2wAddContactModal();
+        if (e.key === 'Escape' && modal.style.display !== 'none') closeA2wAddContactModal(false);
+    });
+    modal.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab' || modal.style.display === 'none') return;
+        const focusables = modal.querySelectorAll('button, [href], input, select, textarea, details summary, [tabindex]:not([tabindex=\"-1\"])');
+        const nodes = Array.from(focusables).filter((n) => !n.disabled && n.getAttribute('aria-hidden') !== 'true' && n.offsetParent !== null);
+        if (!nodes.length) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
     });
 })();
+
+function a2wAddContactEmailLooksValid(value) {
+    const v = String(value || '').trim();
+    if (!v) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function a2wAddContactPhoneLooksValid(value) {
+    const v = String(value || '').trim();
+    if (!v) return true;
+    return v.replace(/[^\d+]/g, '').length >= 7;
+}
+
+function a2wAddContactSyncValidity() {
+    const emailEl = document.getElementById('a2wAddContactEmail');
+    const phoneEl = document.getElementById('a2wAddContactPhone');
+    const consentEl = document.getElementById('a2wAddContactConsent');
+    const submitBtn = document.getElementById('a2wAddContactSubmitBtn');
+    if (!submitBtn) return;
+    const email = (emailEl?.value || '').trim();
+    const phone = (phoneEl?.value || '').trim();
+    const hasOne = !!email || !!phone;
+    const emailOk = a2wAddContactEmailLooksValid(email);
+    const phoneOk = a2wAddContactPhoneLooksValid(phone);
+    const consentOk = !!consentEl?.checked;
+    submitBtn.disabled = !(hasOne && emailOk && phoneOk && consentOk);
+    a2wAddContactMarkFieldValidity();
+}
+
+function a2wAddContactMarkFieldValidity() {
+    const emailEl = document.getElementById('a2wAddContactEmail');
+    const phoneEl = document.getElementById('a2wAddContactPhone');
+    if (!emailEl || !phoneEl) return;
+    const email = (emailEl.value || '').trim();
+    const phone = (phoneEl.value || '').trim();
+    const emailOk = a2wAddContactEmailLooksValid(email);
+    const phoneOk = a2wAddContactPhoneLooksValid(phone);
+    emailEl.classList.toggle('a2w-add-contact-input--invalid', !!email && !emailOk);
+    phoneEl.classList.toggle('a2w-add-contact-input--invalid', !!phone && !phoneOk);
+    const none = !email && !phone;
+    emailEl.classList.toggle('a2w-add-contact-input--required', none);
+    phoneEl.classList.toggle('a2w-add-contact-input--required', none);
+}
 
 function getLeadsKpiMetrics(leads) {
     const rows = Array.isArray(leads) ? leads : [];
@@ -8111,24 +8216,20 @@ function renderLeadsTable(leads) {
             emptyHost.innerHTML = `
               <div class="a2w-contacts-empty" data-a2w-component="contacts-empty-state">
                 <div class="a2w-contacts-empty__icon" aria-hidden="true">👥</div>
-                <h2 class="a2w-contacts-empty__title">Nessun contatto registrato</h2>
-                <p class="a2w-contacts-empty__desc">I contatti raccolti da landing, pass e form compariranno qui. Segui i passi per iniziare.</p>
-                <ol class="a2w-contacts-onboarding" aria-label="Passi per raccogliere i primi contatti">
-                  <li><span class="a2w-contacts-onboarding__step">1</span><span>Crea il primo pass</span></li>
-                  <li><span class="a2w-contacts-onboarding__step">2</span><span>Pubblica una landing (campagna)</span></li>
-                  <li><span class="a2w-contacts-onboarding__step">3</span><span>Condividi il link o lancia la campagna</span></li>
-                </ol>
+                <h2 class="a2w-contacts-empty__title">Nessun contatto ancora</h2>
+                <p class="a2w-contacts-empty__desc">Pubblica una landing per iniziare a raccogliere contatti automaticamente.</p>
                 <div class="a2w-contacts-empty__actions">
                   <button type="button" class="btn" onclick="openA2wContactsPrimaryLanding()">Crea la prima landing</button>
-                  <button type="button" class="btn sec" onclick="openEmployeeImportModal()">Importa CSV</button>
-                  <details class="a2w-contacts-more-actions">
-                    <summary>Altre azioni</summary>
-                    <div class="a2w-contacts-more-actions__panel">
-                      <button type="button" class="a2w-contacts-empty__link" onclick="openA2wAddContactModal()">Aggiungi contatto manualmente</button>
-                      <button type="button" class="a2w-contacts-empty__link" onclick="nav('templates')">Configura un pass</button>
-                    </div>
-                  </details>
                 </div>
+                <button type="button" class="a2w-contacts-empty__link a2w-contacts-empty__link--muted" onclick="openEmployeeImportModal()">oppure importa un CSV</button>
+                <details class="a2w-contacts-empty__howto">
+                  <summary>Come funziona la raccolta contatti</summary>
+                  <ol class="a2w-contacts-empty__steps">
+                    <li>Crea una landing page</li>
+                    <li>Configura un pass</li>
+                    <li>Condividi il link o lancia la campagna</li>
+                  </ol>
+                </details>
               </div>
             `;
         }
