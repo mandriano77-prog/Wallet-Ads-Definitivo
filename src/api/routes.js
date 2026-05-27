@@ -749,6 +749,61 @@ router.get('/passes/:id/download', async (req, res) => {
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Apple Wallet Protocol ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 
 // Log all Apple Wallet protocol calls for debugging
+
+// Must be registered before /passes/:passTypeId/:serialNumber (Apple Wallet protocol).
+router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
+  try {
+    const passInstance = await getPassInstance(req.params.id);
+    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
+    const brand = await getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
+    const baseUrl = resolveBaseUrl(req);
+    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+    });
+    const { inspectPkpassIcon, resolveBrandLogoRawBuffer } = require('../engine/brand-wallet-logo');
+    const icon = await inspectPkpassIcon(pkpassBuffer);
+    const resolved = await resolveBrandLogoRawBuffer(brand);
+    res.json({
+      pass_id: passInstance.id,
+      serial_number: passInstance.serial_number,
+      brand_id: brand.id,
+      brand_name: brand.name,
+      resolved_wallet_source: resolved?.source || null,
+      pkpass_icon: icon,
+      pkpass_bytes: pkpassBuffer.length,
+      pass_type_identifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      preview_url: '/api/v1/passes/' + passInstance.id + '/wallet-icon.png',
+      ios_cache_hint: 'Se preview_url e ok ma la notifica no: elimina il pass da Wallet, scarica di nuovo, reinvia push.'
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/passes/:id/wallet-icon.png', async (req, res) => {
+  try {
+    const passInstance = await getPassInstance(req.params.id);
+    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
+    const brand = await getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
+    const baseUrl = resolveBaseUrl(req);
+    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+    });
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(pkpassBuffer);
+    const entry = zip.getEntry('icon@2x.png') || zip.getEntry('icon.png');
+    if (!entry) return res.status(404).json({ error: 'icon.png assente nel pass generato' });
+    res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
+    res.send(entry.getData());
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.all('/devices/*', (req, res, next) => {
   console.log(`[Apple Wallet] ${req.method} ${req.originalUrl} | Auth: ${req.headers.authorization ? 'yes' : 'no'} | Body: ${JSON.stringify(req.body || {})}`);
   next();
@@ -1601,61 +1656,6 @@ router.post('/brands/:id/logo/sync-from-identity', async (req, res) => {
     });
     if (!synced) return res.status(400).json({ error: 'Nessun logo Brand Identity da sincronizzare' });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
-  try {
-    const passInstance = await getPassInstance(req.params.id);
-    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
-    if (!requireBrandId(req, res, passInstance.brand_id)) return;
-    const brand = await getBrand(passInstance.brand_id);
-    const template = await getTemplate(passInstance.template_id);
-    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
-    const baseUrl = resolveBaseUrl(req);
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
-      baseUrl,
-      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
-      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
-    });
-    const { inspectPkpassIcon, resolveBrandLogoRawBuffer } = require('../engine/brand-wallet-logo');
-    const icon = await inspectPkpassIcon(pkpassBuffer);
-    const resolved = await resolveBrandLogoRawBuffer(brand);
-    res.json({
-      pass_id: passInstance.id,
-      serial_number: passInstance.serial_number,
-      brand_id: brand.id,
-      brand_name: brand.name,
-      resolved_wallet_source: resolved?.source || null,
-      pkpass_icon: icon,
-      pkpass_bytes: pkpassBuffer.length,
-      pass_type_identifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
-      preview_url: '/api/v1/passes/' + passInstance.id + '/wallet-icon.png',
-      ios_cache_hint: 'Se preview_url e ok ma la notifica no: elimina il pass da Wallet, scarica di nuovo, reinvia push.'
-    });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/passes/:id/wallet-icon.png', async (req, res) => {
-  try {
-    const passInstance = await getPassInstance(req.params.id);
-    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
-    if (!requireBrandId(req, res, passInstance.brand_id)) return;
-    const brand = await getBrand(passInstance.brand_id);
-    const template = await getTemplate(passInstance.template_id);
-    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
-    const baseUrl = resolveBaseUrl(req);
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
-      baseUrl,
-      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
-      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
-    });
-    const AdmZip = require('adm-zip');
-    const zip = new AdmZip(pkpassBuffer);
-    const entry = zip.getEntry('icon@2x.png') || zip.getEntry('icon.png');
-    if (!entry) return res.status(404).json({ error: 'icon.png assente nel pass generato' });
-    res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
-    res.send(entry.getData());
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
