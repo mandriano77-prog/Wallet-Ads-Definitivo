@@ -1,5 +1,19 @@
 # Filo Diretto UI Changelog
 
+## FD-07 — Helper text e placeholder (`[FD] form-help`)
+
+### Added
+- `src/filodiretto/fd-form-help.css` — `--fd-text-helper` (#475569), contrasto helper WCAG AA su Filo
+- `src/filodiretto/fd-form-help.js` — placeholder URL/telefono completi; help slug; label «URL link fisso»
+
+### Changed
+- HR deploy injects `fd-form-help.css` / `fd-form-help.js`
+- Testi secondari Filo leggermente più scuri (`--text-secondary` su `[data-app=filodiretto]`)
+- Rimosso helper duplicato sotto Tagline (resta il placeholder descrittivo)
+- `https://...` e `+39 ...` sostituiti con esempi completi nei form visibili HR
+
+---
+
 ## FD-06 — Form dirty state (`[FD] form-dirty`)
 
 ### Added

@@ -1,0 +1,45 @@
+/**
+ * FD-07 — FiloDiretto helper text contrast (WCAG AA) and readable hints.
+ */
+html[data-app='filodiretto'] {
+  --fd-text-helper: #475569;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text2: #475569;
+}
+
+html[data-app='filodiretto'] .form-hint,
+html[data-app='filodiretto'] .a2w-bi-field-help,
+html[data-app='filodiretto'] .a2w-bi-subtitle,
+html[data-app='filodiretto'] .page-lead,
+html[data-app='filodiretto'] .contacts-page-blurb,
+html[data-app='filodiretto'] .fd-helper-text,
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head p,
+html[data-app='filodiretto'] .a2w-bi-asset-spec,
+html[data-app='filodiretto'] .a2w-bi-asset-dropzone-hint,
+html[data-app='filodiretto'] .bulk-select-hint {
+  color: var(--fd-text-helper) !important;
+  line-height: 1.5;
+}
+
+html[data-app='filodiretto'] input::placeholder,
+html[data-app='filodiretto'] textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+html[data-app='filodiretto'] #biTagline + .a2w-bi-field-help {
+  display: none;
+}
+
+html[data-app='filodiretto'] #biSlug + .a2w-bi-slug-status + .fd-slug-help,
+html[data-app='filodiretto'] .a2w-bi-slug-row + .fd-slug-help {
+  margin-top: 6px;
+}
+
+html[data-app='filodiretto'] .fd-slug-help {
+  font-size: 12px;
+  color: var(--fd-text-helper);
+  line-height: 1.45;
+  margin: 6px 0 0;
+}
