@@ -706,6 +706,243 @@ html[data-shell="dark"].a2w-shell #leads .a2w-skeleton-line {
   }
 }
 
+/* ---- A2W Contatti: header hierarchy + empty state + add-contact modal (2026-05) ---- */
+html[data-shell="dark"].a2w-shell #leads .contacts-page-header h1.page-title {
+  font-size: clamp(32px, 2.6vw, 40px);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+
+html[data-shell="dark"].a2w-shell #leads .contacts-page-blurb {
+  display: none !important;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-help-trigger {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(2, 6, 23, 0.2);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: help;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-help-tooltip {
+  background: #0b1220;
+  border-color: rgba(148, 163, 184, 0.18);
+  color: rgba(226, 232, 240, 0.85);
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty {
+  padding: 26px 18px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__title {
+  font-size: 20px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__desc {
+  margin-bottom: 14px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__link--muted {
+  display: inline-block;
+  margin-top: 10px;
+  color: rgba(148, 163, 184, 0.9);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__link--muted:hover {
+  color: var(--a2w-text-primary);
+  text-decoration: underline;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__howto {
+  margin-top: 14px;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__howto summary {
+  cursor: pointer;
+  user-select: none;
+  color: rgba(148, 163, 184, 0.95);
+  font-size: 12px;
+  list-style: none;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__howto summary::-webkit-details-marker {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__steps {
+  margin: 10px auto 0;
+  padding-left: 18px;
+  max-width: 420px;
+  text-align: left;
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-empty__steps li {
+  margin: 6px 0;
+}
+
+/* remove old empty-state pieces */
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-onboarding,
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-onboarding__step,
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-more-actions,
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-more-actions__panel {
+  display: none !important;
+}
+
+/* Add-contact modal: opaque, dark, centered */
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal[aria-hidden="false"] {
+  display: flex;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__dialog {
+  width: min(520px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: #0b1220;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__header,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__footer,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .import-wizard__body {
+  background: #0b1220;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__header {
+  padding: 22px 22px 14px !important;
+  border: 0 !important;
+  margin: 0 !important;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .import-wizard__body {
+  padding: 0 22px 10px !important;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__footer {
+  padding: 14px 22px 22px !important;
+  border: 0 !important;
+  margin: 0 !important;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .import-wizard__title {
+  color: #f1f5f9;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .import-wizard__subtitle {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__close {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 639px) {
+  html[data-shell="dark"].a2w-shell .a2w-add-contact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .form-label {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal input,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal select,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #f1f5f9;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal input::placeholder {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.9);
+  cursor: pointer;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-consent-row {
+  margin-top: 10px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-consent-help {
+  margin-top: 8px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-consent-help summary {
+  cursor: pointer;
+  color: rgba(148, 163, 184, 0.95);
+  font-size: 12px;
+  list-style: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-consent-help summary::-webkit-details-marker {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-consent-help__panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.35);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-add-contact-input--invalid,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-input--required {
+  border-color: rgba(248, 113, 113, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important;
+}
+
 html[data-shell="dark"].a2w-shell #leads .a2w-contacts-onboarding {
   list-style: none;
   margin: 0 auto 20px;

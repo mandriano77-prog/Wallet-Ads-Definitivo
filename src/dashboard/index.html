@@ -8216,24 +8216,20 @@ function renderLeadsTable(leads) {
             emptyHost.innerHTML = `
               <div class="a2w-contacts-empty" data-a2w-component="contacts-empty-state">
                 <div class="a2w-contacts-empty__icon" aria-hidden="true">👥</div>
-                <h2 class="a2w-contacts-empty__title">Nessun contatto registrato</h2>
-                <p class="a2w-contacts-empty__desc">I contatti raccolti da landing, pass e form compariranno qui. Segui i passi per iniziare.</p>
-                <ol class="a2w-contacts-onboarding" aria-label="Passi per raccogliere i primi contatti">
-                  <li><span class="a2w-contacts-onboarding__step">1</span><span>Crea il primo pass</span></li>
-                  <li><span class="a2w-contacts-onboarding__step">2</span><span>Pubblica una landing (campagna)</span></li>
-                  <li><span class="a2w-contacts-onboarding__step">3</span><span>Condividi il link o lancia la campagna</span></li>
-                </ol>
+                <h2 class="a2w-contacts-empty__title">Nessun contatto ancora</h2>
+                <p class="a2w-contacts-empty__desc">Pubblica una landing per iniziare a raccogliere contatti automaticamente.</p>
                 <div class="a2w-contacts-empty__actions">
                   <button type="button" class="btn" onclick="openA2wContactsPrimaryLanding()">Crea la prima landing</button>
-                  <button type="button" class="btn sec" onclick="openEmployeeImportModal()">Importa CSV</button>
-                  <details class="a2w-contacts-more-actions">
-                    <summary>Altre azioni</summary>
-                    <div class="a2w-contacts-more-actions__panel">
-                      <button type="button" class="a2w-contacts-empty__link" onclick="openA2wAddContactModal()">Aggiungi contatto manualmente</button>
-                      <button type="button" class="a2w-contacts-empty__link" onclick="nav('templates')">Configura un pass</button>
-                    </div>
-                  </details>
                 </div>
+                <button type="button" class="a2w-contacts-empty__link a2w-contacts-empty__link--muted" onclick="openEmployeeImportModal()">oppure importa un CSV</button>
+                <details class="a2w-contacts-empty__howto">
+                  <summary>Come funziona la raccolta contatti</summary>
+                  <ol class="a2w-contacts-empty__steps">
+                    <li>Crea una landing page</li>
+                    <li>Configura un pass</li>
+                    <li>Condividi il link o lancia la campagna</li>
+                  </ol>
+                </details>
               </div>
             `;
         }
