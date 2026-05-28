@@ -19,13 +19,39 @@
     return [];
   }
 
+  function isValidBrandId(value) {
+    if (value == null) return false;
+    var id = String(value).trim();
+    if (!id || id === 'undefined' || id === 'null') return false;
+    return true;
+  }
+
   function getCurrentBrandId() {
-    if (window.brandId) return String(window.brandId);
+    var candidates = [];
+    try {
+      if (window.brandId) candidates.push(window.brandId);
+    } catch (_) {}
+    try {
+      var sel = document.getElementById('brandSelector');
+      if (sel && sel.value) candidates.push(sel.value);
+    } catch (_) {}
     try {
       var qpBrandId = new URLSearchParams(window.location.search || '').get('brand_id');
-      if (qpBrandId) return String(qpBrandId);
+      if (qpBrandId) candidates.push(qpBrandId);
     } catch (_) {}
+    for (var i = 0; i < candidates.length; i++) {
+      var id = String(candidates[i]).trim();
+      if (isValidBrandId(id)) return id;
+    }
     return '';
+  }
+
+  function syncDashboardBrandId(brandId) {
+    if (!isValidBrandId(brandId)) return;
+    try { window.brandId = brandId; } catch (_) {}
+    if (typeof window.ensureBrandIdFromContext === 'function') {
+      try { window.ensureBrandIdFromContext(); } catch (_) {}
+    }
   }
 
   var SECTION_META = {
@@ -676,12 +702,12 @@
   function patchLoadMediaLibrary() {
     if (window.__fdMediaLoadPatched || typeof window.loadMediaLibrary !== 'function') return;
     window.__fdMediaLoadPatched = true;
-    var orig = window.loadMediaLibrary;
     window.loadMediaLibrary = async function () {
       ensureMediaLayout();
       try {
         var brandId = getCurrentBrandId();
         if (!brandId) return;
+        syncDashboardBrandId(brandId);
         var api = window.API || '/api/v1';
         var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(brandId), {
           headers: authHeaders()
@@ -701,7 +727,7 @@
         applyGlobalSearchFilter();
         syncBulkUi();
       } catch (e) {
-        if (typeof orig === 'function') await orig.apply(this, arguments);
+        console.error('fd-media-library load error:', e);
         document.querySelectorAll('#mediaLogoBox, #mediaWalletIconGrid, #mediaStripGrid, #mediaThumbnailGrid, #mediaBackgroundGrid').forEach(function (node) {
           if (!node) return;
           var txt = (node.textContent || '').trim();

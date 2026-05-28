@@ -5,6 +5,21 @@
 (function () {
   'use strict';
 
+  function injectFiloWelcomeCriticalCss() {
+    var isFilo = document.documentElement.getAttribute('data-app') === 'filodiretto';
+    if (!isFilo) {
+      try { isFilo = window.__2WALLET_PRODUCT_LOCK__ === 'hr'; } catch (_) {}
+    }
+    if (!isFilo || document.getElementById('fdHomeWelcomeCritical')) return;
+    var el = document.createElement('style');
+    el.id = 'fdHomeWelcomeCritical';
+    el.textContent =
+      "html[data-app='filodiretto'] #welcome .page-lead," +
+      "html[data-app='filodiretto'] #welcome .fd-welcome-legacy{display:none!important}";
+    (document.head || document.documentElement).appendChild(el);
+  }
+  injectFiloWelcomeCriticalCss();
+
   var EVENT_LABELS = {
     signup: 'Iscrizione',
     pass_created: 'Pass creato',
@@ -50,12 +65,28 @@
     return t ? { Authorization: 'Bearer ' + t } : {};
   }
 
+  function isValidBrandId(value) {
+    if (value == null) return false;
+    var id = String(value).trim();
+    return !!(id && id !== 'undefined' && id !== 'null');
+  }
+
   function getBrandId() {
+    var candidates = [];
     try {
-      if (window.brandId) return window.brandId;
+      if (window.brandId) candidates.push(window.brandId);
     } catch (_) {}
     var sel = document.getElementById('brandSelector');
-    return sel && sel.value ? sel.value : null;
+    if (sel && sel.value) candidates.push(sel.value);
+    try {
+      var qp = new URLSearchParams(window.location.search || '').get('brand_id');
+      if (qp) candidates.push(qp);
+    } catch (_) {}
+    for (var i = 0; i < candidates.length; i++) {
+      var id = String(candidates[i]).trim();
+      if (isValidBrandId(id)) return id;
+    }
+    return null;
   }
 
   function getBrandName() {
@@ -96,11 +127,85 @@
     return root;
   }
 
-  function renderNoBrand(root) {
+  function setHomeState(welcome, state) {
+    if (!welcome) return;
+    var next = state || 'no-brand';
+    welcome.setAttribute('data-fd-home-state', next);
+    var root = document.getElementById('fdHomeRoot');
+    if (root) {
+      root.classList.remove(
+        'fd-home-root--setup',
+        'fd-home-root--operational',
+        'fd-home-root--no-brand',
+        'fd-home-root--loading',
+        'fd-home-root--error'
+      );
+      if (next === 'setup') root.classList.add('fd-home-root--setup');
+      else if (next === 'operational') root.classList.add('fd-home-root--operational');
+      else if (next === 'loading') root.classList.add('fd-home-root--loading');
+      else if (next === 'error') root.classList.add('fd-home-root--error');
+      else root.classList.add('fd-home-root--no-brand');
+    }
+  }
+
+  function renderLoading(root) {
+    var welcome = document.getElementById('welcome');
+    setHomeState(welcome, 'loading');
     root.innerHTML =
-      '<p class="fd-home-lead">Seleziona un brand dall’header per vedere KPI e avanzamento setup.</p>' +
-      '<div class="fd-home-quick">' +
-      '<button type="button" class="btn sec" data-fd-nav="brand-identity">Crea / modifica brand</button>' +
+      '<div class="fd-home-loading" aria-live="polite" aria-busy="true">' +
+      '<p class="fd-home-empty">Caricamento dati brand…</p>' +
+      '</div>';
+  }
+
+  function buildHomeContext(data) {
+    var a = data.analytics || {};
+    var apple = a.appleDeviceCount != null ? a.appleDeviceCount : (a.deviceCount || 0);
+    var google = a.googleWalletSavedCount || 0;
+    var samsung = a.samsungWalletSavedCount || 0;
+    var walletInstalls = apple + google + samsung;
+    return {
+      hasBrandIdentity: data.hasBrandIdentity,
+      templateCount: data.templateCount,
+      employeeCount: data.employeeCount,
+      employeesWithPass: data.employeesWithPass,
+      pushCount: data.pushCount,
+      walletInstalls: walletInstalls,
+      totalPasses: a.totalPasses || 0,
+      apple: apple,
+      google: google,
+      samsung: samsung
+    };
+  }
+
+  function getOnboardingProgress(ctx) {
+    var steps = onboardingSteps();
+    var doneCount = 0;
+    var nextStep = null;
+    steps.forEach(function (step) {
+      var done = step.done(ctx);
+      if (done) doneCount += 1;
+      else if (!nextStep) nextStep = step;
+    });
+    return {
+      steps: steps,
+      doneCount: doneCount,
+      total: steps.length,
+      nextStep: nextStep,
+      isOperational: doneCount === steps.length
+    };
+  }
+
+  function renderNoBrand(root) {
+    setHomeState(document.getElementById('welcome'), 'no-brand');
+    root.innerHTML =
+      '<header class="fd-home-hero fd-home-hero--no-brand">' +
+      '<p class="fd-home-hero__eyebrow">Inizio</p>' +
+      '<h2 class="fd-home-hero__title">Scegli un brand per iniziare</h2>' +
+      '<p class="fd-home-hero__desc">Seleziona un brand dall’header o creane uno nuovo per vedere KPI, setup e attività.</p>' +
+      '</header>' +
+      '<div class="fd-home-primary">' +
+      '<p class="fd-home-primary__label">Azione consigliata</p>' +
+      '<button type="button" class="btn" data-fd-nav="brand-identity">Crea o seleziona brand</button>' +
       '</div>';
     bindNavButtons(root);
   }
@@ -156,12 +261,13 @@
     ];
   }
 
-  function renderOnboarding(ctx) {
-    var steps = onboardingSteps();
-    var doneCount = 0;
+  function renderOnboarding(ctx, options) {
+    var opts = options || {};
+    var progress = getOnboardingProgress(ctx);
+    var steps = progress.steps;
+    var doneCount = progress.doneCount;
     var items = steps.map(function (step) {
       var done = step.done(ctx);
-      if (done) doneCount += 1;
       return (
         '<li class="fd-onboarding-item' + (done ? ' fd-onboarding-item--done' : '') + '">' +
         '<span class="fd-onboarding-item__check" aria-hidden="true">' + (done ? '✓' : '') + '</span>' +
@@ -173,11 +279,73 @@
         '</li>'
       );
     }).join('');
+    var compactClass = opts.compact ? ' fd-home-card--compact' : ' fd-home-card--primary';
+    var title = opts.compact ? 'Configurazione' : 'Setup guidato';
+    var intro = opts.compact
+      ? 'Tutti i passaggi sono completati.'
+      : 'Completa questi passaggi per rendere il brand pienamente operativo.';
     return (
-      '<div class="fd-home-card">' +
-      '<h2 class="fd-home-card__title">Setup guidato</h2>' +
-      '<p class="fd-home-progress">' + doneCount + ' di ' + steps.length + ' completati</p>' +
-      '<ul class="fd-onboarding-list">' + items + '</ul>' +
+      '<div class="fd-home-card fd-home-onboarding' + compactClass + '">' +
+      '<h2 class="fd-home-card__title">' + esc(title) + '</h2>' +
+      '<p class="fd-home-progress" aria-live="polite">' + doneCount + ' di ' + steps.length + ' completati</p>' +
+      '<p class="fd-home-card__intro">' + esc(intro) + '</p>' +
+      '<ul class="fd-onboarding-list' + (opts.compact ? ' fd-onboarding-list--compact' : '') + '">' + items + '</ul>' +
+      '</div>'
+    );
+  }
+
+  function renderKpiGrid(ctx, compact) {
+    var gridClass = 'fd-home-kpi-grid' + (compact ? ' fd-home-kpi-grid--compact' : ' fd-home-kpi-grid--primary');
+    return (
+      '<div class="' + gridClass + '">' +
+      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Pass totali</div><div class="fd-home-kpi__value">' + esc(ctx.totalPasses) + '</div></div>' +
+      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Install Wallet</div><div class="fd-home-kpi__value">' + esc(ctx.walletInstalls) + '</div>' +
+      '<div class="fd-home-kpi__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) + ' · Samsung ' + esc(ctx.samsung) + '</div></div>' +
+      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Dipendenti</div><div class="fd-home-kpi__value">' + esc(ctx.employeeCount) + '</div>' +
+      '<div class="fd-home-kpi__hint">Con pass: ' + esc(ctx.employeesWithPass) + '</div></div>' +
+      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Push inviate</div><div class="fd-home-kpi__value">' + esc(ctx.pushCount) + '</div></div>' +
+      '</div>'
+    );
+  }
+
+  function renderQuickActions(primarySection, secondarySections) {
+    var secondary = (secondarySections || []).map(function (id) {
+      var labels = {
+        leads: 'Dipendenti',
+        push: 'Push',
+        analytics: 'Analytics',
+        templates: 'Template pass',
+        passes: 'Pass emessi',
+        'brand-identity': 'Dati azienda'
+      };
+      return '<button type="button" class="btn sec small" data-fd-nav="' + esc(id) + '">' + esc(labels[id] || id) + '</button>';
+    }).join('');
+    return (
+      '<div class="fd-home-quick">' +
+      '<p class="fd-home-quick__label">Collegamenti rapidi</p>' +
+      '<div class="fd-home-quick__actions">' + secondary + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderPrimaryAction(progress, brandName) {
+    var step = progress.nextStep;
+    if (!step) {
+      return (
+        '<div class="fd-home-primary fd-home-primary--done">' +
+        '<p class="fd-home-primary__label">Stato brand</p>' +
+        '<h3 class="fd-home-primary__title">Configurazione completata</h3>' +
+        '<p class="fd-home-primary__desc">' + esc(brandName) + ' è operativo. Monitora KPI e invia comunicazioni ai dipendenti.</p>' +
+        '<button type="button" class="btn" data-fd-nav="push">Invia una push</button>' +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="fd-home-primary">' +
+      '<p class="fd-home-primary__label">Prossimo passo</p>' +
+      '<h3 class="fd-home-primary__title">' + esc(step.label) + '</h3>' +
+      '<p class="fd-home-primary__desc">' + esc(step.desc) + '</p>' +
+      '<button type="button" class="btn" data-fd-nav="' + esc(step.section) + '">Continua setup →</button>' +
       '</div>'
     );
   }
@@ -222,41 +390,49 @@
   }
 
   function renderBrandHome(root, data) {
-    var a = data.analytics || {};
-    var totalPasses = a.totalPasses || 0;
-    var apple = a.appleDeviceCount != null ? a.appleDeviceCount : (a.deviceCount || 0);
-    var google = a.googleWalletSavedCount || 0;
-    var samsung = a.samsungWalletSavedCount || 0;
-    var walletInstalls = apple + google + samsung;
     var brandName = getBrandName() || 'Brand';
+    var ctx = buildHomeContext(data);
+    var progress = getOnboardingProgress(ctx);
+    var welcome = document.getElementById('welcome');
+    var isOperational = progress.isOperational;
 
-    var ctx = {
-      hasBrandIdentity: data.hasBrandIdentity,
-      templateCount: data.templateCount,
-      employeeCount: data.employeeCount,
-      pushCount: data.pushCount,
-      walletInstalls: walletInstalls
-    };
+    setHomeState(welcome, isOperational ? 'operational' : 'setup');
 
-    root.innerHTML =
-      '<p class="fd-home-lead">Panoramica operativa per <strong>' + esc(brandName) + '</strong>. KPI aggiornati e prossimi passi di configurazione.</p>' +
-      '<div class="fd-home-quick">' +
-      '<button type="button" class="btn sec small" data-fd-nav="leads">Dipendenti</button>' +
-      '<button type="button" class="btn sec small" data-fd-nav="push">Push</button>' +
-      '<button type="button" class="btn sec small" data-fd-nav="analytics">Analytics</button>' +
-      '</div>' +
-      '<div class="fd-home-kpi-grid">' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Pass totali</div><div class="fd-home-kpi__value">' + esc(totalPasses) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Install Wallet</div><div class="fd-home-kpi__value">' + esc(walletInstalls) + '</div>' +
-      '<div class="fd-home-kpi__hint">Apple ' + esc(apple) + ' · Google ' + esc(google) + ' · Samsung ' + esc(samsung) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Dipendenti</div><div class="fd-home-kpi__value">' + esc(data.employeeCount) + '</div>' +
-      '<div class="fd-home-kpi__hint">Con pass: ' + esc(data.employeesWithPass) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Push inviate</div><div class="fd-home-kpi__value">' + esc(data.pushCount) + '</div></div>' +
-      '</div>' +
-      '<div class="fd-home-grid-2">' +
-      renderOnboarding(ctx) +
-      renderActivity(data.events || []) +
-      '</div>';
+    if (isOperational) {
+      root.innerHTML =
+        '<header class="fd-home-hero fd-home-hero--operational">' +
+        '<div class="fd-home-hero__head">' +
+        '<p class="fd-home-hero__eyebrow">Brand operativo</p>' +
+        '<h2 class="fd-home-hero__title">' + esc(brandName) + '</h2>' +
+        '</div>' +
+        '<span class="fd-home-status fd-home-status--ok">Operativo</span>' +
+        '</header>' +
+        renderPrimaryAction(progress, brandName) +
+        renderKpiGrid(ctx, false) +
+        renderQuickActions(null, ['leads', 'push', 'analytics']) +
+        '<div class="fd-home-grid-2 fd-home-grid-2--operational">' +
+        renderOnboarding(ctx, { compact: true }) +
+        renderActivity(data.events || []) +
+        '</div>';
+    } else {
+      root.innerHTML =
+        '<header class="fd-home-hero fd-home-hero--setup">' +
+        '<div class="fd-home-hero__head">' +
+        '<p class="fd-home-hero__eyebrow">Configurazione in corso</p>' +
+        '<h2 class="fd-home-hero__title">' + esc(brandName) + '</h2>' +
+        '</div>' +
+        '<span class="fd-home-status fd-home-status--setup">' + esc(progress.doneCount) + '/' + esc(progress.total) + '</span>' +
+        '</header>' +
+        renderPrimaryAction(progress, brandName) +
+        '<div class="fd-home-layout-setup">' +
+        renderOnboarding(ctx, { compact: false }) +
+        '<aside class="fd-home-aside">' +
+        renderKpiGrid(ctx, true) +
+        renderActivity(data.events || []) +
+        '</aside>' +
+        '</div>' +
+        renderQuickActions(null, ['brand-identity', 'templates', 'leads']);
+    }
 
     bindNavButtons(root);
   }
@@ -305,6 +481,7 @@
 
   async function fdLoadHome() {
     if (!isFiloHomeApp()) return;
+    var welcome = document.getElementById('welcome');
     var root = ensureMount();
     if (!root) return;
 
@@ -314,12 +491,22 @@
       return;
     }
 
-    root.innerHTML = '<p class="fd-home-empty">Caricamento…</p>';
+    renderLoading(root);
     try {
       var data = await loadHomeData(bid);
       renderBrandHome(root, data);
     } catch (e) {
-      root.innerHTML = '<p class="fd-home-empty" style="color:var(--red)">Errore caricamento home: ' + esc(e.message) + '</p>';
+      setHomeState(welcome, 'error');
+      root.innerHTML =
+        '<div class="fd-home-loading" aria-live="polite">' +
+        '<p class="fd-home-empty">Errore caricamento home: ' + esc(e.message) + '</p>' +
+        '<button type="button" class="btn sec small" style="margin-top:10px" id="fdHomeRetryBtn">Riprova</button>' +
+        '</div>';
+      var retry = document.getElementById('fdHomeRetryBtn');
+      if (retry && retry.dataset.fdBound !== '1') {
+        retry.dataset.fdBound = '1';
+        retry.addEventListener('click', function () { fdLoadHome(); });
+      }
     }
   }
 

@@ -1,6 +1,12 @@
 /**
  * FD-09 — Bridge Filo tokens → dashboard semantic variables (Filo deploy only).
  */
+/* FD-02 — hide shared welcome copy before fd-home.js mounts (no flash on first paint) */
+html[data-app='filodiretto'] #welcome .page-lead,
+html[data-app='filodiretto'] #welcome .fd-welcome-legacy {
+  display: none !important;
+}
+
 html[data-app='filodiretto'] {
   --accent: var(--fd-color-primary-500);
   --accent-hover: var(--fd-color-primary-700);
