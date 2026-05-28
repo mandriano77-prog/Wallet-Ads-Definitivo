@@ -35,7 +35,11 @@
     var clearBtn = actions.querySelector('button[onclick*="deleteAllMedia"]');
     if (clearBtn) clearBtn.classList.add('fd-media-clear-btn');
 
-    if (document.getElementById('fdMediaPageMenu')) return;
+    var existing = document.getElementById('fdMediaPageMenu');
+    if (existing) {
+      if (existing.parentNode !== actions) actions.appendChild(existing);
+      return;
+    }
 
     var menu = document.createElement('div');
     menu.className = 'fd-media-page-menu';
@@ -59,14 +63,17 @@
     if (trigger && panel) {
       trigger.addEventListener('click', function (e) {
         e.stopPropagation();
-        var open = panel.hidden;
+        var menuWrap = e.currentTarget && e.currentTarget.closest('.fd-media-page-menu');
+        var panelLocal = menuWrap ? menuWrap.querySelector('.fd-media-page-menu__panel') : panel;
+        var triggerLocal = e.currentTarget || trigger;
+        var open = panelLocal ? panelLocal.hidden : true;
         closeMediaMenu();
         if (open) {
-          trigger.setAttribute('aria-expanded', 'true');
+          triggerLocal.setAttribute('aria-expanded', 'true');
           if (typeof window.fdPositionFloatingMenu === 'function') {
-            window.fdPositionFloatingMenu(trigger, panel);
+            window.fdPositionFloatingMenu(triggerLocal, panelLocal || panel);
           } else {
-            panel.hidden = false;
+            if (panelLocal) panelLocal.hidden = false;
           }
         }
       });

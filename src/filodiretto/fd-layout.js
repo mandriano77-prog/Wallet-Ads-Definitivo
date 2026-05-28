@@ -21,7 +21,9 @@
     panel.hidden = false;
     var rect = trigger.getBoundingClientRect();
     var width = panel.offsetWidth || 168;
-    var left = Math.max(collisionPadding, rect.right - width);
+    var idealLeft = rect.right - width;
+    var maxLeft = window.innerWidth - width - collisionPadding;
+    var left = Math.min(Math.max(collisionPadding, idealLeft), Math.max(collisionPadding, maxLeft));
     var top = rect.bottom + 8;
     var maxTop = window.innerHeight - panel.offsetHeight - collisionPadding;
     if (top > maxTop) top = Math.max(collisionPadding, maxTop);

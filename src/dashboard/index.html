@@ -2001,7 +2001,7 @@
             </div>
 
             <!-- MEDIA PICKER MODAL -->
-            <div id="mediaPickerModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
+            <div id="mediaPickerModal" style="display:none;position:fixed;inset:0;z-index:12050;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
               <div style="background:#1a1a1a;border-radius:16px;padding:24px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                   <h2 class="block-title" style="margin:0;color:var(--text-primary)">Scegli Media</h2>
@@ -11733,7 +11733,11 @@ let mpCurrentFilter = 'all';
 function openMediaPicker(callback, defaultFilter) {
   mpCallback = callback;
   mpCurrentFilter = defaultFilter || 'all';
-  document.getElementById('mediaPickerModal').style.display = 'flex';
+  const modal = document.getElementById('mediaPickerModal');
+  if (!modal) return;
+  if (modal.parentNode !== document.body) document.body.appendChild(modal);
+  modal.style.zIndex = '12050';
+  modal.style.display = 'flex';
   // highlight active filter
   document.querySelectorAll('.mp-filter').forEach(b => b.classList.toggle('active', b.dataset.type === mpCurrentFilter));
   mpLoadItems();
@@ -11747,7 +11751,7 @@ function closeMediaPicker() {
 async function mpLoadItems() {
   const bid = brandId;
   if (!bid) return;
-  const r = await fetch(`${API}/media?brand_id=${bid}&type=${mpCurrentFilter}`);
+  const r = await fetch(`${API}/media?brand_id=${bid}&type=${mpCurrentFilter}`, { headers: getAuthHeaders() });
   const items = await r.json();
   const grid = document.getElementById('mpGrid');
   if (!items.length) { grid.innerHTML = '<p style="color:#888;text-align:center;grid-column:1/-1">Nessun media</p>'; return; }
@@ -11786,7 +11790,7 @@ async function mpUpload() {
     const base64 = reader.result.split(',')[1];
     const type = document.getElementById('mpTypeSelect').value;
     try {
-      await fetch(`${API}/media`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ brand_id: bid, type, title: file.name, image_base64: base64 }) });
+      await fetch(`${API}/media`, { method: 'POST', headers: {'Content-Type':'application/json', ...getAuthHeaders()}, body: JSON.stringify({ brand_id: bid, type, title: file.name, image_base64: base64 }) });
       document.getElementById('mpFileInput').value = '';
       mpLoadItems();
       toast('Caricato!');
@@ -11834,7 +11838,7 @@ async function doMediaUpload() {
         const title = rawTitle;
         await fetch(`${API}/media`, {
             method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            headers: {'Content-Type':'application/json', ...getAuthHeaders()},
             body: JSON.stringify({ brand_id: bid, type, title, image_base64: base64 })
         });
         toast('Media caricato!');
@@ -11849,7 +11853,7 @@ async function doMediaUpload() {
 async function deleteMediaItem(id) {
     if (!await appConfirm({ title: 'Elimina media', message: 'Eliminare questo media?', confirmLabel: 'Elimina', tone: 'danger' })) return;
     try {
-        await fetch(`${API}/media/${id}`, { method: 'DELETE' });
+        await fetch(`${API}/media/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         toast('Media eliminato');
         loadMediaLibrary();
     } catch (err) { toast('Errore: ' + err.message); }
@@ -11859,7 +11863,7 @@ async function deleteAllMedia() {
     if (!brandId) return;
     if (!await appConfirm({ title: 'Elimina tutti i media', message: 'Eliminare tutti i media di questo brand? Azione irreversibile.', confirmLabel: 'Elimina tutto', tone: 'danger' })) return;
     try {
-        const res = await fetch(`${API}/media?brand_id=${brandId}`, { method: 'DELETE' });
+        const res = await fetch(`${API}/media?brand_id=${brandId}`, { method: 'DELETE', headers: getAuthHeaders() });
         const data = await res.json();
         toast(`${data.deleted || 0} media eliminati`);
         loadMediaLibrary();
