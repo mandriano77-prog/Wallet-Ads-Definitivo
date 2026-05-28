@@ -19,6 +19,15 @@
     return [];
   }
 
+  function getCurrentBrandId() {
+    if (window.brandId) return String(window.brandId);
+    try {
+      var qpBrandId = new URLSearchParams(window.location.search || '').get('brand_id');
+      if (qpBrandId) return String(qpBrandId);
+    } catch (_) {}
+    return '';
+  }
+
   var SECTION_META = {
     logo: {
       title: 'Logo',
@@ -529,10 +538,11 @@
           if (action === 'rename') {
             var next = window.prompt('Nuovo nome asset', name);
             if (!next || next.trim() === name) return;
+            var brandId = getCurrentBrandId();
             fetch((window.API || '/api/v1') + '/media/' + encodeURIComponent(id), {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', ...authHeaders() },
-              body: JSON.stringify({ title: next.trim(), type: type, brand_id: window.brandId })
+              body: JSON.stringify({ title: next.trim(), type: type, brand_id: brandId || undefined })
             }).then(function () {
               if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
             });
@@ -670,9 +680,10 @@
     window.loadMediaLibrary = async function () {
       ensureMediaLayout();
       try {
-        if (!window.brandId) return;
+        var brandId = getCurrentBrandId();
+        if (!brandId) return;
         var api = window.API || '/api/v1';
-        var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(window.brandId), {
+        var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(brandId), {
           headers: authHeaders()
         });
         if (!res.ok) throw new Error('media fetch failed ' + res.status);
