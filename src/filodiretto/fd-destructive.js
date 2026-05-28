@@ -27,9 +27,9 @@
     if (!section) return;
     section.classList.add('media-library--fd');
 
-    var header = section.querySelector(':scope > div');
+    var header = section.querySelector('.fd-media-header') || section.querySelector(':scope > div');
     if (!header) return;
-    var actions = header.querySelector('div');
+    var actions = header.querySelector('.fd-media-header__actions') || header.querySelector(':scope > div:last-child') || header.querySelector('div');
     if (!actions) return;
 
     var clearBtn = actions.querySelector('button[onclick*="deleteAllMedia"]');

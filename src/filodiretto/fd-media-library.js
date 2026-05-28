@@ -337,8 +337,8 @@
 
   function ensureMediaLayout() {
     var section = document.getElementById('media-library');
-    if (!section || section.dataset.fdMediaLayout === '1') return;
-    section.dataset.fdMediaLayout = '1';
+    if (!section) return;
+    if (section.dataset.fdMediaLayout === '1') return;
     section.classList.add('media-library--fd-layout');
 
     var header = section.querySelector(':scope > div');
@@ -426,6 +426,7 @@
 
     ensureUploadTypeOption();
     buildMediaDialogs();
+    section.dataset.fdMediaLayout = '1';
   }
 
   function estimateDims(type) {
@@ -657,26 +658,34 @@
   function patchLoadMediaLibrary() {
     if (window.__fdMediaLoadPatched || typeof window.loadMediaLibrary !== 'function') return;
     window.__fdMediaLoadPatched = true;
+    var orig = window.loadMediaLibrary;
     window.loadMediaLibrary = async function () {
       ensureMediaLayout();
-      if (!window.brandId) return;
-      var api = window.API || '/api/v1';
-      var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(window.brandId), {
-        headers: authHeaders()
-      });
-      var items = await res.json().catch(function () { return []; });
-      var rows = Array.isArray(items) ? items : [];
-      var keep = new Set(rows.map(function (x) { return String(x.id); }));
-      Array.from(selectedIds).forEach(function (id) {
-        if (!keep.has(String(id))) selectedIds.delete(id);
-      });
-      renderSectionAssets('logo', rows.filter(function (x) { return x.type === 'logo'; }));
-      renderSectionAssets('wallet_icon', rows.filter(function (x) { return x.type === 'wallet_icon'; }));
-      renderSectionAssets('strip', rows.filter(function (x) { return x.type === 'strip'; }));
-      renderSectionAssets('thumbnail', rows.filter(function (x) { return x.type === 'thumbnail'; }));
-      renderSectionAssets('background', rows.filter(function (x) { return x.type === 'background'; }));
-      applyGlobalSearchFilter();
-      syncBulkUi();
+      try {
+        if (!window.brandId) return;
+        var api = window.API || '/api/v1';
+        var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(window.brandId), {
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error('media fetch failed');
+        var items = await res.json().catch(function () { return []; });
+        var rows = Array.isArray(items) ? items : [];
+        var keep = new Set(rows.map(function (x) { return String(x.id); }));
+        Array.from(selectedIds).forEach(function (id) {
+          if (!keep.has(String(id))) selectedIds.delete(id);
+        });
+        renderSectionAssets('logo', rows.filter(function (x) { return x.type === 'logo'; }));
+        renderSectionAssets('wallet_icon', rows.filter(function (x) { return x.type === 'wallet_icon'; }));
+        renderSectionAssets('strip', rows.filter(function (x) { return x.type === 'strip'; }));
+        renderSectionAssets('thumbnail', rows.filter(function (x) { return x.type === 'thumbnail'; }));
+        renderSectionAssets('background', rows.filter(function (x) { return x.type === 'background'; }));
+        applyGlobalSearchFilter();
+        syncBulkUi();
+      } catch (e) {
+        if (typeof orig === 'function') {
+          await orig.apply(this, arguments);
+        }
+      }
     };
   }
 
