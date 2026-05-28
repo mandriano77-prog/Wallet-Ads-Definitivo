@@ -1,9 +1,12 @@
 // @ts-check
+const path = require('path');
+const fs = require('fs');
 const { test, expect } = require('@playwright/test');
 
 const STUDIO = process.env.E2E_BASE_URL || 'https://studio.filodiretto.app';
-const FD_WAI_JS = `${STUDIO}/filodiretto/fd-wai.js`;
-const FD_WAI_CSS = `${STUDIO}/filodiretto/fd-wai.css`;
+const FD_WAI_JS_LIVE = `${STUDIO}/filodiretto/fd-wai.js`;
+const FD_WAI_JS_LOCAL = path.join(__dirname, '../src/filodiretto/fd-wai.js');
+const FD_WAI_CSS_LOCAL = path.join(__dirname, '../src/filodiretto/fd-wai.css');
 
 async function bootFiloShell(page, opts = {}) {
   const { a2w = false } = opts;
@@ -12,7 +15,6 @@ async function bootFiloShell(page, opts = {}) {
 <html ${a2w ? 'class="a2w-shell"' : ''} data-app="${a2w ? 'ads2wallet' : 'filodiretto'}">
 <head>
   <link rel="stylesheet" href="${STUDIO}/filodiretto/tokens.css" />
-  <link rel="stylesheet" href="${FD_WAI_CSS}" />
   <script>window.__2WALLET_PRODUCT_LOCK__='${a2w ? 'ads' : 'hr'}';</script>
 </head>
 <body>
@@ -61,13 +63,20 @@ async function bootFiloShell(page, opts = {}) {
     window.syncWaiUi = function () {};
   });
 
-  await page.addScriptTag({ url: FD_WAI_JS });
+  await page.addStyleTag({ content: fs.readFileSync(FD_WAI_CSS_LOCAL, 'utf8') });
+  await page.addScriptTag({ content: fs.readFileSync(FD_WAI_JS_LOCAL, 'utf8') });
   await page.waitForFunction(() => typeof window.fdNavigateFromWai === 'function');
 }
 
 test.describe('FD W.AI smoke (live fd-wai.js)', () => {
+  test('repo fd-wai.js: floating card only (no critical bottom-sheet)', () => {
+    const body = fs.readFileSync(FD_WAI_JS_LOCAL, 'utf8');
+    expect(body).toContain('CRITICAL_SECTIONS = []');
+    expect(body).toContain('handleFdNavWhileWaiOpen');
+  });
+
   test('live asset includes handleFdNavWhileWaiOpen', async ({ request }) => {
-    const res = await request.get(FD_WAI_JS);
+    const res = await request.get(FD_WAI_JS_LIVE);
     expect(res.ok()).toBeTruthy();
     const body = await res.text();
     expect(body).toContain('handleFdNavWhileWaiOpen');
@@ -111,12 +120,16 @@ test.describe('FD W.AI smoke (live fd-wai.js)', () => {
     await expect(page.locator('#push')).not.toHaveAttribute('hidden');
   });
 
-  test('narrow viewport: sheet layout + nav from Home CTA', async ({ page }) => {
+  test('narrow viewport: floating card + nav from Home CTA', async ({ page }) => {
     await page.setViewportSize({ width: 361, height: 762 });
     await bootFiloShell(page);
     await page.evaluate(() => window.toggleWaiOverlay(true));
-    await expect(page.locator('body')).toHaveClass(/fd-wai-critical-page/);
+    await expect(page.locator('body')).not.toHaveClass(/fd-wai-critical-page/);
     await expect(page.locator('body')).toHaveClass(/fd-wai-open/);
+    const panelWidth = await page.evaluate(() =>
+      getComputedStyle(document.getElementById('waiOverlay')).width
+    );
+    expect(parseInt(panelWidth, 10)).toBeGreaterThan(300);
     await page.getByRole('button', { name: 'Invia una push' }).click();
     await expect.poll(() => page.evaluate(() => window.__lastNav)).toBe('push');
     await expect(page.locator('#push')).toHaveClass(/active/);

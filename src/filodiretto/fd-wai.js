@@ -5,7 +5,8 @@
 (function () {
   'use strict';
 
-  var CRITICAL_SECTIONS = ['welcome', 'audiences', 'analytics'];
+  /** Bottom-sheet layout retired — panel is always the floating card on the right. */
+  var CRITICAL_SECTIONS = [];
   var lastActiveSection = '';
   var patchRetryTimer = null;
   var patchRetryCount = 0;

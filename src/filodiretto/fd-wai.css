@@ -1,5 +1,5 @@
 /**
- * FD — W.AI layout: single global entry, bottom sheet on critical pages.
+ * FD — W.AI layout: single global entry, floating card bottom-right on all sections.
  * Scoped to html[data-app='filodiretto'] only.
  */
 
@@ -42,63 +42,22 @@ html[data-app='filodiretto'] body.fd-wai-open #waiBtn.wai-fab {
   opacity: 0.92;
 }
 
-/* Default Filo panel (non-critical pages): keep clear of FAB */
+/* Filo W.AI panel — always floating card bottom-right (slightly larger than legacy ~400px) */
 html[data-app='filodiretto'] #waiOverlay.wai-panel {
+  position: fixed;
   z-index: 10039;
-  bottom: calc(var(--space-5, 20px) + 52px);
-  right: var(--space-5, 20px);
+  inset: auto var(--space-5, 20px) calc(var(--space-5, 20px) + 52px) auto;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: min(70vh, 600px);
+  border-radius: var(--radius-lg, 12px);
 }
 
-/* Critical pages (Home, Audience, Analytics): bottom sheet — content stays above */
-html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open .main .content {
-  padding-bottom: min(46vh, 440px);
-  transition: padding-bottom 0.2s ease;
-}
-
-html[data-app='filodiretto'] body.fd-wai-open .main .content {
-  scroll-padding-bottom: min(46vh, 440px);
-}
-
-html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open #waiOverlay.wai-panel {
-  top: auto;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  max-width: none;
-  max-height: min(44vh, 420px);
-  border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-}
-
-html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open #waiBtn.wai-fab {
-  bottom: min(44vh, 420px);
-  margin-bottom: var(--space-3, 12px);
-}
-
-@media (max-width: 900px) {
-  html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open .main .content {
-    padding-bottom: min(58vh, 520px);
-  }
-
-  html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open #waiOverlay.wai-panel {
-    max-height: min(50vh, 460px);
-  }
-
-  html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open #waiBtn.wai-fab {
-    bottom: min(50vh, 460px);
-    margin-bottom: var(--space-2, 8px);
-  }
-}
-
-@media (max-width: 420px) {
-  html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open .main .content {
-    padding-bottom: min(62vh, 540px);
-  }
-
-  html[data-app='filodiretto'] body.fd-wai-critical-page.fd-wai-open #waiOverlay.wai-panel {
-    max-height: min(54vh, 480px);
+@media (max-width: 600px) {
+  html[data-app='filodiretto'] #waiOverlay.wai-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+    bottom: 72px;
+    max-height: 70vh;
   }
 }
