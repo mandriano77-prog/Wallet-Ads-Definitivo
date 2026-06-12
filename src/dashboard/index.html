@@ -3637,6 +3637,7 @@ const PASSES_PAGE_SIZE = 50;
 /** Sections reachable without selecting a brand */
 const SECTIONS_NO_BRAND = new Set(['welcome', 'users', 'brand-identity']);
 const brandDataCache = new Map();
+const brandDataInflight = new Map();
 let passPageIndex = 0;
 let passHasNextPage = false;
 let passTotalCount = null;
@@ -4027,16 +4028,30 @@ async function fetchCachedJson(url, options = {}, ttlMs = BRAND_CACHE_TTL_MS) {
     const now = Date.now();
     const cached = brandDataCache.get(key);
     if (cached && (now - cached.ts) < ttlMs) return cached.data;
-    const res = await fetch(url, options);
-    const data = await res.json();
-    brandDataCache.set(key, { ts: now, data });
-    return data;
+
+    const inflight = brandDataInflight.get(key);
+    if (inflight) return inflight;
+
+    const promise = (async () => {
+        const res = await fetch(url, options);
+        const data = await res.json();
+        brandDataCache.set(key, { ts: Date.now(), data });
+        return data;
+    })().finally(() => {
+        brandDataInflight.delete(key);
+    });
+
+    brandDataInflight.set(key, promise);
+    return promise;
 }
 
 function invalidateBrandCache() {
     const prefix = `${brandId || 'no-brand'}:`;
     for (const key of brandDataCache.keys()) {
         if (key.startsWith(prefix)) brandDataCache.delete(key);
+    }
+    for (const key of brandDataInflight.keys()) {
+        if (key.startsWith(prefix)) brandDataInflight.delete(key);
     }
 }
 
@@ -4590,9 +4605,6 @@ async function refreshOverview() {
             fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } })
         ]);
         campaignsCache = campaigns;
-        if (isFiloOperationalHome() && getActiveSectionId() === 'welcome' && typeof fdLoadHome === 'function') {
-            fdLoadHome();
-        }
     } catch(e) { console.error('refreshOverview:', e); }
 }
 
