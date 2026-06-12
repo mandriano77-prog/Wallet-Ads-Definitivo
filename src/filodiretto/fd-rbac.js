@@ -98,9 +98,31 @@
     return 'manager';
   }
 
+  function getAllowlistEmails() {
+    try {
+      var raw = global.__2WALLET_LOGIN_ALLOWLIST__;
+      if (!raw || !String(raw).trim()) {
+        if (global.__2WALLET_PRODUCT_LOCK__ === 'hr') return ['admin@nudj.studio'];
+        return [];
+      }
+      return String(raw).split(',').map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function isAllowlistOperator(email) {
+    if (!email) return false;
+    var list = getAllowlistEmails();
+    return list.indexOf(String(email).trim().toLowerCase()) >= 0;
+  }
+
   function getCurrentRole() {
     try {
-      if (global.currentUser && global.currentUser.role) return normalizeRole(global.currentUser.role);
+      if (global.currentUser) {
+        if (isAllowlistOperator(global.currentUser.email)) return 'admin';
+        if (global.currentUser.role) return normalizeRole(global.currentUser.role);
+      }
     } catch (_) {}
     return 'manager';
   }

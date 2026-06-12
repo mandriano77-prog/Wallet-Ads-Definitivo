@@ -1299,7 +1299,7 @@ function authMiddleware(req, res, next) {
     if (!isDashboardLoginAllowed(decoded.email)) {
       return res.status(403).json({ error: 'Accesso non autorizzato su questa istanza dashboard' });
     }
-    req.user = decoded;
+    req.user = applyAllowlistOperatorContext(decoded);
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token non valido o scaduto' });
@@ -1373,6 +1373,15 @@ async function ensurePlatformAdminIfAllowlisted(user) {
   return { ...user, role: 'admin', brand_id: null };
 }
 
+function applyAllowlistOperatorContext(user) {
+  if (!user) return user;
+  const list = dashboardLoginAllowlist();
+  if (!list) return user;
+  const email = String(user.email || '').trim().toLowerCase();
+  if (!list.includes(email)) return user;
+  return { ...user, role: 'admin', brand_id: null };
+}
+
 /**
  * Routes registered *after* this middleware still include partner/public flows
  * (Instant Win play, Gamification game, creatives serving, Wallet callbacks).
@@ -1407,7 +1416,7 @@ router.use((req, res, next) => {
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Auth (authenticated) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 router.get('/auth/me', (req, res) => {
-  res.json({ user: req.user });
+  res.json({ user: applyAllowlistOperatorContext(req.user) });
 });
 
 router.put('/auth/change-password', async (req, res) => {

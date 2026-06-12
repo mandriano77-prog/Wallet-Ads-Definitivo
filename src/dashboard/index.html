@@ -23,8 +23,8 @@
             if (lock === 'hr') {
                 document.documentElement.setAttribute('data-shell', 'light');
                 document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260612-rbac-write';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260612-rbac-write';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260612-allowlist-admin';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260612-allowlist-admin';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-responsive-tables.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -3608,7 +3608,7 @@ async function bootstrapSession() {
             return;
         }
         const data = await res.json();
-        currentUser = data.user;
+        currentUser = applyAllowlistOperatorUser(data.user);
         syncAuthUi();
         if (gate) gate.style.display = 'none';
         if (main) main.style.display = 'grid';
@@ -3649,7 +3649,7 @@ async function submitLogin() {
         }
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         authToken = data.token;
-        currentUser = data.user;
+        currentUser = applyAllowlistOperatorUser(data.user);
         syncAuthUi();
         const gate = document.getElementById('loginGate');
         const main = document.getElementById('mainLayout');
@@ -3870,6 +3870,17 @@ function initFiloNavA11y() {
     });
 }
 
+function isAllowlistOperatorEmail(email) {
+    const list = getDashboardLoginAllowlist();
+    if (!list || !email) return false;
+    return list.includes(String(email).trim().toLowerCase());
+}
+
+function applyAllowlistOperatorUser(user) {
+    if (!user || !isAllowlistOperatorEmail(user.email)) return user;
+    return { ...user, role: 'admin', brand_id: user.brand_id ?? null };
+}
+
 // ==================== NAV ====================
 function updateNavState() {
     const rawRole = currentUser?.role || 'admin';
@@ -3877,7 +3888,7 @@ function updateNavState() {
         ? FdRbac.normalizeRole(rawRole)
         : (rawRole === 'viewer' ? 'reporter' : rawRole);
     const isViewer = role === 'viewer' || role === 'reporter';
-    const isAdmin = role === 'admin';
+    const isAdmin = role === 'admin' || isAllowlistOperatorEmail(currentUser?.email);
     const hasBrand = !!brandId;
 
     // Hide users nav for non-admin; hide create-user when deploy has login allowlist
