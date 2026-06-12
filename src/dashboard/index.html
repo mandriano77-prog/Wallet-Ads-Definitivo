@@ -1532,12 +1532,14 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Titolo</label>
-                            <input type="text" id="pushTitle" placeholder="es. Offerta speciale weekend!">
+                            <label class="form-label" for="pushTitle">Titolo</label>
+                            <input type="text" id="pushTitle" placeholder="es. Offerta speciale weekend!" aria-describedby="pushTitleError">
+                            <p class="push-field-error" id="pushTitleError" role="alert"></p>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Messaggio</label>
-                            <textarea id="pushMessage" rows="3" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;"></textarea>
+                            <label class="form-label" for="pushMessage">Messaggio</label>
+                            <textarea id="pushMessage" rows="3" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError"></textarea>
+                            <p class="push-field-error" id="pushMessageError" role="alert"></p>
                         </div>
                         <div class="form-group" style="margin-top:4px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
@@ -1598,7 +1600,8 @@
                             </select>
                             <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
-                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
+                        <p class="push-send-error" id="pushSendError" role="alert" hidden></p>
+                        <button type="button" class="btn" id="pushSendBtn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
                     </div>
                     <div class="sec-title" style="margin-top:24px;">Storico Notifiche</div>
                     <div id="pushHistory"></div>
@@ -6467,25 +6470,52 @@ function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
     return msg;
 }
 
-async function sendImmediatePush() {
-    const title = document.getElementById('pushTitle').value;
-    const message = document.getElementById('pushMessage').value;
+const PUSH_SEND_TIMEOUT_MS = 60000;
+
+function setPushFieldError(fieldId, message) {
+    const err = document.getElementById(fieldId + 'Error');
+    const input = document.getElementById(fieldId);
+    if (err) err.textContent = message || '';
+    if (input) input.setAttribute('aria-invalid', message ? 'true' : 'false');
+}
+
+function clearPushFieldErrors() {
+    ['pushTitle', 'pushMessage'].forEach((id) => setPushFieldError(id, ''));
+    const banner = document.getElementById('pushSendError');
+    if (banner) {
+        banner.textContent = '';
+        banner.hidden = true;
+    }
+}
+
+function setPushSendLoading(loading) {
+    const btn = document.getElementById('pushSendBtn');
+    if (!btn) return;
+    if (loading) {
+        if (!btn.dataset.pushSendLabel) btn.dataset.pushSendLabel = btn.innerHTML;
+        btn.disabled = true;
+        btn.textContent = 'Invio in corso…';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.pushSendLabel || '&#9889; Invia Notifica Ora';
+    }
+}
+
+function buildImmediatePushBody() {
+    const title = (document.getElementById('pushTitle')?.value || '').trim();
+    const message = (document.getElementById('pushMessage')?.value || '').trim();
     const campaignId = isLegacyCampaignsUiEnabled()
         ? (document.getElementById('pushCampaignTarget')?.value || null)
         : null;
     const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
-    const channel = document.getElementById('pushChannel').value || 'apple';
-    const updatePass = document.getElementById('pushUpdatePass').checked;
-
-    if (!title || !message) return alert('Compila titolo e messaggio');
-    if (!brandId) return alert('Seleziona un brand');
-
+    const channel = document.getElementById('pushChannel')?.value || 'apple';
+    const updatePass = document.getElementById('pushUpdatePass')?.checked;
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
-    const iwId = document.getElementById('pushInstantWin').value;
+    const iwId = document.getElementById('pushInstantWin')?.value;
     if (iwId) body.instant_win_id = iwId;
-    const gamId = document.getElementById('pushGamification').value;
+    const gamId = document.getElementById('pushGamification')?.value;
     if (gamId) body.gamification_id = gamId;
     if (document.getElementById('pushIncludePassLink')?.checked) {
         body.include_pass_link = true;
@@ -6501,22 +6531,89 @@ async function sendImmediatePush() {
         }
     }
     if (updatePass && pushStripMediaId) body.strip_media_id = pushStripMediaId;
-    const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    const data = await res.json();
-    if (data.error) { alert('Errore push: ' + data.error); return; }
-    alert(buildPushDeliveryMessage(data));
-    document.getElementById('pushTitle').value = '';
-    document.getElementById('pushMessage').value = '';
+    return body;
+}
+
+function resetImmediatePushForm() {
+    const titleEl = document.getElementById('pushTitle');
+    const messageEl = document.getElementById('pushMessage');
+    if (titleEl) titleEl.value = '';
+    if (messageEl) messageEl.value = '';
+    clearPushFieldErrors();
     const incl = document.getElementById('pushIncludePassLink');
     if (incl) incl.checked = false;
     togglePushPassLinkFields();
-    ['pushPassLinkUrl', 'pushPassLinkLabel', 'pushPassLinkExpires'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pushPassLinkUrl', 'pushPassLinkLabel', 'pushPassLinkExpires'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     const pbl = document.getElementById('pushBackLinkLabel');
     const pbu = document.getElementById('pushBackLinkUrl');
     if (pbl) pbl.value = '';
     if (pbu) pbu.value = '';
     pushClearStrip();
-    loadPushHistory();
+}
+
+async function sendImmediatePush() {
+    clearPushFieldErrors();
+    const title = (document.getElementById('pushTitle')?.value || '').trim();
+    const message = (document.getElementById('pushMessage')?.value || '').trim();
+    let invalid = false;
+    if (!title) {
+        setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
+        invalid = true;
+    }
+    if (!message) {
+        setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
+        invalid = true;
+    }
+    if (!brandId) {
+        toast('Seleziona un brand');
+        return;
+    }
+    if (invalid) return;
+
+    const body = buildImmediatePushBody();
+    setPushSendLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PUSH_SEND_TIMEOUT_MS);
+    try {
+        const res = await fetch(`${API}/push/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) {
+            const msg = data.error || 'Invio non riuscito, riprova';
+            const banner = document.getElementById('pushSendError');
+            if (banner) {
+                banner.textContent = msg;
+                banner.hidden = false;
+            } else {
+                toast(msg);
+            }
+            return;
+        }
+        toast(buildPushDeliveryMessage(data));
+        resetImmediatePushForm();
+        loadPushHistory();
+    } catch (e) {
+        const msg = (e && e.name === 'AbortError')
+            ? 'Invio non riuscito, riprova'
+            : (e.message || 'Invio non riuscito, riprova');
+        const banner = document.getElementById('pushSendError');
+        if (banner) {
+            banner.textContent = msg;
+            banner.hidden = false;
+        } else {
+            toast(msg);
+        }
+    } finally {
+        clearTimeout(timeoutId);
+        setPushSendLoading(false);
+    }
 }
 
 // --- TAB 2: Push Programmata ---
