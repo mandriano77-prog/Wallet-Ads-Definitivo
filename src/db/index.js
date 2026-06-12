@@ -871,6 +871,8 @@ async function getDb() {
 
     // Seed admin
     await seedAdminUser();
+    await ensureAllowlistPlatformAdmins();
+    await bootstrapSuperAdminFromEnv();
     return { pool };
 
   } catch (error) {
@@ -2259,6 +2261,90 @@ async function seedAdminUser() {
 }
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Media Hub Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+
+
+/** One-shot ops bootstrap (set BOOTSTRAP_SUPER_ADMIN_EMAIL on Railway, redeploy, then unset). */
+
+function deployLoginAllowlistEmails() {
+  const raw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
+  if (raw) {
+    return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  }
+  if (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr') {
+    return ['admin@nudj.studio'];
+  }
+  return [];
+}
+
+async function ensureAllowlistPlatformAdmins() {
+  const emails = deployLoginAllowlistEmails();
+  if (!emails.length) return;
+  for (const email of emails) {
+    try {
+      const user = await getUserByEmail(email);
+      if (!user) continue;
+      if (user.role === 'admin' && user.brand_id == null) continue;
+      await updateUser(user.id, { role: 'admin', brand_id: null });
+      console.log('✓ Allowlist operator promoted to platform admin:', email);
+    } catch (e) {
+      console.error('Allowlist admin promotion failed for', email, e.message);
+    }
+  }
+}
+
+async function bootstrapSuperAdminFromEnv() {
+  const email = String(process.env.BOOTSTRAP_SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
+  if (!email) return;
+
+  const name = String(process.env.BOOTSTRAP_SUPER_ADMIN_NAME || 'Super Admin').trim();
+  const resendInvite = String(process.env.BOOTSTRAP_SUPER_ADMIN_RESEND_INVITE || '1') === '1';
+  const promoteEmail = String(process.env.BOOTSTRAP_PROMOTE_TO_ADMIN || '').trim().toLowerCase();
+
+  try {
+    if (promoteEmail) {
+      const promoteUser = await getUserByEmail(promoteEmail);
+      if (promoteUser && promoteUser.role !== 'admin') {
+        await updateUser(promoteUser.id, { role: 'admin', brand_id: null });
+        console.log('✓ Promoted to admin:', promoteEmail);
+      }
+    }
+
+    let user = await getUserByEmail(email);
+    let tempPassword = null;
+
+    if (user) {
+      const needsRoleFix = user.role !== 'admin' || user.brand_id != null;
+      if (needsRoleFix) {
+        await updateUser(user.id, { role: 'admin', brand_id: null });
+        console.log('✓ Updated super admin role:', email);
+      }
+      if (resendInvite) {
+        tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+        await updateUser(user.id, { password: tempPassword });
+      }
+    } else {
+      tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+      user = await createUser({ email, password: tempPassword, name, role: 'admin', brand_id: null });
+      console.log('✓ Created super admin:', email);
+    }
+
+    if (tempPassword && resendInvite) {
+      const { sendUserInviteEmail } = require('../engine/mailer');
+      const domain = String(process.env.CUSTOM_DOMAIN || 'studio.filodiretto.app').replace(/^https?:\/\//, '');
+      await sendUserInviteEmail({
+        to: email,
+        name: user.name || name,
+        password: tempPassword,
+        role: 'admin',
+        brandName: null,
+        dashboardUrl: `https://${domain}/dashboard`
+      });
+      console.log('✓ Super admin invite email sent to', email);
+    }
+  } catch (e) {
+    console.error('Bootstrap super admin failed:', e.message);
+  }
+}
 
 async function createMedia({ brand_id, campaign_id = null, type, title, image_base64, width, height }) {
   const id = uuidv4();
