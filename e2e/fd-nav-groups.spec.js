@@ -101,15 +101,37 @@ test.describe('Filo nav groups accordion', () => {
     expect(duplicateCount).toBe(1);
   });
 
-  test('opening one group does not close another', async ({ page }) => {
+  test('opening one group closes all others', async ({ page }) => {
     await bootNavGroupsShell(page);
     await page.evaluate(() => window.nav('leads'));
     const database = page.locator('details[data-nav-group="database"]');
     await expect(database).toHaveAttribute('open', '');
     const comunicazione = page.locator('details[data-nav-group="comunicazione"]');
-    await expect(comunicazione).not.toHaveAttribute('open', '');
     await comunicazione.locator('summary').click();
     await expect(comunicazione).toHaveAttribute('open', '');
+    await expect(database).not.toHaveAttribute('open', '');
+    const openCount = await page.locator('details.nav-group[open]').count();
+    expect(openCount).toBe(1);
+  });
+
+  test('user can close the active group without it reopening', async ({ page }) => {
+    await bootNavGroupsShell(page);
+    await page.evaluate(() => window.nav('leads'));
+    const database = page.locator('details[data-nav-group="database"]');
     await expect(database).toHaveAttribute('open', '');
+    await database.locator('summary').click();
+    await expect(database).not.toHaveAttribute('open', '');
+    await expect(page.locator('details.nav-group[open]')).toHaveCount(0);
+  });
+
+  test('keyboard toggle keeps single-open accordion', async ({ page }) => {
+    await bootNavGroupsShell(page);
+    await page.evaluate(() => window.nav('leads'));
+    const comunicazione = page.locator('details[data-nav-group="comunicazione"] summary');
+    await comunicazione.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('details[data-nav-group="comunicazione"]')).toHaveAttribute('open', '');
+    await expect(page.locator('details[data-nav-group="database"]')).not.toHaveAttribute('open', '');
+    await expect(page.locator('details.nav-group[open]')).toHaveCount(1);
   });
 });

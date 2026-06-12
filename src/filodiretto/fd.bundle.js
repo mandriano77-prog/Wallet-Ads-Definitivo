@@ -970,6 +970,7 @@
 (function () {
   'use strict';
   var STORAGE_KEY = 'filo_nav_group';
+  var syncingNavGroups = false;
   var SECTION_ICONS = {
     welcome:
       '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
@@ -1125,45 +1126,53 @@
     summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
     summary.setAttribute('aria-label', (details.open ? 'Comprimi' : 'Espandi') + ' sezione ' + label);
   }
-  function syncNavGroups(sectionId) {
+  function applySingleOpenGroup(openGroupId, activeGroup) {
+    if (syncingNavGroups) return;
+    syncingNavGroups = true;
+    try {
+      document.querySelectorAll('.nav-group[data-nav-group]').forEach(function (details) {
+        var gid = details.dataset.navGroup;
+        var shouldOpen = !!openGroupId && gid === openGroupId;
+        if (shouldOpen) details.setAttribute('open', '');
+        else details.removeAttribute('open');
+        details.classList.toggle('nav-group--active', !!activeGroup && gid === activeGroup);
+        syncNavGroupA11y(details);
+        try {
+          localStorage.setItem(STORAGE_KEY + ':' + gid, shouldOpen ? '1' : '0');
+        } catch (_) {}
+      });
+    } finally {
+      syncingNavGroups = false;
+    }
+  }
+  function syncNavGroups(sectionId, options) {
     if (!isFiloNavApp()) return;
+    options = options || {};
     var activeSection = sectionId || getActiveSectionForGroups();
     var activeGroup = sectionToGroup(activeSection);
-    document.querySelectorAll('.nav-group[data-nav-group]').forEach(function (details) {
-      var gid = details.dataset.navGroup;
-      var isActive = gid === activeGroup;
-      details.classList.toggle('nav-group--active', isActive);
-      if (isActive) details.setAttribute('open', '');
-      syncNavGroupA11y(details);
-    });
-  }
-  function restoreNavGroupPrefs() {
-    if (!isFiloNavApp()) return;
-    document.querySelectorAll('.nav-group[data-nav-group]').forEach(function (details) {
-      var id = details.dataset.navGroup;
-      try {
-        var saved = localStorage.getItem(STORAGE_KEY + ':' + id);
-        if (saved === '0') details.removeAttribute('open');
-        else if (saved === '1') details.setAttribute('open', '');
-      } catch (_) {}
-    });
+    if (options.mode === 'manual' && options.openedGroupId) {
+      applySingleOpenGroup(options.openedGroupId, activeGroup);
+      return;
+    }
+    applySingleOpenGroup(activeGroup, activeGroup);
   }
   function bindNavGroups() {
     document.querySelectorAll('.nav-group[data-nav-group]').forEach(function (details) {
       if (details.dataset.fdNavGroupBound === '1') return;
       details.dataset.fdNavGroupBound = '1';
       details.addEventListener('toggle', function () {
-        if (!isFiloNavApp()) return;
+        if (!isFiloNavApp() || syncingNavGroups) return;
         var id = details.dataset.navGroup;
         var activeGroup = sectionToGroup(getActiveSectionForGroups());
-        if (id === activeGroup && !details.open) {
-          details.setAttribute('open', '');
+        if (details.open) {
+          applySingleOpenGroup(id, activeGroup);
           return;
         }
-        try {
-          localStorage.setItem(STORAGE_KEY + ':' + id, details.open ? '1' : '0');
-        } catch (_) {}
         syncNavGroupA11y(details);
+        details.classList.toggle('nav-group--active', id === activeGroup);
+        try {
+          localStorage.setItem(STORAGE_KEY + ':' + id, '0');
+        } catch (_) {}
       });
     });
   }
@@ -1171,7 +1180,6 @@
     if (!isFiloNavApp()) return false;
     injectNavIcons();
     bindNavGroups();
-    restoreNavGroupPrefs();
     syncNavGroups(getActiveSectionForGroups());
     return true;
   }
