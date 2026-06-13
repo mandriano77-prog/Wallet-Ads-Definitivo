@@ -87,13 +87,24 @@
     return group;
   }
 
+  function normalizeUserRole(role) {
+    var r = String(role || 'manager').toLowerCase();
+    if (r === 'viewer') return 'reporter';
+    return r;
+  }
+
+  function roleNeedsAssignedBrand(role) {
+    var r = normalizeUserRole(role);
+    return r === 'manager' || r === 'sender' || r === 'reporter';
+  }
+
   function syncUserBrandFieldVisibility() {
     var roleEl = document.getElementById('userRole');
     var group = getUserBrandGroup();
     if (!roleEl || !group) return;
-    var isManager = roleEl.value === 'manager';
-    group.hidden = !isManager;
-    if (!isManager) {
+    var needsBrand = roleNeedsAssignedBrand(roleEl.value);
+    group.hidden = !needsBrand;
+    if (!needsBrand) {
       var brandSel = document.getElementById('userBrand');
       if (brandSel) brandSel.value = '';
     }
@@ -143,7 +154,7 @@
       window.createUser = async function () {
         var roleEl = document.getElementById('userRole');
         var brandSel = document.getElementById('userBrand');
-        if (roleEl && roleEl.value !== 'manager' && brandSel) brandSel.value = '';
+        if (roleEl && roleEl.value === 'admin' && brandSel) brandSel.value = '';
         return origCreate.apply(this, arguments);
       };
     }

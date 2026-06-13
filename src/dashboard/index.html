@@ -23,8 +23,8 @@
             if (lock === 'hr') {
                 document.documentElement.setAttribute('data-shell', 'light');
                 document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260613-profile-section';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260613-profile-section';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260613-user-brand-fix';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260613-user-brand-fix';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -3133,8 +3133,8 @@
                 <option value="admin">Admin</option>
             </select>
         </div>
-        <div class="form-group"><label class="form-label">Brand (per manager)</label>
-            <select id="userBrand"><option value="">-- Tutti --</option></select>
+        <div class="form-group" id="userBrandGroup"><label class="form-label">Brand assegnato</label>
+            <select id="userBrand"><option value="">— Seleziona brand —</option></select>
         </div>
         <button class="btn" onclick="createUser()">Crea Utente</button>
     </div>
@@ -4203,12 +4203,18 @@ async function loadBrands() {
         storedBid = localStorage.getItem(LAST_BRAND_KEY);
     } catch (_) {}
     const storedMatch = storedBid && brands.find((b) => String(b.id) === String(storedBid));
-    const singleBrandAuto =
-        brands.length === 1 &&
-        (currentUser?.role === 'manager' || currentUser?.role === 'viewer');
+    const userRole = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
+        ? FdRbac.normalizeRole(currentUser?.role)
+        : (currentUser?.role === 'viewer' ? 'reporter' : currentUser?.role);
+    const isScopedUser = userRole && userRole !== 'admin';
+    const assignedBrand = currentUser?.brand_id
+        ? brands.find((b) => String(b.id) === String(currentUser.brand_id))
+        : null;
+    const singleBrandAuto = brands.length === 1 && isScopedUser;
 
     let nextId = null;
     if (urlMatch) nextId = urlMatch.id;
+    else if (assignedBrand) nextId = assignedBrand.id;
     else if (inSession) nextId = inSession.id;
     else if (storedMatch) nextId = storedMatch.id;
     else if (singleBrandAuto) nextId = brands[0].id;
@@ -12413,7 +12419,7 @@ function openCreateUserModal() {
     document.getElementById('userRole').value = 'manager';
     // Populate brand select
     const brandSel = document.getElementById('userBrand');
-    brandSel.innerHTML = '<option value="">-- Tutti --</option>';
+    brandSel.innerHTML = '<option value="">— Seleziona brand —</option>';
     const mainSel = document.getElementById('brandSelector');
     [...mainSel.options].forEach(o => { if (o.value) { const opt = document.createElement('option'); opt.value = o.value; opt.textContent = o.textContent; brandSel.appendChild(opt); }});
     document.getElementById('userModal').classList.add('active');
@@ -12428,6 +12434,11 @@ async function createUser() {
         brand_id: document.getElementById('userBrand').value || null
     };
     if (!body.name || !body.email || !body.password) return alert('Compila tutti i campi');
+    const role = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
+        ? FdRbac.normalizeRole(body.role)
+        : body.role;
+    if (role !== 'admin' && !body.brand_id) return alert('Seleziona un brand per questo ruolo');
+    if (role === 'admin') body.brand_id = null;
     const res = await fetch(`${API}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },

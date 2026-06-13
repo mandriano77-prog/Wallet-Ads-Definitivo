@@ -1409,6 +1409,28 @@ function requireAdmin(req, res) {
   return true;
 }
 
+function normalizeUserBrandPayload(body, role) {
+  const r = normalizeRole(role || body.role || 'manager');
+  if (r === 'admin') {
+    if (body.role !== undefined || body.brand_id !== undefined) {
+      body.brand_id = null;
+    }
+    return r;
+  }
+  if (body.brand_id !== undefined) {
+    body.brand_id = body.brand_id != null && String(body.brand_id).trim() !== ''
+      ? String(body.brand_id).trim()
+      : null;
+  }
+  return r;
+}
+
+function validateScopedUserBrand(role, brandId) {
+  if (normalizeRole(role) === 'admin') return null;
+  if (!brandId) return 'Seleziona un brand per questo ruolo';
+  return null;
+}
+
 /** On restricted HR deploys, allowlisted operator emails are always platform admins (all brands + Utenti). */
 async function ensurePlatformAdminIfAllowlisted(user) {
   const list = dashboardLoginAllowlist();
@@ -1500,6 +1522,9 @@ router.post('/users', async (req, res) => {
     const role = normalizeRole(req.body.role || 'manager');
     if (!isValidRole(role)) return res.status(400).json({ error: 'Ruolo non valido' });
     req.body.role = role;
+    normalizeUserBrandPayload(req.body, role);
+    const brandErr = validateScopedUserBrand(role, req.body.brand_id);
+    if (brandErr) return res.status(400).json({ error: brandErr });
     const user = await createUser(req.body);
     try {
       await sendDashboardUserInviteEmail(req, user);
@@ -1523,11 +1548,18 @@ router.post('/users/:id/resend-invite', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     if (!requireAdmin(req, res)) return;
+    const existing = await getUser(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Utente non trovato' });
     if (req.body.role !== undefined) {
       const role = normalizeRole(req.body.role);
       if (!isValidRole(role)) return res.status(400).json({ error: 'Ruolo non valido' });
       req.body.role = role;
     }
+    const effectiveRole = normalizeRole(req.body.role ?? existing.role);
+    normalizeUserBrandPayload(req.body, effectiveRole);
+    const effectiveBrandId = req.body.brand_id !== undefined ? req.body.brand_id : existing.brand_id;
+    const brandErr = validateScopedUserBrand(effectiveRole, effectiveBrandId);
+    if (brandErr) return res.status(400).json({ error: brandErr });
     const user = await updateUser(req.params.id, req.body);
     res.json(user);
   } catch (err) { res.status(500).json({ error: err.message }); }
