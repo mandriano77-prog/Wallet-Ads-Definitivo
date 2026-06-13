@@ -213,3 +213,14 @@ html[data-app='filodiretto'] #appConfirmDialog.confirm-dialog {
 html[data-app='filodiretto'] #userModal #userBrandGroup[hidden] {
   display: none;
 }
+
+html[data-app='filodiretto'] #userModal .fd-users-invite-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fd-color-text-muted, #64748b);
+}
+
+html[data-app='filodiretto'] #userModal .fd-users-invite-hint[hidden] {
+  display: none;
+}
