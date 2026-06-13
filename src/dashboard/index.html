@@ -23,8 +23,8 @@
             if (lock === 'hr') {
                 document.documentElement.setAttribute('data-shell', 'light');
                 document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260613-delete-confirm-fix';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260613-delete-confirm-fix';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260613-user-no-password';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260613-user-no-password';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -3125,7 +3125,6 @@
         <div class="modal-header" id="userModalTitle">Nuovo utente</div>
         <div class="form-group"><label class="form-label">Nome</label><input type="text" id="userName" placeholder="Nome Cognome"></div>
         <div class="form-group"><label class="form-label">Email</label><input type="email" id="userEmail" placeholder="email@example.com"></div>
-        <div class="form-group" id="userPasswordGroup"><label class="form-label">Password</label><input type="password" id="userPassword" placeholder="Min 6 caratteri"></div>
         <div class="form-group"><label class="form-label">Ruolo</label>
             <select id="userRole">
                 <option value="reporter">Reporter (sola lettura analytics)</option>
@@ -3137,6 +3136,7 @@
         <div class="form-group" id="userBrandGroup"><label class="form-label">Brand assegnato</label>
             <select id="userBrand"><option value="">— Seleziona brand —</option></select>
         </div>
+        <p id="userInviteHint" class="fd-users-invite-hint">L'utente riceverà un'email per attivare l'account e impostare la password.</p>
         <button class="btn" id="userModalSubmitBtn" onclick="saveUser()">Crea utente</button>
     </div>
 </div>
@@ -12461,16 +12461,19 @@ async function populateUserBrandSelect(selectedId) {
     }
 }
 
+function syncUserModalMode(isEdit) {
+    const hint = document.getElementById('userInviteHint');
+    if (hint) hint.hidden = !!isEdit;
+}
+
 function openCreateUserModal() {
     document.getElementById('userEditId').value = '';
     document.getElementById('userModalTitle').textContent = 'Nuovo utente';
     document.getElementById('userModalSubmitBtn').textContent = 'Crea utente';
     document.getElementById('userName').value = '';
     document.getElementById('userEmail').value = '';
-    document.getElementById('userPassword').value = '';
-    document.getElementById('userPassword').placeholder = 'Min 6 caratteri';
-    document.getElementById('userPasswordGroup').style.display = '';
     document.getElementById('userRole').value = 'manager';
+    syncUserModalMode(false);
     populateUserBrandSelect(null);
     document.getElementById('userModal').classList.add('active');
 }
@@ -12482,8 +12485,7 @@ async function openEditUserModal(user) {
     document.getElementById('userModalSubmitBtn').textContent = 'Salva modifiche';
     document.getElementById('userName').value = user.name || '';
     document.getElementById('userEmail').value = user.email || '';
-    document.getElementById('userPassword').value = '';
-    document.getElementById('userPassword').placeholder = 'Lascia vuoto per non cambiare';
+    syncUserModalMode(true);
     const role = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
         ? FdRbac.normalizeRole(user.role)
         : (user.role === 'viewer' ? 'reporter' : user.role);
@@ -12492,6 +12494,7 @@ async function openEditUserModal(user) {
     document.getElementById('userModal').classList.add('active');
 }
 window.openEditUserModal = openEditUserModal;
+window.syncUserModalMode = syncUserModalMode;
 
 async function saveUser() {
     const editId = document.getElementById('userEditId')?.value?.trim() || '';
@@ -12501,7 +12504,6 @@ async function saveUser() {
         role: document.getElementById('userRole').value,
         brand_id: document.getElementById('userBrand').value || null
     };
-    const password = document.getElementById('userPassword').value;
     if (!body.name || !body.email) return alert('Compila nome ed email');
     const role = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
         ? FdRbac.normalizeRole(body.role)
@@ -12510,7 +12512,6 @@ async function saveUser() {
     if (role === 'admin') body.brand_id = null;
 
     if (editId) {
-        if (password) body.password = password;
         const res = await fetch(`${API}/users/${editId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -12526,8 +12527,6 @@ async function saveUser() {
         return;
     }
 
-    if (!password) return alert('Inserisci una password per il nuovo utente');
-    body.password = password;
     const res = await fetch(`${API}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -12538,7 +12537,7 @@ async function saveUser() {
         return toast('Errore: ' + (e.error || 'creazione fallita'));
     }
     closeModal('userModal');
-    toast('Utente creato!');
+    toast('Utente creato! Email di invito inviata.');
     loadUsers();
 }
 

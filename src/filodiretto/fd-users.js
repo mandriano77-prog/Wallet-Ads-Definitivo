@@ -118,7 +118,6 @@
 
     var nameEl = document.getElementById('userName');
     var emailEl = document.getElementById('userEmail');
-    var passEl = document.getElementById('userPassword');
     if (nameEl) {
       nameEl.setAttribute('autocomplete', 'name');
       nameEl.setAttribute('name', 'name');
@@ -126,10 +125,6 @@
     if (emailEl) {
       emailEl.setAttribute('autocomplete', 'email');
       emailEl.setAttribute('name', 'email');
-    }
-    if (passEl) {
-      passEl.setAttribute('autocomplete', 'new-password');
-      passEl.setAttribute('name', 'password');
     }
 
     var roleEl = document.getElementById('userRole');
