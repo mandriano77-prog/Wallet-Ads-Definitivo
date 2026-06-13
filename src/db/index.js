@@ -2208,7 +2208,7 @@ function hashPasswordResetToken(token) {
   return createHash('sha256').update(String(token)).digest('hex');
 }
 
-async function createPasswordResetToken(userId) {
+async function createPasswordResetToken(userId, ttlMs = 60 * 60 * 1000) {
   await pool.query(
     `UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL`,
     [userId]
@@ -2216,7 +2216,7 @@ async function createPasswordResetToken(userId) {
   const token = randomBytes(32).toString('hex');
   const tokenHash = hashPasswordResetToken(token);
   const id = uuidv4();
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + ttlMs);
   await pool.query(
     `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)`,
     [id, userId, tokenHash, expiresAt]
@@ -2311,7 +2311,6 @@ async function bootstrapSuperAdminFromEnv() {
     }
 
     let user = await getUserByEmail(email);
-    let tempPassword = null;
 
     if (user) {
       const needsRoleFix = user.role !== 'admin' || user.brand_id != null;
@@ -2319,26 +2318,26 @@ async function bootstrapSuperAdminFromEnv() {
         await updateUser(user.id, { role: 'admin', brand_id: null });
         console.log('✓ Updated super admin role:', email);
       }
-      if (resendInvite) {
-        tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
-        await updateUser(user.id, { password: tempPassword });
-      }
     } else {
-      tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+      const tempPassword = randomBytes(12).toString('base64url');
       user = await createUser({ email, password: tempPassword, name, role: 'admin', brand_id: null });
       console.log('✓ Created super admin:', email);
     }
 
-    if (tempPassword && resendInvite) {
-      const { sendUserInviteEmail } = require('../engine/mailer');
+    if (resendInvite) {
+      const inviteToken = await createPasswordResetToken(user.id, 72 * 60 * 60 * 1000);
       const domain = String(process.env.CUSTOM_DOMAIN || 'studio.filodiretto.app').replace(/^https?:\/\//, '');
+      const activateUrl = `https://${domain}/dashboard?reset=${encodeURIComponent(inviteToken)}`;
+      const productTitle = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
+        || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+      const { sendUserInviteEmail } = require('../engine/mailer');
       await sendUserInviteEmail({
         to: email,
         name: user.name || name,
-        password: tempPassword,
         role: 'admin',
         brandName: null,
-        dashboardUrl: `https://${domain}/dashboard`
+        activateUrl,
+        productTitle
       });
       console.log('✓ Super admin invite email sent to', email);
     }

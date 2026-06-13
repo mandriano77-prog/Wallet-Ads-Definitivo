@@ -10,7 +10,7 @@ const {
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
-const { createHash } = require('crypto');
+const { createHash, randomBytes } = require('crypto');
 const {
   createBrand, getBrand, getBrandBySlug, listBrands, updateBrand, deleteBrand,
   createTemplate, getTemplate, listTemplates, updateTemplate, deleteTemplate,
@@ -330,6 +330,32 @@ function buildDashboardPublicUrl(req, query = '') {
   const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
   const q = query ? (query.startsWith('?') ? query : `?${query}`) : '';
   return `${proto}://${domain}/dashboard${q}`;
+}
+
+function dashboardProductTitle() {
+  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
+    || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+}
+
+async function resolveUserInviteBrandName(user) {
+  if (!user?.brand_id) return null;
+  const brand = await getBrand(user.brand_id);
+  return brand?.name || null;
+}
+
+async function sendDashboardUserInviteEmail(req, user) {
+  const token = await createPasswordResetToken(user.id, 72 * 60 * 60 * 1000);
+  const activateUrl = buildDashboardPublicUrl(req, `reset=${encodeURIComponent(token)}`);
+  const brandName = await resolveUserInviteBrandName(user);
+  const { sendUserInviteEmail } = require('../engine/mailer');
+  await sendUserInviteEmail({
+    to: user.email,
+    name: user.name,
+    role: user.role || 'manager',
+    brandName,
+    activateUrl,
+    productTitle: dashboardProductTitle()
+  });
 }
 
 router.post('/auth/forgot-password', async (req, res) => {
@@ -1456,24 +1482,14 @@ router.post('/users', async (req, res) => {
   try {
     if (!requireAdmin(req, res)) return;
     if (rejectIfDeployOperatorNotAllowed(req, res)) return;
-    const tempPassword = req.body.password || Math.random().toString(36).slice(-10);
+    const tempPassword = req.body.password || randomBytes(12).toString('base64url');
     req.body.password = tempPassword;
     const role = normalizeRole(req.body.role || 'manager');
     if (!isValidRole(role)) return res.status(400).json({ error: 'Ruolo non valido' });
     req.body.role = role;
     const user = await createUser(req.body);
-    // Send invite email with temp password
     try {
-      const { sendUserInviteEmail } = require('../engine/mailer');
-      const domain = process.env.CUSTOM_DOMAIN || req.headers.host;
-      await sendUserInviteEmail({
-        to: user.email,
-        name: user.name,
-        password: tempPassword,
-        role: req.body.role || 'manager',
-        brandName: 'Ads2Wallet',
-        dashboardUrl: `https://${domain}/dashboard`
-      });
+      await sendDashboardUserInviteEmail(req, user);
     } catch (emailErr) { console.error('Invite email failed:', emailErr.message); }
     res.json(user);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1485,20 +1501,7 @@ router.post('/users/:id/resend-invite', async (req, res) => {
     const user = await getUser(req.params.id);
     if (!user) return res.status(404).json({ error: 'Utente non trovato' });
 
-    // Generate new temp password
-    const tempPassword = Math.random().toString(36).slice(-10);
-    await updateUser(user.id, { password: tempPassword });
-
-    const { sendUserInviteEmail } = require('../engine/mailer');
-    const domain = process.env.CUSTOM_DOMAIN || req.headers.host;
-    await sendUserInviteEmail({
-      to: user.email,
-      name: user.name,
-      password: tempPassword,
-      role: user.role || 'manager',
-      brandName: 'Ads2Wallet',
-      dashboardUrl: `https://${domain}/dashboard`
-    });
+    await sendDashboardUserInviteEmail(req, user);
 
     res.json({ success: true, message: 'Email di invito reinviata' });
   } catch (err) { res.status(500).json({ error: err.message }); }

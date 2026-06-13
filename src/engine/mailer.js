@@ -21,6 +21,68 @@ const getFromName = () => process.env.FROM_NAME || 'Ads2Wallet';
 const getHrFromEmail = () => process.env.HR_FROM_EMAIL || process.env.FROM_EMAIL || 'noreply@filodiretto.app';
 const getHrFromName = () => process.env.HR_FROM_NAME || 'FiloDiretto.App';
 
+/** FiloDiretto dashboard email tokens (aligned with src/filodiretto/tokens.css). */
+const FD_DASHBOARD_EMAIL = {
+  bg: '#fafafa',
+  card: '#ffffff',
+  border: '#e5e7eb',
+  shadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+  primary: '#8B5CF6',
+  textPrimary: '#0f172a',
+  textBody: '#334155',
+  textMuted: '#64748b',
+  textFooter: '#94a3b8',
+  radius: '12px',
+  btnRadius: '8px',
+  btnShadow: '0 2px 8px rgba(139, 92, 246, 0.35)',
+};
+
+function dashboardEmailProductTitle(override) {
+  if (override) return override;
+  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
+    || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+}
+
+function filoDashboardEmailWordmark(productTitle) {
+  const title = dashboardEmailProductTitle(productTitle);
+  const normalized = title.toLowerCase().replace(/\s+/g, '');
+  if (normalized.includes('filodiretto')) {
+    return `<p style="margin:0 0 4px;text-align:center;line-height:1.2;">
+      <span style="font-size:24px;font-weight:700;color:${FD_DASHBOARD_EMAIL.textPrimary};letter-spacing:-0.03em;">filodiretto</span><span style="font-size:24px;font-weight:700;color:${FD_DASHBOARD_EMAIL.primary};letter-spacing:-0.03em;">.app</span>
+    </p>`;
+  }
+  return `<p style="color:${FD_DASHBOARD_EMAIL.primary};font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;text-align:center;">${title}</p>`;
+}
+
+function filoDashboardEmailLayout({ productTitle, headline, subtitle, bodyHtml, ctaUrl, ctaLabel, footnote }) {
+  const product = dashboardEmailProductTitle(productTitle);
+  const ctaBlock = ctaUrl && ctaLabel ? `
+      <p style="text-align:center;margin:28px 0 24px;">
+        <a href="${ctaUrl}" style="display:inline-block;background:${FD_DASHBOARD_EMAIL.primary};color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:${FD_DASHBOARD_EMAIL.btnRadius};text-decoration:none;box-shadow:${FD_DASHBOARD_EMAIL.btnShadow};">${ctaLabel}</a>
+      </p>` : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:${FD_DASHBOARD_EMAIL.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
+    <div style="background:${FD_DASHBOARD_EMAIL.card};border-radius:${FD_DASHBOARD_EMAIL.radius};padding:32px 24px;border:1px solid ${FD_DASHBOARD_EMAIL.border};box-shadow:${FD_DASHBOARD_EMAIL.shadow};">
+      ${filoDashboardEmailWordmark(product)}
+      <h1 style="color:${FD_DASHBOARD_EMAIL.textPrimary};font-size:22px;margin:24px 0 8px;font-weight:700;line-height:1.3;">${headline}</h1>
+      ${subtitle ? `<p style="color:${FD_DASHBOARD_EMAIL.textMuted};font-size:14px;margin:0 0 24px;line-height:1.5;">${subtitle}</p>` : ''}
+      ${bodyHtml}
+      ${ctaBlock}
+      ${footnote ? `<p style="color:${FD_DASHBOARD_EMAIL.textMuted};font-size:13px;line-height:1.5;margin:0;">${footnote}</p>` : ''}
+    </div>
+    <p style="color:${FD_DASHBOARD_EMAIL.textFooter};font-size:12px;text-align:center;margin:16px 0 0;">Powered by ${product}</p>
+  </div>
+</body>
+</html>`;
+}
+
 async function sendViaResend(payload, { logLabel = 'email' } = {}) {
   const resend = getResend();
   if (!resend) {
@@ -147,9 +209,9 @@ async function sendWelcomeEmail({ to, name, brandName, brandColor, points, downl
 }
 
 /**
- * Send invite email when admin creates a new dashboard user
+ * Send invite email when admin creates a new dashboard user (activation link, no password).
  */
-async function sendUserInviteEmail({ to, name, password, role, brandName, dashboardUrl }) {
+async function sendUserInviteEmail({ to, name, role, brandName, activateUrl, productTitle }) {
   console.log('📧 sendUserInviteEmail called — to:', to);
 
   const resend = getResend();
@@ -158,86 +220,48 @@ async function sendUserInviteEmail({ to, name, password, role, brandName, dashbo
     return { skipped: true, reason: 'RESEND_API_KEY not set' };
   }
 
-  const firstName = name.split(/\s+/)[0];
+  const product = dashboardEmailProductTitle(productTitle);
+  const displayName = String(name || '').trim() || String(to).split('@')[0];
+  const firstName = displayName.split(/\s+/)[0];
   const fromEmail = getFromEmail();
   const fromName = getFromName();
-  const roleLabels = { admin: 'Amministratore', manager: 'Manager', viewer: 'Viewer (solo lettura)' };
-  const roleLabel = roleLabels[role] || 'Manager';
-  const brandLine = brandName ? `per <strong style="color:#fff;">${brandName}</strong>` : 'con accesso a tutti i brand';
+  const roleLabels = { admin: 'amministratore', manager: 'manager', viewer: 'viewer (solo lettura)' };
+  const roleLabel = roleLabels[role] || 'manager';
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0; padding:0; background:#111; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width:500px; margin:0 auto; padding:32px 20px;">
+  let accessLine;
+  if (brandName) {
+    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong> per <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${brandName}</strong>.`;
+  } else if (role === 'admin') {
+    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong>, con visibilità su tutti i brand.`;
+  } else {
+    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong>.`;
+  }
 
-    <!-- Header -->
-    <div style="text-align:center; padding:40px 24px; background:#1E1A36; border-radius:16px 16px 0 0;">
-      <h1 style="color:#E8192C; font-size:24px; margin:0 0 8px; font-weight:700;">Ads2Wallet</h1>
-      <p style="color:#B0A8C1; font-size:14px; margin:0;">Dashboard Access</p>
-    </div>
-
-    <!-- Body -->
-    <div style="background:#1a1a1a; padding:32px 24px; border-radius:0 0 16px 16px;">
-
-      <p style="color:#e0e0e0; font-size:16px; line-height:1.6; margin:0 0 20px;">
-        Ciao <strong style="color:#fff;">${firstName}</strong>,
+  const bodyHtml = `
+      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
+        Ciao <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${firstName}</strong>,
       </p>
-
-      <p style="color:#bbb; font-size:14px; line-height:1.6; margin:0 0 24px;">
-        Ti è stato creato un accesso alla dashboard Ads2Wallet come <strong style="color:#00D4AA;">${roleLabel}</strong> ${brandLine}.
+      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
+        ${accessLine}
       </p>
+      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0;">
+        Per iniziare, fai clic sul pulsante qui sotto e scegli una password personale.
+      </p>`;
 
-      <!-- Credentials box -->
-      <div style="background:#222; border:1px solid #00D4AA33; border-radius:12px; padding:24px; margin:0 0 24px;">
-        <p style="color:#00D4AA; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:0 0 16px; font-weight:600;">Le tue credenziali</p>
-        <table style="width:100%; border-collapse:collapse;">
-          <tr>
-            <td style="color:#888; font-size:13px; padding:6px 0; width:80px;">Email</td>
-            <td style="color:#fff; font-size:14px; font-weight:600; padding:6px 0;">${to}</td>
-          </tr>
-          <tr>
-            <td style="color:#888; font-size:13px; padding:6px 0;">Password</td>
-            <td style="color:#fff; font-size:14px; font-weight:600; padding:6px 0; font-family:monospace;">${password}</td>
-          </tr>
-        </table>
-      </div>
-
-      <p style="color:#bbb; font-size:13px; line-height:1.6; margin:0 0 24px;">
-        Ti consigliamo di cambiare la password al primo accesso.
-      </p>
-
-      <!-- CTA -->
-      <div style="text-align:center; margin:0 0 16px;">
-        <a href="${dashboardUrl}" style="display:inline-block; background:#00D4AA; color:#000; font-weight:700; font-size:15px; padding:14px 32px; border-radius:10px; text-decoration:none;">
-          Accedi alla Dashboard
-        </a>
-      </div>
-
-      <p style="color:#666; font-size:12px; text-align:center; margin:0;">
-        Se non hai richiesto questo accesso, ignora questa email.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align:center; padding:24px 0 0;">
-      <p style="color:#444; font-size:11px; margin:0;">
-        Powered by Precise Consulting
-      </p>
-    </div>
-
-  </div>
-</body>
-</html>`;
+  const html = filoDashboardEmailLayout({
+    productTitle: product,
+    headline: 'Accesso alla dashboard',
+    subtitle: 'Attiva il tuo account e imposta la password.',
+    bodyHtml,
+    ctaUrl: activateUrl,
+    ctaLabel: 'Attiva il tuo accesso →',
+    footnote: 'Il link è valido per 72 ore. Se non hai richiesto questo accesso, ignora questa email.'
+  });
 
   const result = await resend.emails.send({
     from: `${fromName} <${fromEmail}>`,
     to: [to],
-    subject: `Il tuo accesso alla dashboard Ads2Wallet`,
+    subject: `Il tuo accesso a ${product}`,
     html
   });
 
@@ -425,65 +449,45 @@ async function sendScratchEmail({ to, name, brandName, brandColor, scratchUrl, c
 /**
  * Password reset link for dashboard users
  */
-async function sendPasswordResetEmail({ to, name, resetUrl }) {
+async function sendPasswordResetEmail({ to, name, resetUrl, productTitle }) {
   const resend = getResend();
   if (!resend) {
     console.log('⚠️ RESEND_API_KEY not set — skipping password reset email to', to);
     return { skipped: true, reason: 'RESEND_API_KEY not set' };
   }
 
-  const firstName = String(name || 'utente').split(/\s+/)[0];
+  const product = dashboardEmailProductTitle(productTitle);
+  const displayName = String(name || '').trim() || String(to).split('@')[0];
+  const firstName = displayName.split(/\s+/)[0];
   const fromEmail = getFromEmail();
   const fromName = getFromName();
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0; padding:0; background:#111; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width:500px; margin:0 auto; padding:32px 20px;">
-
-    <div style="text-align:center; padding:40px 24px; background:#1E1A36; border-radius:16px 16px 0 0;">
-      <h1 style="color:#E8192C; font-size:24px; margin:0 0 8px; font-weight:700;">Ads2Wallet</h1>
-      <p style="color:#B0A8C1; font-size:14px; margin:0;">Recupero password</p>
-    </div>
-
-    <div style="background:#1a1a1a; padding:32px 24px; border-radius:0 0 16px 16px;">
-      <p style="color:#e0e0e0; font-size:16px; line-height:1.6; margin:0 0 20px;">
-        Ciao <strong style="color:#fff;">${firstName}</strong>,
+  const bodyHtml = `
+      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
+        Ciao <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${firstName}</strong>,
       </p>
-      <p style="color:#bbb; font-size:14px; line-height:1.6; margin:0 0 24px;">
-        Hai richiesto di reimpostare la password della dashboard. Il link è valido per <strong style="color:#fff;">1 ora</strong>.
+      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
+        Hai richiesto di reimpostare la password della dashboard. Il link è valido per <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">1 ora</strong>.
       </p>
-      <div style="text-align:center; margin:0 0 24px;">
-        <a href="${resetUrl}" style="display:inline-block; background:#00D4AA; color:#000; font-weight:700; font-size:15px; padding:14px 32px; border-radius:10px; text-decoration:none;">
-          Reimposta password
-        </a>
-      </div>
-      <p style="color:#888; font-size:12px; line-height:1.6; margin:0 0 16px; word-break:break-all;">
+      <p style="color:${FD_DASHBOARD_EMAIL.textMuted};font-size:13px;line-height:1.6;margin:0;word-break:break-all;">
         Se il pulsante non funziona, copia questo link nel browser:<br>
-        <a href="${resetUrl}" style="color:#00D4AA;">${resetUrl}</a>
-      </p>
-      <p style="color:#666; font-size:12px; text-align:center; margin:0;">
-        Se non hai richiesto il recupero, ignora questa email.
-      </p>
-    </div>
+        <a href="${resetUrl}" style="color:${FD_DASHBOARD_EMAIL.primary};text-decoration:underline;">${resetUrl}</a>
+      </p>`;
 
-    <div style="text-align:center; padding:24px 0 0;">
-      <p style="color:#444; font-size:11px; margin:0;">Powered by Precise Consulting</p>
-    </div>
-
-  </div>
-</body>
-</html>`;
+  const html = filoDashboardEmailLayout({
+    productTitle: product,
+    headline: 'Recupero password',
+    subtitle: 'Scegli una nuova password per il tuo account.',
+    bodyHtml,
+    ctaUrl: resetUrl,
+    ctaLabel: 'Reimposta password →',
+    footnote: 'Se non hai richiesto il recupero, ignora questa email.'
+  });
 
   const result = await resend.emails.send({
     from: `${fromName} <${fromEmail}>`,
     to: [to],
-    subject: 'Reimposta la password Ads2Wallet',
+    subject: `Reimposta la password — ${product}`,
     html
   });
 
