@@ -1,11 +1,37 @@
 /**
  * FD — Audience: tab Comportamento metrics grid + KPI consistency.
  */
-html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid {
+html[data-app='filodiretto'] #audiences.audiences--fd #audienceInsightsStats.stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--fd-space-4);
   margin-bottom: var(--fd-space-5);
+  width: 100%;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd #audienceBehaviorStats,
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-stats-host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-bottom: var(--fd-space-5);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-metrics {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--fd-space-4);
+  margin-bottom: 0;
 }
 
 html[data-app='filodiretto'] #audiences.audiences--fd .stat-card {
@@ -83,6 +109,12 @@ html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
   margin-bottom: 0;
 }
 
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid .stat-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -104,7 +136,6 @@ html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid span {
 }
 
 @media (max-width: 1023px) {
-  html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid,
   html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -115,9 +146,8 @@ html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid span {
 }
 
 @media (max-width: 599px) {
-  html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid,
   html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid {

@@ -1,9 +1,9 @@
 {
-  "builtAt": "2026-06-13T06:14:57.083Z",
+  "builtAt": "2026-06-13T06:25:21.359Z",
   "cssFiles": 28,
   "jsFiles": 28,
-  "cssBytes": 104145,
-  "jsBytes": 251706,
+  "cssBytes": 104777,
+  "jsBytes": 251873,
   "requestsBefore": 56,
   "requestsAfter": 2
 }

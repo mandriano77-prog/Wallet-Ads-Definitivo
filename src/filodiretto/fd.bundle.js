@@ -5997,6 +5997,8 @@
     if (!brandId) return;
     var statsHost = document.getElementById('audienceBehaviorStats');
     if (!statsHost) return;
+    statsHost.classList.remove('stats-grid');
+    statsHost.classList.add('fd-aud-behavior-stats-host');
     try {
       var days = document.getElementById('audBehaviorDays')?.value || 30;
       var api = typeof window.API === 'string' && window.API ? window.API : '/api/v1';
@@ -6066,7 +6068,10 @@
       toolbarRow.appendChild(actions);
     }
     var statsHost = document.getElementById('audienceBehaviorStats');
-    if (statsHost) statsHost.classList.add('fd-aud-behavior-stats-host');
+    if (statsHost) {
+      statsHost.classList.remove('stats-grid');
+      statsHost.classList.add('fd-aud-behavior-stats-host');
+    }
   }
   function patchAudienceLoaders() {
     if (window.__fdAudiencesPatched) return;

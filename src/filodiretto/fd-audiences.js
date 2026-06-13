@@ -70,6 +70,8 @@
 
     var statsHost = document.getElementById('audienceBehaviorStats');
     if (!statsHost) return;
+    statsHost.classList.remove('stats-grid');
+    statsHost.classList.add('fd-aud-behavior-stats-host');
 
     try {
       var days = document.getElementById('audBehaviorDays')?.value || 30;
@@ -147,7 +149,10 @@
     }
 
     var statsHost = document.getElementById('audienceBehaviorStats');
-    if (statsHost) statsHost.classList.add('fd-aud-behavior-stats-host');
+    if (statsHost) {
+      statsHost.classList.remove('stats-grid');
+      statsHost.classList.add('fd-aud-behavior-stats-host');
+    }
   }
 
   function patchAudienceLoaders() {
