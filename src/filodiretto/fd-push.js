@@ -851,6 +851,22 @@
     };
   }
 
+  function wrapPushHistorySection(panel) {
+    var historyWrap = panel.querySelector(':scope > .fd-push-history-wrap');
+    if (historyWrap) return historyWrap;
+
+    var historyTitle = panel.querySelector(':scope > .sec-title');
+    var historyEl = panel.querySelector(':scope > #pushHistory');
+    if (!historyTitle && !historyEl) return null;
+
+    historyWrap = document.createElement('div');
+    historyWrap.className = 'fd-push-history-wrap';
+    if (historyTitle) historyWrap.appendChild(historyTitle);
+    if (historyEl) historyWrap.appendChild(historyEl);
+    panel.appendChild(historyWrap);
+    return historyWrap;
+  }
+
   function enhanceImmediatePanel() {
     var panel = document.getElementById('pushPanel_immediate');
     if (!panel || panel.dataset.fdPushEnhanced === '1') return;
@@ -860,13 +876,30 @@
     var card = panel.querySelector('.push-card');
     if (!card) return;
 
-    var formCol = document.createElement('div');
-    formCol.className = 'fd-push-form-col';
-    formCol.appendChild(card);
-    panel.insertBefore(formCol, panel.firstChild);
+    var formCol = panel.querySelector(':scope > .fd-push-form-col');
+    if (!formCol) {
+      formCol = document.createElement('div');
+      formCol.className = 'fd-push-form-col';
+      panel.insertBefore(formCol, panel.firstChild);
+    }
+    if (card.parentElement !== formCol) {
+      formCol.appendChild(card);
+    }
 
-    var preview = buildPreviewPanel();
-    if (preview) panel.appendChild(preview);
+    wrapPushHistorySection(panel);
+
+    var asideCol = panel.querySelector(':scope > .fd-push-aside-col');
+    if (!asideCol) {
+      asideCol = document.createElement('div');
+      asideCol.className = 'fd-push-aside-col';
+      var historyWrap = panel.querySelector(':scope > .fd-push-history-wrap');
+      panel.insertBefore(asideCol, historyWrap);
+    }
+
+    var preview = asideCol.querySelector('.fd-push-preview') || buildPreviewPanel();
+    if (preview && preview.parentElement !== asideCol) {
+      asideCol.appendChild(preview);
+    }
 
     buildChannelSegmented();
     buildTestBlock();
