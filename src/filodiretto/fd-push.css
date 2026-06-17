@@ -52,6 +52,27 @@ html[data-app='filodiretto'] #pushPanel_immediate .fd-push-form-col .push-card {
   margin-top: 0;
 }
 
+html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
+  align-self: start;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #pushPanel_immediate .fd-push-history-wrap {
+  grid-column: 1 / -1;
+}
+
+/* CSS-only fallback: anteprima diretta figlia della griglia (pre-wrapper / legacy) */
+html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+}
+
+html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > .sec-title,
+html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pushHistory {
+  grid-column: 1 / -1;
+}
+
 html[data-app='filodiretto'] .fd-push-preview {
   position: sticky;
   top: var(--fd-space-4);
