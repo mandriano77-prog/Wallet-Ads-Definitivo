@@ -145,6 +145,8 @@
 
   function sectionToGroup(sectionId) {
     if (!sectionId || sectionId === 'welcome') return null;
+    if (sectionId === 'audiences') sectionId = 'leads';
+    if (sectionId === 'activity-log') sectionId = 'analytics';
     var nav = window.FD_NAV && window.FD_NAV.NAV;
     if (!nav) return null;
     for (var i = 0; i < nav.length; i++) {

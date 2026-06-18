@@ -14,7 +14,7 @@ export const NAV = [
     },
     {
         id: 'comunicazione',
-        label: 'Comunicazione',
+        label: 'Engagement',
         items: [
             { id: 'push', label: 'Push & Notifiche' },
             { id: 'instant-win', label: 'Reward' },
@@ -25,16 +25,14 @@ export const NAV = [
         id: 'database',
         label: 'Database',
         items: [
-            { id: 'leads', label: 'Contatti' },
-            { id: 'audiences', label: 'Audience' }
+            { id: 'leads', label: 'Contatti' }
         ]
     },
     {
         id: 'insights',
         label: 'Insights',
         items: [
-            { id: 'analytics', label: 'Analytics' },
-            { id: 'activity-log', label: 'Log Attività' }
+            { id: 'analytics', label: 'Analytics' }
         ]
     },
     {
@@ -47,7 +45,9 @@ export const NAV = [
 export const EXTRA_PAGE_TITLES = {
     welcome: 'Inizio',
     'pass-design': 'Design Pass',
-    'pass-wizard': 'Crea Pass'
+    'pass-wizard': 'Crea Pass',
+    audiences: 'Audience',
+    'activity-log': 'Log Attività'
 };
 
 export function getPageTitle(sectionId) {

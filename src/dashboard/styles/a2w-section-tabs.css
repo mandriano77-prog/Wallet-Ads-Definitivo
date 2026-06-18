@@ -1,0 +1,78 @@
+/**
+ * Ads2Wallet — in-page section tabs (Contatti, Analytics).
+ */
+html[data-shell="dark"].a2w-shell .a2w-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  border-bottom: 1px solid var(--a2w-border-subtle);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-section-tabs .tabs-bar__tab {
+  margin: 0;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--a2w-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-section-tabs .tabs-bar__tab:hover {
+  color: var(--a2w-text-primary);
+  background: var(--a2w-action-secondary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-section-tabs .tabs-bar__tab.active,
+html[data-shell="dark"].a2w-shell .a2w-section-tabs .tabs-bar__tab[aria-selected="true"] {
+  color: var(--a2w-accent);
+  border-bottom-color: var(--a2w-accent);
+  font-weight: 600;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-section-tab-panel[hidden] {
+  display: none !important;
+}
+
+html[data-shell="dark"].a2w-shell #leadsTabPanel_audience .audiences-panel__intro {
+  font-size: 13px;
+  color: var(--a2w-text-secondary);
+  margin: 0 0 12px;
+  max-width: 45rem;
+  line-height: 1.45;
+}
+
+html[data-shell="light"] .a2w-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+  border-bottom: 1px solid var(--border-default);
+}
+
+html[data-shell="light"] .a2w-section-tabs .tabs-bar__tab {
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+html[data-shell="light"] .a2w-section-tabs .tabs-bar__tab.active,
+html[data-shell="light"] .a2w-section-tabs .tabs-bar__tab[aria-selected="true"] {
+  color: var(--accent-hover);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}

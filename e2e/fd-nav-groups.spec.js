@@ -25,11 +25,10 @@ async function bootNavGroupsShell(page) {
       <summary class="nav-group-label">Database</summary>
       <div class="nav-group-items">
         <div class="nav-item" data-section-id="leads" onclick="nav('leads')">Contatti</div>
-        <div class="nav-item" data-section-id="audiences" onclick="nav('audiences')">Audience</div>
       </div>
     </details>
     <details class="nav-group" data-nav-group="comunicazione">
-      <summary class="nav-group-label">Comunicazione</summary>
+      <summary class="nav-group-label">Engagement</summary>
       <div class="nav-group-items">
         <div class="nav-item" data-section-id="instant-win" onclick="nav('instant-win')">Reward</div>
         <div class="nav-item" data-section-id="gamification" onclick="nav('gamification')">Challenge</div>

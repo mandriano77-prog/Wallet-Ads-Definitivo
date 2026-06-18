@@ -165,9 +165,15 @@
     if (window.__fdAudiencesNavPatched || typeof window.nav !== 'function') return;
     window.__fdAudiencesNavPatched = true;
     var orig = window.nav;
-    window.nav = function (sectionId) {
+    window.nav = function (sectionId, options) {
       var out = orig.apply(this, arguments);
-      if (sectionId === 'audiences') {
+      options = options || {};
+      var resolved = typeof window.resolveNavTarget === 'function'
+        ? window.resolveNavTarget(sectionId, options)
+        : { section: sectionId, tab: options.tab || '' };
+      var isAudience = sectionId === 'audiences'
+        || (resolved.section === 'leads' && resolved.tab === 'audience');
+      if (isAudience) {
         setTimeout(function () {
           enhanceBehaviorPanel();
           if (document.getElementById('audPanel_behavior')?.style.display !== 'none') {

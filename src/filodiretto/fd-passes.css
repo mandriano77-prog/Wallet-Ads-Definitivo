@@ -1,3 +1,4 @@
+html[data-app='filodiretto'] #passes.passes--fd-layout #passWalletTechAccordion,
 html[data-app='filodiretto'] #passes.passes--fd-layout #passWalletChannelsDiag {
   margin-top: 20px;
   margin-bottom: 0;

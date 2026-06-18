@@ -31,16 +31,8 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-header {
   margin-bottom: 24px;
 }
 
-html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-breadcrumb {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--a2w-text-tertiary);
-  display: inline-flex;
-  gap: 6px;
-}
-
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-title {
-  margin-bottom: 6px;
+  margin: 0 0 6px;
   font-size: 24px;
   font-weight: 600;
 }
@@ -75,6 +67,46 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-state-badge.is-dirty {
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-state-badge.is-saving {
   border-color: rgba(63, 224, 200, 0.45);
   color: var(--a2w-action-primary);
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-state-badge.is-clean {
+  border-color: var(--a2w-border-default);
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-state-badge.is-pending {
+  border-color: var(--a2w-border-subtle);
+  color: var(--a2w-text-tertiary);
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-save-btn:disabled:not(.is-saving) {
+  background: var(--a2w-action-secondary);
+  border-color: var(--a2w-border-default);
+  color: var(--a2w-text-tertiary);
+  cursor: not-allowed;
+  opacity: 1;
+  box-shadow: none;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-save-btn.is-dirty:not(:disabled) {
+  background: var(--a2w-action-primary);
+  border-color: var(--a2w-action-primary);
+  color: #05211d;
+  cursor: pointer;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-save-btn.is-dirty:not(:disabled):hover {
+  background: var(--a2w-action-primary-hover);
+  border-color: var(--a2w-action-primary-hover);
+  color: #021512;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-save-btn.is-saving:disabled {
+  background: var(--a2w-action-secondary);
+  border-color: rgba(63, 224, 200, 0.35);
+  color: var(--a2w-action-primary);
+  cursor: wait;
+  opacity: 1;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-layout {

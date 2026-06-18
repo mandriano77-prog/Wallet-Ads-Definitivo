@@ -14,12 +14,15 @@
 
   function ensurePassesLayout() {
     var section = document.getElementById('passes');
+    var accordion = document.getElementById('passWalletTechAccordion');
     var diag = document.getElementById('passWalletChannelsDiag');
     var content = document.getElementById('passesContent');
-    if (!section || !diag || !content || section.dataset.fdPassesLayout === '1') return;
+    if (!section || !content || section.dataset.fdPassesLayout === '1') return;
+    if (!accordion && !diag) return;
     section.dataset.fdPassesLayout = '1';
     section.classList.add('passes--fd-layout');
-    section.appendChild(diag);
+    if (accordion) section.appendChild(accordion);
+    else if (diag) section.appendChild(diag);
   }
 
   function ensureAdvancedColumnsToggle() {

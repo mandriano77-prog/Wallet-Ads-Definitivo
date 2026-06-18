@@ -96,7 +96,7 @@ test('fdSyncNavGroups pins setup and marks database active', () => {
   const doc = bootFdNavDom();
   doc.addDetails('setup', ['users']);
   doc.addDetails('engagement', ['instant-win', 'gamification']);
-  const database = doc.addDetails('database', ['leads', 'audiences']);
+  const database = doc.addDetails('database', ['leads']);
   database.open = false;
   const g = {
     document: doc,

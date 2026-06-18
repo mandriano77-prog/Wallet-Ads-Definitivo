@@ -26,11 +26,16 @@ html[data-shell="dark"].a2w-shell {
   --a2w-action-secondary: rgba(255, 255, 255, 0.04);
   --a2w-action-secondary-hover: rgba(255, 255, 255, 0.08);
   --a2w-action-secondary-border: rgba(255, 255, 255, 0.18);
+  --a2w-border-focus: var(--a2w-action-primary);
   --a2w-nav-active-bg: #1e293b;
   --a2w-accent-data: #3FE0C8;
   --a2w-text-primary: rgba(255, 255, 255, 0.92);
-  --a2w-text-secondary: rgba(255, 255, 255, 0.60);
-  --a2w-text-tertiary: rgba(255, 255, 255, 0.40);
+  --a2w-text-secondary: rgba(255, 255, 255, 0.68);
+  --a2w-text-tertiary: rgba(255, 255, 255, 0.55);
+  /* Legacy aliases — inline styles & shared components */
+  --text2: var(--a2w-text-secondary);
+  --text-muted: var(--a2w-text-tertiary);
+  --border-focus: var(--a2w-border-focus);
   --a2w-border-subtle: rgba(255, 255, 255, 0.08);
   --a2w-border-default: rgba(255, 255, 255, 0.10);
   --a2w-radius-card: 16px;

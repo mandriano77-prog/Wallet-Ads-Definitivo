@@ -65,13 +65,15 @@
     <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css?v=20260528-dropdown">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css?v=20260528-mobile-drawer">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-section-tabs.css?v=20260528-nav">
     <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-modal.css?v=20260527-contacts-v5">
     <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v5">
     <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-setup-checklist.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
@@ -1203,6 +1205,63 @@
         @media (max-width: 640px) {
             .wallet-diag-body { padding-left: 14px; }
         }
+
+        .pass-wallet-tech-accordion {
+            margin-top: 20px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            background: var(--bg-canvas);
+        }
+        .pass-wallet-tech-accordion__summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            user-select: none;
+        }
+        .pass-wallet-tech-accordion__summary::-webkit-details-marker { display: none; }
+        .pass-wallet-tech-accordion__label { flex: 1; min-width: 0; }
+        .pass-wallet-tech-accordion__chevron {
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--text-muted, var(--text2));
+            border-bottom: 2px solid var(--text-muted, var(--text2));
+            transform: rotate(45deg);
+            transition: transform var(--transition-fast, 0.15s ease);
+            flex-shrink: 0;
+        }
+        .pass-wallet-tech-accordion[open] .pass-wallet-tech-accordion__chevron {
+            transform: rotate(-135deg);
+            margin-top: 4px;
+        }
+        .pass-wallet-tech-accordion__panel {
+            padding: 0 12px 12px;
+            border-top: 1px solid var(--border-default);
+        }
+        .pass-wallet-tech-accordion #passWalletChannelsDiag .wallet-diag-shell {
+            border: none;
+            margin: 0;
+            background: transparent;
+        }
+        .pass-wallet-tech-accordion #passWalletChannelsDiag .wallet-diag-head--compact {
+            padding: 12px 4px 0;
+        }
+        html[data-shell="dark"].a2w-shell .pass-wallet-tech-accordion {
+            border-color: var(--a2w-border-default);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        html[data-shell="dark"].a2w-shell .pass-wallet-tech-accordion__summary {
+            color: var(--a2w-text-primary);
+        }
+        html[data-shell="dark"].a2w-shell .pass-wallet-tech-accordion__panel {
+            border-top-color: var(--a2w-border-subtle);
+        }
         .analytics-date {
             padding: var(--space-2) var(--space-3);
             border: 1px solid var(--border-default);
@@ -1242,9 +1301,9 @@
             .table thead th:nth-child(8),
             .table thead th:nth-child(9) { display: none; }
         }
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
             .layout { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
+            html:not(.a2w-shell) .sidebar { display: none; }
             .form-row { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
             .content { padding: var(--space-4); }
@@ -1313,7 +1372,7 @@
             </details>
 
             <details class="nav-group" data-nav-group="comunicazione">
-                <summary class="nav-group-label">Comunicazione</summary>
+                <summary class="nav-group-label">Engagement</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('push')" data-section-id="push" data-requires-perm="push" role="button" tabindex="0">Push &amp; Notifiche</div>
                     <div class="nav-item" onclick="nav('instant-win')" data-section-id="instant-win" data-requires-perm="rewards" role="button" tabindex="0">Reward</div>
@@ -1325,7 +1384,6 @@
                 <summary class="nav-group-label">Database</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-requires-perm="employees" data-menu-key="nav_leads" data-menu-default="Contatti" role="button" tabindex="0">Contatti <span id="navNoMatricolaBadge" class="nav-badge" style="display:none;" title="Dipendenti senza matricola"></span></div>
-                    <div class="nav-item" onclick="nav('audiences')" data-section-id="audiences" data-requires-perm="audiences" role="button" tabindex="0">Audience</div>
                 </div>
             </details>
 
@@ -1333,7 +1391,6 @@
                 <summary class="nav-group-label">Insights</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('analytics')" data-section-id="analytics" data-requires-perm="analytics" role="button" tabindex="0">Analytics</div>
-                    <div class="nav-item" onclick="nav('activity-log')" data-section-id="activity-log" data-requires-perm="activity_log" role="button" tabindex="0">Log Attività</div>
                 </div>
             </details>
 
@@ -1403,8 +1460,9 @@
             <div id="welcome" class="section active">
                 <h1 class="sec-title page-title">Inizio</h1>
                 <p class="page-lead">
-                    Home operativa essenziale: seleziona o crea un brand per iniziare.
+                    Home operativa: seleziona un brand o segui la checklist di setup per iniziare.
                 </p>
+                <div id="a2wSetupChecklistRoot" class="a2w-setup-checklist-root" hidden></div>
                 <div class="fd-welcome-legacy">
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
                     <button type="button" class="btn sec" onclick="document.getElementById('brandSelector').focus()">Seleziona brand</button>
@@ -1484,8 +1542,16 @@
                     </div>
                 </div>
                 <p id="passFilterSessionHint" style="font-size:11px;color:var(--text2);margin:-8px 0 14px;">Campagna, ricerca e pagina sono ricordati per questo brand finché il tab del browser è aperto.</p>
-                <div id="passWalletChannelsDiag" style="margin-bottom:14px;"></div>
                 <div id="passesContent" style="color:var(--text2)">Caricamento...</div>
+                <details id="passWalletTechAccordion" class="pass-wallet-tech-accordion" data-a2w-component="pass-wallet-tech">
+                    <summary class="pass-wallet-tech-accordion__summary">
+                        <span class="pass-wallet-tech-accordion__label">Collegamenti tecnici Wallet (avanzato)</span>
+                        <span class="pass-wallet-tech-accordion__chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="pass-wallet-tech-accordion__panel">
+                        <div id="passWalletChannelsDiag"></div>
+                    </div>
+                </details>
             </div>
 
             <!-- TEMPLATES -->
@@ -1731,13 +1797,12 @@
                 <div class="a2w-bi-page" data-a2w-component="brand-identity-page">
                     <header class="a2w-bi-header">
                         <div class="a2w-bi-header__copy">
-                            <p class="a2w-bi-breadcrumb"><span id="a2wBiBreadcrumbBrand">Brand</span> <span aria-hidden="true">›</span> <span>Identità Brand</span></p>
                             <h1 class="sec-title page-title a2w-bi-title">Identità Brand</h1>
                             <p class="a2w-bi-subtitle">Definisci nome, logo, contatti e dati pubblici. Queste informazioni alimentano pass, landing e comunicazioni.</p>
                         </div>
                         <div class="a2w-bi-header__actions">
-                            <span id="a2wBiSaveStateBadge" class="a2w-bi-state-badge">Salvato</span>
-                            <button type="button" id="a2wBiSaveBtn" class="btn a2w-btn-primary" data-requires-write="brand-identity" onclick="saveBrandIdentity()" disabled>Salva modifiche</button>
+                            <span id="a2wBiSaveStateBadge" class="a2w-bi-state-badge" aria-live="polite">Salvato</span>
+                            <button type="button" id="a2wBiSaveBtn" class="btn a2w-btn-primary a2w-bi-save-btn" data-requires-write="brand-identity" onclick="saveBrandIdentity()" disabled>Salva modifiche</button>
                         </div>
                     </header>
 
@@ -1960,7 +2025,7 @@
             <!-- MEDIA UPLOAD MODAL -->
             <div id="mediaUploadModal" class="modal" data-rbac-section="media-library">
                 <div class="modal-content" style="max-width:480px;">
-                    <button class="modal-close" onclick="closeModal('mediaUploadModal')">&times;</button>
+                    <button type="button" class="modal-close" onclick="closeModal('mediaUploadModal')" aria-label="Chiudi modale caricamento media">&times;</button>
                     <div class="modal-header">Carica Immagine</div>
                     <div class="form-group">
                         <label class="form-label">Tipo</label>
@@ -1998,7 +2063,7 @@
             <!-- MEDIA CROP/RESIZE EDITOR -->
             <div id="mediaCropModal" class="modal">
                 <div class="modal-content" style="max-width:760px;">
-                    <button class="modal-close" onclick="closeModal('mediaCropModal')">&times;</button>
+                    <button type="button" class="modal-close" onclick="closeModal('mediaCropModal')" aria-label="Chiudi modale ritaglio immagine">&times;</button>
                     <div class="modal-header">Editor Crop & Resize</div>
                     <p id="mediaCropSpecLabel" style="font-size:12px;color:var(--text2);margin-bottom:10px;">Target: 750x246 (strip)</p>
                     <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
@@ -2281,7 +2346,7 @@
                   <div style="background:var(--card);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                       <h2 id="iwModalTitle" class="block-title" style="margin:0;font-size:20px;">Nuova Campagna</h2>
-                      <button class="btn sec" onclick="closeIwModal()" style="font-size:18px;padding:4px 12px;">✕</button>
+                      <button type="button" class="btn sec" onclick="closeIwModal()" style="font-size:18px;padding:4px 12px;" aria-label="Chiudi modale Reward">✕</button>
                     </div>
                     <input type="hidden" id="iwEditId">
                     <div class="form-group"><label class="form-label">Nome campagna</label><input id="iwName" placeholder="es. Vinci un aperitivo"></div>
@@ -2336,7 +2401,7 @@
                   <div style="background:var(--card);border-radius:16px;padding:28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                       <h2 id="gamModalTitle" class="block-title" style="margin:0;font-size:20px;">Nuova Campagna Challenge</h3>
-                      <button class="btn sec" onclick="closeGamModal()" style="font-size:18px;padding:4px 12px;">✕</button>
+                      <button type="button" class="btn sec" onclick="closeGamModal()" style="font-size:18px;padding:4px 12px;" aria-label="Chiudi modale Challenge">✕</button>
                     </div>
                     <input type="hidden" id="gamEditId">
                     <div class="form-group"><label class="form-label">Nome campagna</label><input id="gamName" placeholder="es. Quiz Natale 2026"></div>
@@ -2394,6 +2459,11 @@
                     <button type="button" class="btn sec a2w-contacts-header-btn a2w-contacts-header-btn--secondary" id="a2wContactsImportBtn" aria-label="Importa contatti da CSV">Importa CSV</button>
                   </div>
                 </div>
+                <div class="tabs-bar a2w-section-tabs" role="tablist" aria-label="Sezione Contatti" id="leadsSectionTabs">
+                    <button type="button" class="tabs-bar__tab active" role="tab" id="leadsTab_contacts" aria-selected="true" aria-controls="leadsTabPanel_contacts" onclick="switchLeadsSectionTab('contacts')">Tutti i contatti</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="leadsTab_audience" aria-selected="false" aria-controls="leadsTabPanel_audience" data-requires-perm="audiences" onclick="switchLeadsSectionTab('audience')">Audience</button>
+                </div>
+                <div id="leadsTabPanel_contacts" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="leadsTab_contacts">
                 <div class="contacts-top-grid">
                   <div id="contactsCardA" class="card contacts-card">
                     <div class="contacts-card__heading">
@@ -2415,6 +2485,61 @@
                     </tr></thead>
                     <tbody></tbody>
                 </table>
+                </div>
+
+                <div id="leadsTabPanel_audience" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="leadsTab_audience" hidden data-rbac-section="audiences">
+                <div id="audiences" class="audiences-panel">
+                <p class="audiences-panel__intro">Segmentazione possessori pass, statistiche di apertura e clic sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
+                <button type="button" class="btn sec fd-rbac-write" data-requires-write="audiences" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
+
+                <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
+                    <button type="button" class="aud-subtab active" id="audTab_overview" onclick="switchAudienceTab('overview')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--teal);margin-bottom:-2px;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;">Panoramica</button>
+                    <button type="button" class="aud-subtab" id="audTab_behavior" onclick="switchAudienceTab('behavior')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Comportamento</button>
+                    <button type="button" class="aud-subtab" id="audTab_saved" onclick="switchAudienceTab('saved')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Audience salvate</button>
+                </div>
+
+                <div id="audPanel_overview" class="aud-panel">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Possessori pass</div>
+                    <div class="stats-grid" id="audienceInsightsStats"></div>
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Pass per campagna</div>
+                        <div id="audienceCampaignBreakdown" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_behavior" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                        <select id="audBehaviorDays" onchange="loadAudienceBehavior()" style="width:auto;padding:6px 10px;">
+                            <option value="7">7 giorni</option>
+                            <option value="30" selected>30 giorni</option>
+                            <option value="90">90 giorni</option>
+                        </select>
+                        <button class="btn sec" onclick="exportHolderEventsCsv()">⬇ Export eventi CSV</button>
+                    </div>
+                    <div class="stats-grid" id="audienceBehaviorStats"></div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Funnel per link (retro pass)</div>
+                        <div id="audienceLinkFunnels" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Link più cliccati</div>
+                        <div id="audienceTopLinks" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="sec-title" style="font-size:15px;">Eventi recenti</div>
+                        <div id="audienceRecentEvents" style="max-height:280px;overflow:auto;font-size:12px;">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_saved" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="font-size:16px;margin:0;">Le tue audience</div>
+                        <button class="btn" data-requires-write="audiences" onclick="openAudienceEditor()">+ Nuova audience</button>
+                    </div>
+                    <div id="audiencesList" style="color:var(--text2);">Caricamento...</div>
+                </div>
+                </div>
+                </div>
             </div>
 
             <div id="a2wAddContactModal" class="a2w-modal a2w-add-contact-modal" hidden role="dialog" aria-modal="true" aria-labelledby="a2wAddContactTitle" aria-hidden="true">
@@ -2607,66 +2732,11 @@
                 </div>
             </div>
 
-            <!-- AUDIENCES -->
-                        <div id="audiences" class="section" data-rbac-section="audiences">
-                <h1 class="sec-title page-title">Audience</h1>
-                <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Segmentazione possessori pass, statistiche di apertura e clic sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
-                <button type="button" class="btn sec fd-rbac-write" data-requires-write="audiences" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
-
-                <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
-                    <button type="button" class="aud-subtab active" id="audTab_overview" onclick="switchAudienceTab('overview')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--teal);margin-bottom:-2px;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;">Panoramica</button>
-                    <button type="button" class="aud-subtab" id="audTab_behavior" onclick="switchAudienceTab('behavior')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Comportamento</button>
-                    <button type="button" class="aud-subtab" id="audTab_saved" onclick="switchAudienceTab('saved')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Audience salvate</button>
-                </div>
-
-                <div id="audPanel_overview" class="aud-panel">
-                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Possessori pass</div>
-                    <div class="stats-grid" id="audienceInsightsStats"></div>
-                    <div class="card" style="margin-bottom:20px;">
-                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Pass per campagna</div>
-                        <div id="audienceCampaignBreakdown" style="font-size:13px;color:var(--text2);">—</div>
-                    </div>
-                </div>
-
-                <div id="audPanel_behavior" class="aud-panel" style="display:none;">
-                    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
-                        <select id="audBehaviorDays" onchange="loadAudienceBehavior()" style="width:auto;padding:6px 10px;">
-                            <option value="7">7 giorni</option>
-                            <option value="30" selected>30 giorni</option>
-                            <option value="90">90 giorni</option>
-                        </select>
-                        <button class="btn sec" onclick="exportHolderEventsCsv()">⬇ Export eventi CSV</button>
-                    </div>
-                    <div class="stats-grid" id="audienceBehaviorStats"></div>
-                    <div class="card" style="margin-bottom:16px;">
-                        <div class="sec-title" style="font-size:15px;">Funnel per link (retro pass)</div>
-                        <div id="audienceLinkFunnels" style="font-size:13px;color:var(--text2);">—</div>
-                    </div>
-                    <div class="card" style="margin-bottom:16px;">
-                        <div class="sec-title" style="font-size:15px;">Link più cliccati</div>
-                        <div id="audienceTopLinks" style="font-size:13px;color:var(--text2);">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="sec-title" style="font-size:15px;">Eventi recenti</div>
-                        <div id="audienceRecentEvents" style="max-height:280px;overflow:auto;font-size:12px;">—</div>
-                    </div>
-                </div>
-
-
-                <div id="audPanel_saved" class="aud-panel" style="display:none;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <div class="sec-title" style="font-size:16px;margin:0;">Le tue audience</div>
-                        <button class="btn" data-requires-write="audiences" onclick="openAudienceEditor()">+ Nuova audience</button>
-                    </div>
-                    <div id="audiencesList" style="color:var(--text2);">Caricamento...</div>
-                </div>
-            </div>
-
             <div id="audienceEditorModal" data-rbac-section="audiences" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
                 <div class="card" style="max-width:560px;width:100%;max-height:90vh;overflow:auto;margin:0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                         <div class="sec-title" style="margin:0;font-size:18px;" id="audienceEditorTitle">Nuova audience</div>
-                        <button class="btn sec" onclick="closeAudienceEditor()">✕</button>
+                        <button type="button" class="btn sec" onclick="closeAudienceEditor()" aria-label="Chiudi editor audience">✕</button>
                     </div>
                     <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="audName"></div>
                     <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="audDescription"></div>
@@ -2716,6 +2786,11 @@
             <!-- ANALYTICS -->
             <div id="analytics" class="section" data-rbac-section="analytics">
                 <h1 class="sec-title page-title">Analytics</h1>
+                <div class="tabs-bar a2w-section-tabs" role="tablist" aria-label="Sezione Analytics" id="analyticsSectionTabs">
+                    <button type="button" class="tabs-bar__tab active" role="tab" id="analyticsTab_metrics" aria-selected="true" aria-controls="analyticsTabPanel_metrics" onclick="switchAnalyticsSectionTab('metrics')">Metriche</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="analyticsTab_activity" aria-selected="false" aria-controls="analyticsTabPanel_activity" data-requires-perm="activity_log" onclick="switchAnalyticsSectionTab('activity-log')">Log Attività</button>
+                </div>
+                <div id="analyticsTabPanel_metrics" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="analyticsTab_metrics">
                 <div class="stats-grid" id="analyticsStats"></div>
                 <div class="form-row" style="margin-bottom:16px;">
                     <div class="card" style="margin-bottom:0;">
@@ -2765,14 +2840,13 @@
                     <thead><tr><th>Campagna</th><th>Download</th><th>Install</th><th>Conv. %</th><th>UTM Source</th><th>Stato</th></tr></thead>
                     <tbody></tbody>
                 </table>
-            </div>
+                </div>
 
-            <!-- ACTIVITY LOG (events table) -->
-            <div id="activity-log" class="section" data-rbac-section="activity-log">
+                <div id="analyticsTabPanel_activity" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="analyticsTab_activity" hidden data-rbac-section="activity-log">
+                <div id="activity-log" class="activity-log-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
                     <div>
-                        <h1 class="sec-title page-title">Log Attività</h1>
-                        <p style="font-size:12px;color:var(--text2);margin-top:8px;max-width:42rem;line-height:1.45;">
+                        <p style="font-size:12px;color:var(--text2);margin:0;max-width:42rem;line-height:1.45;">
                             Cronologia eventi del brand (pass creati, installazioni, wallet, landing, ecc.) registrati dal server.<br>Righe più recenti in alto · massimo 500 per richiesta.</p>
                     </div>
                     <button type="button" class="btn small sec" data-allow-readonly="true" onclick="loadActivityLog()">Aggiorna</button>
@@ -2788,6 +2862,8 @@
                         </tr></thead>
                         <tbody id="activityLogBody"><tr><td colspan="5" style="color:var(--text2)">Caricamento…</td></tr></tbody>
                     </table>
+                </div>
+                </div>
                 </div>
             </div>
 
@@ -2862,7 +2938,7 @@
 <!-- Campaign Modal -->
 <div id="campaignModal" class="modal">
     <div class="modal-content" style="max-width:580px;">
-        <button class="modal-close" onclick="closeModal('campaignModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('campaignModal')" aria-label="Chiudi modale campagna">&times;</button>
         <div class="modal-header" id="campaignModalTitle">Nuova Campagna</div>
         <input type="hidden" id="campaignEditId">
         <div class="form-group"><label class="form-label">Nome campagna *</label><input type="text" id="campName" placeholder="es. Promo Estate 2026"></div>
@@ -2894,7 +2970,7 @@
 <!-- Template Modal -->
 <div id="templateModal" class="modal" data-rbac-section="templates">
     <div class="modal-content" style="max-width:920px;width:96%;">
-        <button class="modal-close" onclick="closeModal('templateModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('templateModal')" aria-label="Chiudi modale template">&times;</button>
         <div class="modal-header" id="templateModalTitle">Nuovo Template</div>
         <input type="hidden" id="templateEditId">
         <div style="display:flex;gap:28px;align-items:flex-start;">
@@ -3075,7 +3151,7 @@
 <!-- Strip Promo Modal -->
 <div id="stripPromoModal" class="modal">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('stripPromoModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('stripPromoModal')" aria-label="Chiudi modale strip promo">&times;</button>
         <div class="modal-header" id="stripPromoModalTitle">Nuova Strip Promo</div>
         <input type="hidden" id="stripEditId">
         <div class="form-group"><label class="form-label">Nome</label><input type="text" id="spName" placeholder="es. Promo Weekend"></div>
@@ -3092,7 +3168,7 @@
 <!-- QR Modal -->
 <div id="qrModal" class="modal">
     <div class="modal-content" style="text-align:center;">
-        <button class="modal-close" onclick="closeModal('qrModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('qrModal')" aria-label="Chiudi modale QR">&times;</button>
         <div class="modal-header">QR Code Campagna</div>
         <div id="qrModeLabel" style="font-size:11px;color:var(--text2);margin-bottom:8px;">Scansione → il pass si scarica subito</div>
         <div style="padding:20px;background:#FFFFFF;border-radius:8px;margin:16px 0;display:inline-block;"><div id="qrCanvas"></div></div>
@@ -3107,7 +3183,7 @@
 <!-- Pass detail (Vedi pass) -->
 <div id="passDetailModal" class="modal">
     <div class="modal-content" style="max-width:560px;">
-        <button class="modal-close" onclick="closeModal('passDetailModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('passDetailModal')" aria-label="Chiudi dettaglio pass">&times;</button>
         <div class="modal-header">Dettaglio pass</div>
         <div id="passDetailBody" style="font-size:13px;line-height:1.55;color:var(--text);"></div>
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -3122,7 +3198,7 @@
 <!-- User Modal -->
 <div id="userModal" class="modal">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('userModal')">&times;</button>
+        <button type="button" class="modal-close" onclick="closeModal('userModal')" aria-label="Chiudi modale utente">&times;</button>
         <input type="hidden" id="userEditId" value="">
         <div class="modal-header" id="userModalTitle">Nuovo utente</div>
         <div class="form-group"><label class="form-label">Nome</label><input type="text" id="userName" placeholder="Nome Cognome"></div>
@@ -3157,7 +3233,7 @@
 
 <div id="toastEl" class="toast"></div>
 
-<button type="button" id="waiBtn" class="wai-fab" onclick="toggleWaiOverlay()" aria-label="Chiedi a W.AI" data-tooltip="Chiedi a W.AI" title="Chiedi a W.AI">W.AI</button>
+<button type="button" id="waiBtn" class="wai-fab" onclick="toggleWaiOverlay()" aria-label="Apri assistente W.AI" data-tooltip="Apri assistente W.AI" title="Apri assistente W.AI">W.AI</button>
 
 <div id="waiOverlay" class="wai-panel" aria-label="Pannello W.AI">
   <div class="wai-panel-header">
@@ -3218,10 +3294,13 @@
 <script src="/dashboard/js/components/ui/confirm-dialog.js"></script>
 <script src="/dashboard/js/components/ui/danger-action-button.js"></script>
 <script src="/dashboard/js/components/ui/action-menu.js"></script>
+<script src="/dashboard/js/components/ui/setup-checklist.js"></script>
 <script src="/dashboard/js/components/ui/index.js"></script>
 <script src="/dashboard/js/components/a2w-modal.js"></script>
 <script src="/dashboard/js/components/modal-a11y.js"></script>
 <script src="/dashboard/js/components/contacts/a2w-contacts-ux.js"></script>
+    <script src="/dashboard/js/dashboard-subnav.js"></script>
+    <script src="/dashboard/js/a2w-setup-checklist.js"></script>
     <script src="/dashboard/js/a2w-shell.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
@@ -3380,12 +3459,17 @@ function initFiloNavGroups() {
     });
 }
 
-function syncBreadcrumb(sectionId) {
+function syncBreadcrumb(sectionId, tab) {
     const brandEl = document.getElementById('breadcrumbBrand');
     const sectionEl = document.getElementById('breadcrumbSection');
     if (!brandEl || !sectionEl) return;
     const sid = sectionId || getActiveSectionId();
-    sectionEl.textContent = typeof getSectionPageTitle === 'function' ? getSectionPageTitle(sid) : (SECTION_PAGE_TITLES[sid] || sid);
+    if (!tab && sid === 'leads' && typeof getLeadsSectionTab === 'function') tab = getLeadsSectionTab();
+    if (!tab && sid === 'analytics' && typeof getAnalyticsSectionTab === 'function') tab = getAnalyticsSectionTab();
+    const label = typeof breadcrumbLabel === 'function'
+        ? breadcrumbLabel(sid, tab)
+        : (typeof getSectionPageTitle === 'function' ? getSectionPageTitle(sid) : (SECTION_PAGE_TITLES[sid] || sid));
+    sectionEl.textContent = label;
     const productTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
     brandEl.textContent = (brandId && currentBrandName) ? currentBrandName : productTitle;
     if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
@@ -3873,9 +3957,13 @@ function getActiveSectionId() {
     return el ? el.id : 'welcome';
 }
 
-function syncSectionDocumentTitle(sectionId) {
+function syncSectionDocumentTitle(sectionId, tab) {
     const sid = sectionId || getActiveSectionId();
-    const sectionLabel = getSectionPageTitle(sid);
+    if (!tab && sid === 'leads' && typeof getLeadsSectionTab === 'function') tab = getLeadsSectionTab();
+    if (!tab && sid === 'analytics' && typeof getAnalyticsSectionTab === 'function') tab = getAnalyticsSectionTab();
+    const sectionLabel = typeof breadcrumbLabel === 'function'
+        ? breadcrumbLabel(sid, tab)
+        : getSectionPageTitle(sid);
     const appTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
     const brand = brandId && currentBrandName ? currentBrandName : null;
     const lightShell = document.documentElement.getAttribute('data-shell') === 'light';
@@ -3888,17 +3976,20 @@ function syncSectionDocumentTitle(sectionId) {
     }
 }
 
-function syncNavAriaCurrent(sectionId) {
+function syncNavAriaCurrent(sectionId, tab) {
+    const highlight = typeof navHighlightSection === 'function'
+        ? navHighlightSection(sectionId, tab)
+        : sectionId;
     document.querySelectorAll('.nav-item').forEach((n) => {
         const section = n.getAttribute('data-section-id')
             || (n.getAttribute('onclick') || '').match(/nav\('([^']+)'\)/)?.[1];
-        if (section === sectionId) {
+        if (section === highlight) {
             n.setAttribute('aria-current', 'page');
         } else {
             n.removeAttribute('aria-current');
         }
     });
-    if (typeof window.fdSyncNavGroups === 'function') window.fdSyncNavGroups(sectionId);
+    if (typeof window.fdSyncNavGroups === 'function') window.fdSyncNavGroups(highlight);
 }
 
 function navKeydown(e, id) {
@@ -3974,9 +4065,9 @@ function updateNavState() {
     }
 
     // Hide Dashboard/Inizio once a brand is selected (Filo HR keeps Inizio as operational home).
-    const filoHome = typeof isFiloOperationalHome === 'function' && isFiloOperationalHome();
+    const keepWelcomeHome = typeof shouldKeepWelcomeAsHome === 'function' && shouldKeepWelcomeAsHome();
     const welcomeItem = document.getElementById('navItemWelcome');
-    if (welcomeItem) welcomeItem.style.display = (hasBrand && !filoHome) ? 'none' : '';
+    if (welcomeItem) welcomeItem.style.display = (hasBrand && !keepWelcomeHome) ? 'none' : '';
 
     // Hide all action buttons for viewer role
     document.querySelectorAll('[data-role-min]').forEach(el => {
@@ -4003,6 +4094,12 @@ function isLegacyCampaignsUiEnabled() {
     return !isHrDashboard();
 }
 
+function shouldKeepWelcomeAsHome() {
+    if (typeof isFiloOperationalHome === 'function' && isFiloOperationalHome()) return true;
+    if (typeof isA2wSetupHome === 'function' && isA2wSetupHome()) return true;
+    return false;
+}
+
 function isFiloOperationalHome() {
     // Prevent infinite recursion when the global name still points to this wrapper.
     if (typeof window.fdIsFiloOperationalHome === 'function') {
@@ -4020,7 +4117,7 @@ function isFiloOperationalHome() {
 }
 
 function getDefaultBrandSection() {
-    if (isFiloOperationalHome()) return 'welcome';
+    if (shouldKeepWelcomeAsHome()) return 'welcome';
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.defaultLandingSection === 'function') {
         return FdRbac.defaultLandingSection();
     }
@@ -4062,12 +4159,19 @@ function applyLegacyCampaignsUiMask() {
     }
 }
 
-function nav(id) {
+function nav(id, options) {
+    options = options || {};
+    const rawId = id;
+    const resolved = typeof resolveNavTarget === 'function'
+        ? resolveNavTarget(id, options)
+        : { section: id, tab: options.tab || '', raw: id };
+    id = resolved.section;
+    let tab = resolved.tab || options.tab || '';
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.guardNav === 'function') {
         id = FdRbac.guardNav(id);
     }
     if (id === 'campaigns') id = getDefaultBrandSection();
-    if (id === 'welcome' && brandId && !isFiloOperationalHome()) id = getDefaultBrandSection();
+    if (id === 'welcome' && brandId && !shouldKeepWelcomeAsHome()) id = getDefaultBrandSection();
     if (!brandId && !SECTIONS_NO_BRAND.has(id)) {
         toast('Seleziona un brand dall\'elenco in alto');
         return;
@@ -4083,23 +4187,37 @@ function nav(id) {
         sectionEl.removeAttribute('hidden');
         sectionEl.setAttribute('aria-hidden', 'false');
     }
+    const navHighlight = typeof navHighlightSection === 'function' ? navHighlightSection(id, tab) : id;
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navItem = Array.from(document.querySelectorAll('.nav-item'))
         .find(n => {
             const sid = n.getAttribute('data-section-id')
                 || (n.getAttribute('onclick') || '').match(/nav\('([^']+)'\)/)?.[1];
-            return sid === id;
+            return sid === navHighlight;
         });
     if (navItem) navItem.classList.add('active');
-    syncNavAriaCurrent(id);
-    syncSectionDocumentTitle(id);
-    syncBreadcrumb(id);
+    if (id === 'leads') {
+        if (!tab && rawId === 'audiences') tab = 'audience';
+        if (typeof switchLeadsSectionTab === 'function') {
+            switchLeadsSectionTab(tab || 'contacts', { skipUrl: true, skipLoad: true, skipBreadcrumb: true });
+        }
+    } else if (id === 'analytics') {
+        if (!tab && rawId === 'activity-log') tab = 'activity-log';
+        if (typeof switchAnalyticsSectionTab === 'function') {
+            switchAnalyticsSectionTab(tab || 'metrics', { skipUrl: true, skipLoad: true, skipBreadcrumb: true });
+        }
+    }
+    syncNavAriaCurrent(id, tab);
+    syncSectionDocumentTitle(id, tab);
+    syncBreadcrumb(id, tab);
+    if (!options.fromRoute && typeof syncSectionUrl === 'function') syncSectionUrl(id, tab);
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.applyReadOnlyMode === 'function') {
         FdRbac.applyReadOnlyMode(id);
     }
     const loaders = {
         welcome: () => {
             if (typeof fdLoadHome === 'function') fdLoadHome();
+            if (typeof loadA2wSetupChecklist === 'function') loadA2wSetupChecklist();
         },
         passes: loadPasses,
         templates: loadTemplates,
@@ -4118,16 +4236,22 @@ function nav(id) {
             if (typeof requestIdleCallback === 'function') requestIdleCallback(rest, { timeout: 1500 });
             else setTimeout(rest, 50);
         },
-        analytics: loadAnalytics,
-        'activity-log': loadActivityLog,
+        analytics: () => {
+            const activeTab = typeof getAnalyticsSectionTab === 'function' ? getAnalyticsSectionTab() : 'metrics';
+            if (activeTab === 'activity-log') loadActivityLog();
+            else loadAnalytics();
+        },
         'pass-design': loadPassDesign,
         'brand-identity': loadBrandIdentity,
         'media-library': loadMediaLibrary,
         'pass-wizard': loadPassWizard,
         'instant-win': loadInstantWin,
         'gamification': loadGamification,
-        'leads': loadLeads,
-        audiences: loadAudiences,
+        'leads': () => {
+            const activeTab = typeof getLeadsSectionTab === 'function' ? getLeadsSectionTab() : 'contacts';
+            if (activeTab === 'audience') loadAudiences();
+            else loadLeads();
+        },
         users: loadUsers,
         profile: () => {
             if (typeof fdLoadProfile === 'function') fdLoadProfile();
@@ -4142,7 +4266,7 @@ function getActiveSectionId() {
 
 function refreshActiveSection() {
     let activeId = getActiveSectionId();
-    if (brandId && activeId === 'welcome' && !isFiloOperationalHome()) activeId = getDefaultBrandSection();
+    if (brandId && activeId === 'welcome' && !shouldKeepWelcomeAsHome()) activeId = getDefaultBrandSection();
     nav(activeId);
 }
 
@@ -4248,9 +4372,14 @@ async function loadBrands() {
         syncBrandUrl();
         applyBrandTheme();
         await refreshOverview();
-        let sid = getActiveSectionId();
-        if (sid === 'welcome' && !isFiloOperationalHome()) sid = getDefaultBrandSection();
-        nav(sid);
+        if (typeof refreshA2wSetupState === 'function') await refreshA2wSetupState(brandId);
+        if (typeof initDashboardSubnavFromLocation === 'function' && initDashboardSubnavFromLocation()) {
+            /* route path handled */
+        } else {
+            let sid = getActiveSectionId();
+            if (sid === 'welcome' && !shouldKeepWelcomeAsHome()) sid = getDefaultBrandSection();
+            nav(sid);
+        }
     } else {
         currentBrandName = '';
         localStorage.removeItem(LAST_BRAND_KEY);
@@ -4286,12 +4415,15 @@ function changeBrand() {
     syncBrandUrl();
     passPageIndex = 0;
     passHasNextPage = false;
-    refreshOverview().then(() => {
+    (async () => {
+        await refreshOverview();
+        if (typeof refreshA2wSetupState === 'function') await refreshA2wSetupState(brandId);
+        updateNavState();
         let sid = getActiveSectionId();
-        if (sid === 'welcome' && !isFiloOperationalHome()) sid = getDefaultBrandSection();
+        if (sid === 'welcome' && !shouldKeepWelcomeAsHome()) sid = getDefaultBrandSection();
         nav(sid);
-        if (isFiloOperationalHome() && typeof fdLoadHome === 'function') fdLoadHome();
-    });
+        if (shouldKeepWelcomeAsHome() && typeof fdLoadHome === 'function') fdLoadHome();
+    })();
 }
 
 function syncBrandUrl() {
@@ -4302,7 +4434,20 @@ function syncBrandUrl() {
         u.set('brand_id', brandId);
     }
     const qs = u.toString();
-    history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    const sid = getActiveSectionId();
+    let path = window.location.pathname;
+    if ((sid === 'leads' || sid === 'analytics') && typeof sectionPath === 'function') {
+        const tab = sid === 'leads'
+            ? (typeof getLeadsSectionTab === 'function' ? getLeadsSectionTab() : 'contacts')
+            : (typeof getAnalyticsSectionTab === 'function' ? getAnalyticsSectionTab() : 'metrics');
+        path = sectionPath(sid, tab);
+    } else if (!/^\/dashboard/.test(path)) {
+        path = '/dashboard';
+    }
+    const next = path + (qs ? `?${qs}` : '');
+    if (window.location.pathname + (window.location.search || '') !== next) {
+        history.replaceState({ section: sid }, '', next);
+    }
 }
 
 /** Sync global brandId from header dropdown or ?brand_id= URL (Contatti modals). */
@@ -5289,10 +5434,8 @@ async function loadPassWalletChannelsDiag() {
 
         box.innerHTML =
             '<div class="wallet-diag-shell">' +
-            '<div class="wallet-diag-head">' +
-            '<div class="wallet-diag-kicker">Diagnostica</div>' +
-            '<div class="wallet-diag-lead">Collegamenti Wallet</div>' +
-            '<p class="wallet-diag-desc">URL e parametri tecnici per Apple, Google e Samsung. Apri le sezioni solo quando configuri gli integratori o fai troubleshooting.</p>' +
+            '<div class="wallet-diag-head wallet-diag-head--compact">' +
+            '<p class="wallet-diag-desc">URL e parametri tecnici per Apple, Google e Samsung. Usa queste sezioni quando configuri gli integratori o fai troubleshooting.</p>' +
             '</div>' +
             '<div class="wallet-diag-rows">' +
             appleBlock +
@@ -5313,7 +5456,6 @@ async function loadPasses(resetPage = false) {
     if (!brandId) return;
     const el = document.getElementById('passesContent');
     try {
-    loadPassWalletChannelsDiag();
     ensurePassFiltersFromStorage();
     if (resetPage) passPageIndex = 0;
 
@@ -5504,6 +5646,8 @@ async function loadPasses(resetPage = false) {
     } catch (e) {
         console.error('loadPasses', e);
         if (el) el.innerHTML = `<p style="color:var(--danger);padding:16px;">${esc(e.message || 'Errore caricamento pass')}</p>`;
+    } finally {
+        loadPassWalletChannelsDiag();
     }
 }
 
@@ -7621,8 +7765,9 @@ function switchAudienceTab(tab) {
 let waiAudienceMode = false;
 
 function waiIsAudienceSectionActive() {
-    const sec = document.getElementById('audiences');
-    return !!(sec && sec.classList.contains('active'));
+    const leads = document.getElementById('leads');
+    if (!leads || !leads.classList.contains('active')) return false;
+    return typeof getLeadsSectionTab === 'function' && getLeadsSectionTab() === 'audience';
 }
 
 function waiShouldUseAudienceMode(prompt) {
@@ -10935,6 +11080,7 @@ const brandIdentityState = {
     dirty: false,
     saving: false,
     lastSavedAt: null,
+    savedLabelTimer: null,
     baseline: '',
     slugEdited: false,
     slugCheckTimer: null,
@@ -11088,10 +11234,95 @@ function a2wBiUpdateSaveStateBadge(stateLabel, modeClass, title) {
     const badge = a2wBiField('a2wBiSaveStateBadge');
     if (!badge) return;
     badge.textContent = stateLabel;
-    badge.classList.remove('is-dirty', 'is-saving');
+    badge.classList.remove('is-dirty', 'is-saving', 'is-clean', 'is-pending');
     if (modeClass) badge.classList.add(modeClass);
     if (title) badge.setAttribute('title', title);
     else badge.removeAttribute('title');
+}
+
+function a2wBiStopSavedLabelTicker() {
+    if (brandIdentityState.savedLabelTimer) {
+        clearInterval(brandIdentityState.savedLabelTimer);
+        brandIdentityState.savedLabelTimer = null;
+    }
+}
+
+function a2wBiStartSavedLabelTicker() {
+    a2wBiStopSavedLabelTicker();
+    if (!isA2wBrandIdentityV2Enabled()) return;
+    brandIdentityState.savedLabelTimer = setInterval(() => {
+        if (!isA2wBrandIdentityV2Enabled()) return;
+        if (brandIdentityState.dirty || brandIdentityState.saving) return;
+        a2wBiRefreshSaveUi();
+    }, 60000);
+}
+
+function a2wBiRefreshSaveUi() {
+    const btn = a2wBiField('a2wBiSaveBtn');
+    if (!btn || !isA2wBrandIdentityV2Enabled()) return;
+
+    btn.classList.add('a2w-btn-primary');
+    btn.classList.toggle('is-dirty', !!brandIdentityState.dirty && !brandIdentityState.saving);
+    btn.classList.toggle('is-saving', !!brandIdentityState.saving);
+
+    const errors = a2wBiValidate(a2wBiCollectFormData());
+    const errorCount = Object.keys(errors).length;
+
+    if (brandIdentityState.saving) {
+        btn.disabled = true;
+        btn.removeAttribute('title');
+        btn.textContent = 'Salvataggio…';
+        a2wBiUpdateSaveStateBadge('Salvataggio…', 'is-saving');
+        a2wBiStopSavedLabelTicker();
+        return;
+    }
+
+    if (brandIdentityState.dirty) {
+        a2wBiStopSavedLabelTicker();
+        a2wBiUpdateSaveStateBadge('Modifiche non salvate', 'is-dirty');
+        if (brandIdentityState.slugChecking) {
+            btn.disabled = true;
+            btn.removeAttribute('title');
+            btn.textContent = 'Verifica slug…';
+            return;
+        }
+        if (errorCount > 0) {
+            btn.disabled = true;
+            btn.removeAttribute('title');
+            btn.textContent = errorCount === 1 ? '1 campo da correggere' : `${errorCount} campi da correggere`;
+            return;
+        }
+        if (brandIdentityState.slugAvailable === false) {
+            btn.disabled = true;
+            btn.removeAttribute('title');
+            btn.textContent = 'Salva modifiche';
+            return;
+        }
+        btn.disabled = false;
+        btn.textContent = 'Salva modifiche';
+        btn.removeAttribute('title');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salva modifiche';
+    btn.title = 'Nessuna modifica da salvare';
+    if (brandIdentityState.lastSavedAt) {
+        const rel = typeof formatRelativeSavedLabel === 'function'
+            ? formatRelativeSavedLabel(brandIdentityState.lastSavedAt)
+            : { label: 'Salvato', title: '' };
+        a2wBiUpdateSaveStateBadge(rel.label, 'is-clean', rel.title);
+    } else if (!brandId) {
+        a2wBiUpdateSaveStateBadge('Non ancora salvato', 'is-pending');
+    } else {
+        a2wBiUpdateSaveStateBadge('Salvato', 'is-clean');
+    }
+    a2wBiStartSavedLabelTicker();
+}
+
+/** @deprecated use a2wBiRefreshSaveUi */
+function a2wBiUpdateSaveButton() {
+    a2wBiRefreshSaveUi();
 }
 
 function a2wBiApplyLiveValidation() {
@@ -11103,53 +11334,12 @@ function a2wBiApplyLiveValidation() {
     });
 }
 
-function a2wBiUpdateSaveButton(errorCount) {
-    const btn = a2wBiField('a2wBiSaveBtn');
-    if (!btn) return;
-    btn.classList.add('a2w-btn-primary');
-    if (brandIdentityState.saving) {
-        btn.disabled = true;
-        btn.removeAttribute('title');
-        btn.textContent = 'Salvataggio…';
-        a2wBiUpdateSaveStateBadge('Salvataggio…', 'is-saving');
-        return;
-    }
-    if (errorCount > 0) {
-        btn.disabled = true;
-        btn.removeAttribute('title');
-        btn.textContent = `${errorCount} campi da correggere`;
-        a2wBiUpdateSaveStateBadge('Modifiche non salvate', 'is-dirty');
-        return;
-    }
-    if (brandIdentityState.slugChecking) {
-        btn.disabled = true;
-        btn.removeAttribute('title');
-        btn.textContent = 'Verifica slug…';
-        return;
-    }
-    btn.disabled = !brandIdentityState.dirty;
-    btn.textContent = 'Salva modifiche';
-    if (!brandIdentityState.dirty) {
-        btn.title = 'Nessuna modifica da salvare';
-    } else {
-        btn.removeAttribute('title');
-    }
-    if (brandIdentityState.dirty) a2wBiUpdateSaveStateBadge('Modifiche non salvate', 'is-dirty');
-    else if (brandIdentityState.lastSavedAt) {
-        const rel = typeof formatRelativeSavedLabel === 'function'
-            ? formatRelativeSavedLabel(brandIdentityState.lastSavedAt)
-            : { label: 'Salvato', title: '' };
-        a2wBiUpdateSaveStateBadge(rel.label, '', rel.title);
-    } else a2wBiUpdateSaveStateBadge('Salvato', '');
-}
-
 function a2wBiSyncDirtyState() {
     if (!isA2wBrandIdentityV2Enabled()) return;
     const current = a2wBiSerializeState(a2wBiCollectFormData(), brandIdentityState.selectedAssets);
     brandIdentityState.dirty = current !== brandIdentityState.baseline;
     a2wBiApplyLiveValidation();
-    const errors = a2wBiValidate(a2wBiCollectFormData());
-    a2wBiUpdateSaveButton(Object.keys(errors).length);
+    a2wBiRefreshSaveUi();
 }
 
 function a2wBiUpdateSlugPreview() {
@@ -11671,12 +11861,12 @@ async function loadBrandIdentity() {
     if (document.getElementById('biSocialLinkedin')) document.getElementById('biSocialLinkedin').value = social.linkedin || '';
     if (document.getElementById('biSocialTiktok')) document.getElementById('biSocialTiktok').value = social.tiktok || '';
     if (document.getElementById('biSocialX')) document.getElementById('biSocialX').value = social.x || '';
-    const breadcrumbBrand = document.getElementById('a2wBiBreadcrumbBrand');
-    if (breadcrumbBrand) breadcrumbBrand.textContent = brand.name || 'Brand';
 
     if (a2wEnabled) {
         brandIdentityState.slugEdited = !!brand.slug;
-        brandIdentityState.lastSavedAt = c.brand_identity_last_saved_at ? new Date(c.brand_identity_last_saved_at).getTime() : Date.now();
+        brandIdentityState.lastSavedAt = c.brand_identity_last_saved_at
+            ? new Date(c.brand_identity_last_saved_at).getTime()
+            : null;
         if (!isBrandIdentityPassFieldsExcluded()) {
             await a2wBiLoadMediaByType();
             a2wBiApplySelectedAssetsFromConfig(c);
@@ -11694,6 +11884,7 @@ async function loadBrandIdentity() {
 }
 
 async function saveBrandIdentity() {
+    if (isA2wBrandIdentityV2Enabled() && !brandIdentityState.dirty && !brandIdentityState.saving) return;
     const data = a2wBiCollectFormData();
     const name = data.name;
     if (!name) { toast('Inserisci il nome del brand'); return; }

@@ -1,0 +1,65 @@
+/**
+ * Ads2Wallet shell — accessibility (WCAG AA contrast helpers, focus, keyboard).
+ * Scoped to html[data-shell="dark"].a2w-shell only.
+ */
+
+html[data-shell="dark"].a2w-shell input::placeholder,
+html[data-shell="dark"].a2w-shell textarea::placeholder {
+  color: var(--a2w-text-tertiary);
+  opacity: 1;
+}
+
+html[data-shell="dark"].a2w-shell :where(
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [tabindex="0"]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 2px;
+}
+
+html[data-shell="dark"].a2w-shell .sidebar .nav-item:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: -2px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-icon-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .a2w-row-icon-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .a2w-row-kebab-trigger:focus-visible,
+html[data-shell="dark"].a2w-shell .a2w-media-kebab-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .a2w-ui-action-menu__trigger:focus-visible,
+html[data-shell="dark"].a2w-shell .a2w-leads-kebab-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .pass-action-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .modal-close:focus-visible,
+html[data-shell="dark"].a2w-shell .wai-panel-btn:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(63, 224, 200, 0.22);
+}
+
+html[data-shell="dark"].a2w-shell .wai-fab:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(63, 224, 200, 0.28), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-sidebar-toggle-btn:focus-visible,
+html[data-shell="dark"].a2w-shell .sidebar-toggle:focus-visible,
+html[data-shell="dark"].a2w-shell .user-menu-trigger:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 2px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-nav-group-toggle:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 1px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-workspace-brand-tile:focus-visible {
+  outline: 2px solid var(--a2w-border-focus);
+  outline-offset: 2px;
+}

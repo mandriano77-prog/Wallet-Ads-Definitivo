@@ -408,9 +408,15 @@
     if (window.__fdActivityLogNavPatched || typeof window.nav !== 'function') return;
     window.__fdActivityLogNavPatched = true;
     var orig = window.nav;
-    window.nav = function (sectionId) {
+    window.nav = function (sectionId, options) {
       var out = orig.apply(this, arguments);
-      if (sectionId === 'activity-log') {
+      options = options || {};
+      var resolved = typeof window.resolveNavTarget === 'function'
+        ? window.resolveNavTarget(sectionId, options)
+        : { section: sectionId, tab: options.tab || '' };
+      var isActivityLog = sectionId === 'activity-log'
+        || (resolved.section === 'analytics' && resolved.tab === 'activity-log');
+      if (isActivityLog) {
         setTimeout(function () {
           buildToolbar();
           wireCopyDelegation();

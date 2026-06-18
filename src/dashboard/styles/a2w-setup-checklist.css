@@ -1,0 +1,123 @@
+/**
+ * FILE A2W-ONLY — setup checklist on welcome / dashboard
+ */
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist {
+  margin: 0 0 var(--space-6, 24px);
+  border: 1px solid var(--a2w-border-default);
+  border-radius: var(--a2w-radius-card, 16px);
+  background: rgba(255, 255, 255, 0.03);
+  padding: var(--space-5, 20px);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__head {
+  margin-bottom: var(--space-4, 16px);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__title {
+  margin: 0 0 6px;
+  font-size: var(--a2w-type-h2-size, 18px);
+  font-weight: var(--a2w-type-h2-weight, 600);
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__intro {
+  margin: 0 0 8px;
+  font-size: var(--a2w-type-body-size, 14px);
+  color: var(--a2w-text-secondary);
+  max-width: 62ch;
+  line-height: 1.45;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__progress {
+  margin: 0;
+  font-size: var(--a2w-type-micro-size, 12px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--a2w-action-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--a2w-border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__item.is-done {
+  border-color: rgba(63, 224, 200, 0.22);
+  background: rgba(63, 224, 200, 0.06);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__check {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--a2w-border-default);
+  color: var(--a2w-text-secondary);
+  background: var(--a2w-action-secondary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__item.is-done .a2w-ui-setup-checklist__check {
+  border-color: rgba(63, 224, 200, 0.45);
+  background: rgba(63, 224, 200, 0.14);
+  color: var(--a2w-action-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__body {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__label {
+  font-size: var(--a2w-type-body-size, 14px);
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+  line-height: 1.3;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__desc {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--a2w-text-secondary);
+  line-height: 1.35;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__action {
+  flex-shrink: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-setup-checklist__done-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--a2w-action-primary);
+}
+
+html[data-shell="dark"].a2w-shell #welcome.a2w-welcome--setup .fd-welcome-legacy {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell #welcome.a2w-welcome--setup .page-lead {
+  margin-bottom: var(--space-4, 16px);
+}

@@ -36,4 +36,16 @@ test('sidebar nav groups hanno helper a11y in a2w-shell', () => {
   const shell = fs.readFileSync(path.join(root, 'src/dashboard/js/a2w-shell.js'), 'utf8');
   assert.match(shell, /initA2wNavGroupAccessibility/);
   assert.match(shell, /aria-expanded/);
+  assert.match(shell, /A2W_NAV_GROUP_KEY/);
+  assert.match(shell, /a2wSyncNavGroupsVisibility/);
+  assert.match(shell, /a2w-nav-soon-badge/);
+  assert.match(shell, /details\.setAttribute\('open'/);
+});
+
+test('sidebar nav chrome usa token A2W per label e stati voce', () => {
+  const chrome = fs.readFileSync(path.join(root, 'src/dashboard/styles/a2w-chrome.css'), 'utf8');
+  assert.match(chrome, /\.a2w-nav-group-heading/);
+  assert.match(chrome, /\.a2w-nav-soon-badge/);
+  assert.match(chrome, /nav-group-label:hover[\s\S]*background:\s*transparent/);
+  assert.match(chrome, /--a2w-action-secondary-hover/);
 });
