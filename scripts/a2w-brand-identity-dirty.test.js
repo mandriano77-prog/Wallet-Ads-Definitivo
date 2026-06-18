@@ -47,4 +47,6 @@ test('brand identity mostra riepilogo identità senza anteprima pass wallet', ()
   assert.doesNotMatch(indexHtml, /Apple Wallet[\s\S]{0,80}a2wBiPreviewCard/);
   assert.match(biCss, /\.a2w-bi-identity-summary/);
   assert.doesNotMatch(biCss, /\.a2w-bi-pass-preview/);
+  assert.match(biCss, /\.a2w-bi-identity-summary__initial\[hidden\][\s\S]*display:\s*none\s*!important/);
+  assert.match(biCss, /\.a2w-bi-identity-summary__logo\[hidden\][\s\S]*display:\s*none\s*!important/);
 });

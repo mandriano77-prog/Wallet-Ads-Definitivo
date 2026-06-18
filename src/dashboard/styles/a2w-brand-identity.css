@@ -352,6 +352,10 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__logo
   flex-shrink: 0;
 }
 
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__logo[hidden] {
+  display: none !important;
+}
+
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__initial {
   width: 52px;
   height: 52px;
@@ -365,6 +369,10 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__init
   background: rgba(63, 224, 200, 0.12);
   border: 1px solid rgba(63, 224, 200, 0.28);
   flex-shrink: 0;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__initial[hidden] {
+  display: none !important;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-identity-summary__name {
