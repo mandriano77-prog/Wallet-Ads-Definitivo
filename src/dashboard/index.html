@@ -6211,15 +6211,19 @@ async function editTemplate(id) {
     tplImageCache = {};
     ['tplImgLogo','tplImgStrip','tplImgThumb','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const existingImages = t.style?.images || {};
-    ['logo','strip','thumbnail','background'].forEach(imgType => {
-        const previewEl = document.getElementById(tplMediaPreviewId(imgType));
-        if (existingImages[imgType] && previewEl) {
-            previewEl.src = 'data:image/png;base64,' + existingImages[imgType];
-            previewEl.style.display = 'block';
-        } else if (previewEl) {
-            previewEl.style.display = 'none';
-        }
-    });
+    if (typeof a2wApplyTplStyleImages === 'function') {
+        a2wApplyTplStyleImages(existingImages);
+    } else {
+        ['logo','strip','thumbnail','background'].forEach(imgType => {
+            const previewEl = document.getElementById(tplMediaPreviewId(imgType));
+            if (existingImages[imgType] && previewEl) {
+                previewEl.src = 'data:image/png;base64,' + existingImages[imgType];
+                previewEl.style.display = 'block';
+            } else if (previewEl) {
+                previewEl.style.display = 'none';
+            }
+        });
+    }
     document.getElementById('templateModal').classList.add('active');
     document.body.classList.add('modal-open');
     populateStripPromoSelect();

@@ -40,12 +40,13 @@ test('STEP 5: pass preview DOM has strip wrap and no overlapping absolute header
   assert.match(tplCss, /pp-front-main/);
 });
 
-test('STEP 6: unified upload zones in template editor', () => {
-  assert.match(tplEditor, /a2w-tpl-upload/);
-  assert.match(tplEditor, /enhanceUploadSlot/);
-  assert.match(tplEditor, /dragover/);
-  assert.match(tplEditor, /validateFile/);
-  assert.match(tplCss, /a2w-tpl-upload__zone/);
+test('STEP 6: unified upload zones sync from style.images and media library', () => {
+  assert.match(tplEditor, /a2wApplyTplStyleImages/);
+  assert.match(tplEditor, /persistedImages/);
+  assert.match(tplEditor, /ensurePreviewImg/);
+  assert.match(tplEditor, /syncAllTplUploadZones/);
+  assert.match(tplEditor, /patchTplPickFromMedia/);
+  assert.match(indexHtml, /a2wApplyTplStyleImages\(existingImages\)/);
 });
 
 test('STEP 7: color pickers persist in style and preview', () => {

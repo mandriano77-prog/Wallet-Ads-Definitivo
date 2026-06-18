@@ -122,30 +122,135 @@
     return '';
   }
 
-  function syncUploadZone(wrap, slot) {
-    var zone = wrap.querySelector('.a2w-tpl-upload__zone');
-    var previewId = typeof global.tplMediaPreviewId === 'function' ? global.tplMediaPreviewId(slot) : null;
+  /** Base64 già salvati sul template (GET) — non in tplImageCache finché l'utente non cambia file. */
+  var persistedImages = {};
+
+  function getWrapForSlot(slot) {
+    return document.querySelector('#templateModal .a2w-tpl-upload[data-tpl-slot="' + slot + '"]');
+  }
+
+  function previewIdForSlot(slot) {
+    return typeof global.tplMediaPreviewId === 'function'
+      ? global.tplMediaPreviewId(slot)
+      : null;
+  }
+
+  function ensurePreviewImg(wrap, slot) {
+    var previewId = previewIdForSlot(slot);
+    if (!previewId) return null;
+    var preview = document.getElementById(previewId);
+    if (!preview) {
+      preview = document.createElement('img');
+      preview.id = previewId;
+      preview.alt = 'Anteprima ' + slot;
+      preview.style.display = 'none';
+    }
+    if (wrap && !wrap.contains(preview)) {
+      preview.style.display = preview.style.display || 'none';
+      wrap.appendChild(preview);
+    }
+    return preview;
+  }
+
+  function getSlotPreviewSrc(slot) {
+    var previewId = previewIdForSlot(slot);
     var preview = previewId ? document.getElementById(previewId) : null;
-    var hasImg = preview && preview.style.display !== 'none' && preview.src;
+    if (preview && preview.src && preview.style.display !== 'none') return preview.src;
+    if (global.tplImageCache && global.tplImageCache[slot]) {
+      return 'data:image/png;base64,' + global.tplImageCache[slot];
+    }
+    if (persistedImages[slot]) {
+      return 'data:image/png;base64,' + persistedImages[slot];
+    }
+    return '';
+  }
+
+  function syncUploadZone(wrap, slot) {
+    if (!wrap) wrap = getWrapForSlot(slot);
+    var zone = wrap && wrap.querySelector('.a2w-tpl-upload__zone');
     if (!zone) return;
-    if (hasImg) {
+    var src = getSlotPreviewSrc(slot);
+    if (src) {
       zone.innerHTML = '';
       var img = document.createElement('img');
       img.className = 'a2w-tpl-upload__thumb' + (slot === 'wallet_icon' || slot === 'thumbnail' ? ' a2w-tpl-upload__thumb--square' : '');
-      img.src = preview.src;
+      img.src = src;
       img.alt = '';
       zone.appendChild(img);
+      var preview = ensurePreviewImg(wrap, slot);
+      if (preview && (!preview.src || preview.style.display === 'none')) {
+        preview.src = src;
+        preview.style.display = 'block';
+      }
     } else {
       zone.innerHTML = '<span>Trascina un file o clicca per caricare</span>';
     }
   }
 
+  function syncTplUploadZone(slot) {
+    syncUploadZone(getWrapForSlot(slot), slot);
+  }
+
+  function syncAllTplUploadZones() {
+    Object.keys(TPL_SLOTS).forEach(syncTplUploadZone);
+  }
+
+  function setSlotPreview(slot, src, opts) {
+    opts = opts || {};
+    var wrap = getWrapForSlot(slot);
+    if (wrap) {
+      var preview = ensurePreviewImg(wrap, slot);
+      if (preview) {
+        preview.src = src;
+        preview.style.display = 'block';
+      }
+      syncUploadZone(wrap, slot);
+    } else {
+      var previewId = previewIdForSlot(slot);
+      var preview = previewId ? document.getElementById(previewId) : null;
+      if (preview) {
+        preview.src = src;
+        preview.style.display = 'block';
+      }
+    }
+    if (!opts.skipPassPreview && typeof global.updatePassPreview === 'function') {
+      global.updatePassPreview();
+    }
+  }
+
+  function applyStyleImages(styleImages) {
+    persistedImages = {};
+    if (!styleImages || typeof styleImages !== 'object') return;
+    Object.keys(TPL_SLOTS).forEach(function (slot) {
+      if (!styleImages[slot]) return;
+      persistedImages[slot] = styleImages[slot];
+      setSlotPreview(slot, 'data:image/png;base64,' + styleImages[slot], { skipPassPreview: true });
+    });
+    if (typeof global.updatePassPreview === 'function') global.updatePassPreview();
+  }
+
+  function resetPersistedImages() {
+    persistedImages = {};
+  }
+
   function enhanceUploadSlot(slot) {
     var input = fileInputForSlot(slot);
-    if (!input || input.dataset.a2wUploadEnhanced === '1') return;
+    if (!input) return;
+    var existingWrap = getWrapForSlot(slot);
+    if (input.dataset.a2wUploadEnhanced === '1' && existingWrap) {
+      syncUploadZone(existingWrap, slot);
+      return;
+    }
     var group = input.closest('.form-group');
     if (!group) return;
     input.dataset.a2wUploadEnhanced = '1';
+
+    var previewId = previewIdForSlot(slot);
+    var existingPreview = previewId
+      ? (group.querySelector('#' + previewId) || document.getElementById(previewId))
+      : null;
+    var savedSrc = existingPreview && existingPreview.src ? existingPreview.src : '';
+    var savedVisible = existingPreview && existingPreview.style.display !== 'none';
 
     var wrap = document.createElement('div');
     wrap.className = 'a2w-tpl-upload a2w-tpl-upload--enhanced';
@@ -171,9 +276,9 @@
     removeBtn.textContent = 'Rimuovi';
     removeBtn.addEventListener('click', function () {
       if (global.tplImageCache) delete global.tplImageCache[slot];
+      delete persistedImages[slot];
       input.value = '';
-      var previewId = typeof global.tplMediaPreviewId === 'function' ? global.tplMediaPreviewId(slot) : null;
-      var preview = previewId ? document.getElementById(previewId) : null;
+      var preview = ensurePreviewImg(wrap, slot);
       if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
       showUploadError(wrap, '');
       syncUploadZone(wrap, slot);
@@ -193,6 +298,12 @@
     wrap.appendChild(err);
 
     wrap.appendChild(input);
+
+    var preview = ensurePreviewImg(wrap, slot);
+    if (preview && savedSrc && savedVisible) {
+      preview.src = savedSrc;
+      preview.style.display = 'block';
+    }
 
     var oldBtns = group.querySelector('div[style*="display:flex"]');
     var oldSelect = group.querySelector('#tplStripPromoSelect');
@@ -222,7 +333,7 @@
       dt.items.add(file);
       input.files = dt.files;
       if (typeof global.previewTplImage === 'function') global.previewTplImage(input, slot);
-      setTimeout(function () { syncUploadZone(wrap, slot); }, 50);
+      else setTimeout(function () { syncUploadZone(wrap, slot); }, 50);
     }
 
     zone.addEventListener('click', pickFile);
@@ -248,7 +359,6 @@
       if (cloned) {
         cloned.addEventListener('click', function () {
           if (typeof global.tplPickFromMedia === 'function') global.tplPickFromMedia(slot);
-          setTimeout(function () { syncUploadZone(wrap, slot); }, 200);
         });
       }
     }
@@ -329,6 +439,46 @@
     };
   }
 
+  function patchPreviewTplImage() {
+    if (global.__a2wPreviewTplPatched || typeof global.previewTplImage !== 'function') return;
+    global.__a2wPreviewTplPatched = true;
+    var orig = global.previewTplImage;
+    global.previewTplImage = function (input, imageType) {
+      orig.apply(this, arguments);
+      if (!isActive()) return;
+      setTimeout(function () { syncTplUploadZone(imageType); }, 0);
+    };
+  }
+
+  function patchTplPickFromMedia() {
+    if (global.__a2wTplPickPatched || typeof global.tplPickFromMedia !== 'function') return;
+    global.__a2wTplPickPatched = true;
+    var orig = global.tplPickFromMedia;
+    global.tplPickFromMedia = function (imageType) {
+      if (!isActive()) return orig.apply(this, arguments);
+      if (!global.brandId) return orig.apply(this, arguments);
+      var pickerFilter = imageType === 'wallet_icon' ? 'all' : imageType;
+      if (typeof global.openMediaPicker !== 'function') return orig.apply(this, arguments);
+      global.openMediaPicker(async function (mediaId, imageUrl) {
+        var base64 = typeof global.fetchMediaImageBase64 === 'function'
+          ? await global.fetchMediaImageBase64(mediaId)
+          : null;
+        if (!base64) return;
+        if (global.tplImageCache) global.tplImageCache[imageType] = base64;
+        delete persistedImages[imageType];
+        setSlotPreview(imageType, 'data:image/png;base64,' + base64);
+        if (imageType === 'wallet_icon' && typeof global.persistHrWalletIcon === 'function') {
+          global.tplWalletIconMediaId = mediaId;
+          await global.persistHrWalletIcon();
+          return;
+        }
+        if (typeof global.mediaTypeLabel === 'function' && typeof global.toast === 'function') {
+          global.toast(global.mediaTypeLabel(imageType) + ' dalla Media Library');
+        }
+      }, pickerFilter);
+    };
+  }
+
   function patchOpenTemplateModal() {
     if (global.__a2wTplOpenPatched) return;
     ['openTemplateModal', 'editTemplate'].forEach(function (name) {
@@ -340,7 +490,11 @@
         if (!isActive()) return out;
         initPreviewToggle();
         enhanceAllUploads();
-        if (name === 'openTemplateModal') resetColorPickers();
+        syncAllTplUploadZones();
+        if (name === 'openTemplateModal') {
+          resetColorPickers();
+          resetPersistedImages();
+        }
         setSaveStatus('', '');
         setPreviewFace('front');
         return out;
@@ -356,6 +510,8 @@
     enhanceAllUploads();
     patchUpdatePassPreview();
     patchSaveTemplate();
+    patchPreviewTplImage();
+    patchTplPickFromMedia();
     patchOpenTemplateModal();
   }
 
@@ -363,6 +519,9 @@
   global.a2wApplyTplPreviewColors = applyPreviewColors;
   global.a2wResetTplColorPickers = resetColorPickers;
   global.a2wSetTplSaveStatus = setSaveStatus;
+  global.a2wApplyTplStyleImages = applyStyleImages;
+  global.a2wSyncTplUploadZone = syncTplUploadZone;
+  global.a2wSyncAllTplUploadZones = syncAllTplUploadZones;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
