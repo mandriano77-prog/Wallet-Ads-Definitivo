@@ -182,7 +182,7 @@ html[data-app='filodiretto'] .fd-stat-card__hint {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * fd-table-wrap + fd-table — tabella con scroll orizzontale (FASE 3 estenderà)
+ * fd-table-wrap + fd-table — scroll orizzontale + fade (FASE 3 in fd-responsive-tables.css)
  *
  * <div class="fd-table-wrap">
  *   <table class="fd-table table">…</table>
