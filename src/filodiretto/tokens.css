@@ -101,7 +101,7 @@
   --fd-z-modal: 500;
   --fd-z-toast: 600;
 
-  /* Layout (FASE 2 will apply) */
+  /* Layout — applied in fd-layout.css (FASE 2) */
   --fd-layout-max-width: 1280px;
   --fd-layout-gutter: 24px;
   --fd-layout-gutter-sm: 16px;

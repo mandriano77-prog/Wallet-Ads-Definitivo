@@ -183,6 +183,12 @@
 (function () {
   'use strict';
   var STORAGE_COLLAPSED = 'fd:sidebar:collapsed';
+  var BP_CLASSES = [
+    'fd-bp-desktop',
+    'fd-bp-tablet-landscape',
+    'fd-bp-tablet-portrait',
+    'fd-bp-mobile'
+  ];
   var mobileFocusRestore = null;
   var mobileFocusTrapBound = false;
   var tooltipNode = null;
@@ -193,6 +199,22 @@
   }
   function isDesktop() {
     return window.matchMedia('(min-width: 768px)').matches;
+  }
+  function syncBreakpointClasses() {
+    if (!isFilo()) return;
+    var root = document.documentElement;
+    BP_CLASSES.forEach(function (name) {
+      root.classList.remove(name);
+    });
+    if (window.matchMedia('(min-width: 1280px)').matches) {
+      root.classList.add('fd-bp-desktop');
+    } else if (window.matchMedia('(min-width: 1024px)').matches) {
+      root.classList.add('fd-bp-tablet-landscape');
+    } else if (window.matchMedia('(min-width: 768px)').matches) {
+      root.classList.add('fd-bp-tablet-portrait');
+    } else {
+      root.classList.add('fd-bp-mobile');
+    }
   }
   function isSidebarCollapsed() {
     return document.body.classList.contains('fd-sidebar-collapsed');
@@ -443,6 +465,7 @@
       if (!isDesktop()) applyMobile(false);
     });
     window.addEventListener('resize', function () {
+      syncBreakpointClasses();
       if (isDesktop()) {
         document.body.classList.remove('sidebar-open');
         try {
@@ -458,9 +481,11 @@
   }
   function boot() {
     if (!isFilo()) return;
+    syncBreakpointClasses();
     bindCollapsedNavTooltips();
     initSidebarToggle();
   }
+  window.fdSyncBreakpointClasses = syncBreakpointClasses;
   window.fdPositionFloatingMenu = positionFloatingMenu;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
