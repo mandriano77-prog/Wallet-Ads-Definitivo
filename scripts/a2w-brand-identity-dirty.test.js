@@ -35,3 +35,16 @@ test('css distingue bottone salvataggio inattivo vs dirty attivo', () => {
   assert.match(biCss, /\.a2w-bi-save-btn\.is-dirty:not\(:disabled\)/);
   assert.match(biCss, /--a2w-action-primary/);
 });
+
+test('brand identity mostra riepilogo identità senza anteprima pass wallet', () => {
+  assert.match(indexHtml, /a2w-bi-identity-summary/);
+  assert.match(indexHtml, /a2wBiSummaryName/);
+  assert.match(indexHtml, /a2wBiSummarySettore/);
+  assert.match(indexHtml, /Il design dei pass si configura in/);
+  assert.match(indexHtml, /onclick="nav\('templates'\)">Template Pass/);
+  assert.doesNotMatch(indexHtml, /a2w-bi-preview-tabs/);
+  assert.doesNotMatch(indexHtml, /a2w-bi-pass-preview/);
+  assert.doesNotMatch(indexHtml, /Apple Wallet[\s\S]{0,80}a2wBiPreviewCard/);
+  assert.match(biCss, /\.a2w-bi-identity-summary/);
+  assert.doesNotMatch(biCss, /\.a2w-bi-pass-preview/);
+});

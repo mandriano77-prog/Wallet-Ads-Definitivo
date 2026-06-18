@@ -174,6 +174,16 @@
             cursor: pointer;
             padding: 0 var(--space-3);
         }
+        html.a2w-shell .nav-group-label {
+            cursor: default;
+            pointer-events: none;
+            font-weight: 500;
+            opacity: 1;
+        }
+        html.a2w-shell .nav-group-label .a2w-nav-group-toggle {
+            pointer-events: auto;
+            cursor: pointer;
+        }
         .nav-group-label::-webkit-details-marker { display: none; }
         .sidebar-footer {
             margin-top: auto;
@@ -1361,7 +1371,7 @@
         <div class="sidebar-nav">
             <div class="nav-item nav-item--standalone nav-item--icon-only active" id="navItemWelcome" data-section-id="welcome" onclick="nav('welcome')" role="button" tabindex="0" aria-label="Inizio" data-fd-tooltip="Inizio">Inizio</div>
 
-            <details class="nav-group" data-nav-group="brand-pass">
+            <details class="nav-group" data-nav-group="brand-pass" open>
                 <summary class="nav-group-label">Brand &amp; Pass</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('brand-identity')" data-section-id="brand-identity" data-requires-perm="brand_identity" role="button" tabindex="0">Identità Brand</div>
@@ -1371,7 +1381,7 @@
                 </div>
             </details>
 
-            <details class="nav-group" data-nav-group="comunicazione">
+            <details class="nav-group" data-nav-group="comunicazione" open>
                 <summary class="nav-group-label">Engagement</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('push')" data-section-id="push" data-requires-perm="push" role="button" tabindex="0">Push &amp; Notifiche</div>
@@ -1380,21 +1390,21 @@
                 </div>
             </details>
 
-            <details class="nav-group" data-nav-group="database">
+            <details class="nav-group" data-nav-group="database" open>
                 <summary class="nav-group-label">Database</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-requires-perm="employees" data-menu-key="nav_leads" data-menu-default="Contatti" role="button" tabindex="0">Contatti <span id="navNoMatricolaBadge" class="nav-badge" style="display:none;" title="Dipendenti senza matricola"></span></div>
                 </div>
             </details>
 
-            <details class="nav-group" data-nav-group="insights">
+            <details class="nav-group" data-nav-group="insights" open>
                 <summary class="nav-group-label">Insights</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('analytics')" data-section-id="analytics" data-requires-perm="analytics" role="button" tabindex="0">Analytics</div>
                 </div>
             </details>
 
-            <details class="nav-group nav-group--setup" data-nav-group="setup">
+            <details class="nav-group nav-group--setup" data-nav-group="setup" open>
                 <summary class="nav-group-label">Setup</summary>
                 <div class="nav-group-items">
                     <div class="nav-item" onclick="nav('users')" data-section-id="users" data-requires-perm="users" data-role-min="admin" role="button" tabindex="0">Utenti</div>
@@ -1936,27 +1946,42 @@
                         </div>
 
                         <aside class="a2w-bi-preview-column">
-                            <button type="button" class="a2w-bi-preview-mobile-toggle" id="a2wBiPreviewMobileToggle" aria-expanded="false" aria-controls="a2wBiPreviewCard">Anteprima brand</button>
+                            <button type="button" class="a2w-bi-preview-mobile-toggle" id="a2wBiPreviewMobileToggle" aria-expanded="false" aria-controls="a2wBiPreviewCard">Riepilogo identità</button>
                             <div class="card a2w-bi-preview-card" id="a2wBiPreviewCard">
-                                <div class="a2w-bi-preview-tabs">
-                                    <button type="button" class="is-active" data-target="apple">Apple Wallet</button>
-                                    <button type="button" data-target="google">Google Wallet</button>
-                                </div>
-                                <div class="a2w-bi-pass-preview" id="a2wBiPassPreview">
-                                    <div class="a2w-bi-pass-preview__strip" id="a2wBiPassStrip"></div>
-                                    <div class="a2w-bi-pass-preview__body">
-                                        <img id="a2wBiPassLogo" alt="Logo brand">
-                                        <div>
-                                            <p id="a2wBiPassName">Brand</p>
-                                            <p id="a2wBiPassTagline">Tagline</p>
+                                <h2 class="a2w-bi-summary__title">Riepilogo identità</h2>
+                                <div class="a2w-bi-identity-summary" id="a2wBiIdentitySummary">
+                                    <div class="a2w-bi-identity-summary__brand">
+                                        <img id="a2wBiSummaryLogo" class="a2w-bi-identity-summary__logo" alt="" hidden>
+                                        <span class="a2w-bi-identity-summary__initial" id="a2wBiSummaryInitial" aria-hidden="true">B</span>
+                                        <div class="a2w-bi-identity-summary__headings">
+                                            <p class="a2w-bi-identity-summary__name" id="a2wBiSummaryName">Brand</p>
+                                            <p class="a2w-bi-identity-summary__tagline" id="a2wBiSummaryTagline">Tagline</p>
                                         </div>
                                     </div>
+                                    <dl class="a2w-bi-identity-summary__details">
+                                        <div class="a2w-bi-identity-summary__row">
+                                            <dt>Settore</dt>
+                                            <dd id="a2wBiSummarySettore">—</dd>
+                                        </div>
+                                        <div class="a2w-bi-identity-summary__row">
+                                            <dt>Lingua</dt>
+                                            <dd id="a2wBiSummaryLang">—</dd>
+                                        </div>
+                                        <div class="a2w-bi-identity-summary__row">
+                                            <dt>Slug</dt>
+                                            <dd id="a2wBiPreviewSlug">—</dd>
+                                        </div>
+                                        <div class="a2w-bi-identity-summary__row">
+                                            <dt>URL pubblico</dt>
+                                            <dd id="a2wBiPreviewUrl" class="a2w-bi-identity-summary__url">wallet.ads2wallet.com/</dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                                <div class="a2w-bi-preview-meta">
-                                    <p><strong>Slug</strong> <span id="a2wBiPreviewSlug">—</span></p>
-                                    <p><strong>URL</strong> <span id="a2wBiPreviewUrl">wallet.ads2wallet.com/</span></p>
-                                </div>
-                                <div class="a2w-bi-preview-qr" id="a2wBiPreviewQr" aria-label="Anteprima QR URL brand"></div>
+                                <div class="a2w-bi-preview-qr" id="a2wBiPreviewQr" aria-label="QR code URL brand"></div>
+                                <p class="a2w-bi-summary__templates-hint">
+                                    Il design dei pass si configura in
+                                    <button type="button" class="a2w-bi-link-btn" onclick="nav('templates')">Template Pass</button>.
+                                </p>
                             </div>
                         </aside>
                     </div>
@@ -2323,7 +2348,7 @@
             <!-- INSTANT WIN -->
             <div id="instant-win" class="section" data-rbac-section="instant-win">
                 <h1 class="sec-title page-title">Reward</h1>
-                <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea campagne Reward per premiare i tuoi dipendenti con riconoscimenti immediati: bonus, voucher welfare, gift card e premi a sorpresa.</p>
+                <p id="iwPageBlurb" data-menu-key="reward_page_blurb" style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea campagne Reward per premiare i possessori del pass con giochi istantanei, voucher e premi a sorpresa.</p>
 
                 <div class="stats-grid" id="iwStats">
                     <div class="stat-card"><div class="stat-value" id="iwStatCampaigns">0</div><div class="stat-label">Campagne attive</div></div>
@@ -2336,6 +2361,7 @@
                     <div class="sec-title" style="font-size:18px;margin-bottom:0;">Campagne Reward</div>
                     <button class="btn" data-requires-write="instant-win" onclick="openIwModal()">+ Nuova Campagna</button>
                 </div>
+                <div id="iwEmptyHost" hidden></div>
                 <table class="table" id="iwTable">
                     <thead><tr><th>NOME</th><th>TIPO</th><th>PREMIO</th><th>PROBABILITÀ</th><th>ASSEGNATI</th><th>RISCATTATI</th><th>STATO</th><th>AZIONI</th></tr></thead>
                     <tbody></tbody>
@@ -2378,7 +2404,7 @@
             <!-- GAMIFICATION -->
             <div id="gamification" class="section" data-rbac-section="gamification">
                 <h1 class="sec-title page-title">Challenge</h1>
-                <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea sfide basate sulle abilità per i tuoi team: quiz formativi, Memory Match, Puzzle e classifica a punti.</p>
+                <p id="gamPageBlurb" data-menu-key="challenge_page_blurb" style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea sfide interattive (quiz, memory, puzzle) per coinvolgere i possessori del pass e raccogliere punti.</p>
 
                 <div class="stats-grid" id="gamStats">
                     <div class="stat-card"><div class="stat-value" id="gamStatCampaigns">0</div><div class="stat-label">Challenge attive</div></div>
@@ -2391,6 +2417,7 @@
                     <div class="sec-title" style="font-size:18px;margin-bottom:0;">Campagne Challenge</div>
                     <button class="btn" data-requires-write="gamification" onclick="openGamModal()">+ Nuova Campagna</button>
                 </div>
+                <div id="gamEmptyHost" hidden></div>
                 <table class="table" id="gamTable">
                     <thead><tr><th>NOME</th><th>TIPO</th><th>ORO</th><th>ARGENTO</th><th>BRONZO</th><th>PARTECIPANTI</th><th>STATO</th><th>AZIONI</th></tr></thead>
                     <tbody></tbody>
@@ -2960,9 +2987,15 @@
             <div class="form-group"><label class="form-label">Data inizio</label><input type="date" id="campStart"></div>
             <div class="form-group"><label class="form-label">Data fine</label><input type="date" id="campEnd"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button class="btn sec" onclick="saveCampaign(false)">Salva Campagna</button>
-            <button class="btn" onclick="saveCampaign(true)">Salva e carica strip</button>
+        <div class="a2w-campaign-modal-actions">
+            <div class="a2w-campaign-modal-actions__primary">
+                <button type="button" class="btn a2w-btn-primary" onclick="saveCampaign(false)">Salva campagna</button>
+                <p class="a2w-campaign-modal-actions__hint">Crea la campagna e ottieni il link landing con parametri UTM.</p>
+            </div>
+            <div class="a2w-campaign-modal-actions__secondary">
+                <button type="button" class="btn sec" onclick="saveCampaign(true)" title="Salva la campagna e apri subito il caricamento della strip promozionale">Salva e carica strip</button>
+                <p class="a2w-campaign-modal-actions__hint">Come «Salva campagna», più upload immediato della strip promozionale per il pass.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -3302,6 +3335,7 @@
     <script src="/dashboard/js/dashboard-subnav.js"></script>
     <script src="/dashboard/js/a2w-setup-checklist.js"></script>
     <script src="/dashboard/js/a2w-shell.js"></script>
+    <script src="/dashboard/js/a2w-push-ux.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
 <script>
@@ -4509,6 +4543,14 @@ const PRODUCT_MENU_DEFAULTS = {
     leads_empty: 'Nessun contatto registrato',
     leads_export_empty: 'Nessun contatto da esportare',
     leads_load_error: 'Errore caricamento dati',
+    reward_page_blurb: 'Crea campagne Reward per premiare i possessori del pass con giochi istantanei, voucher e premi a sorpresa.',
+    challenge_page_blurb: 'Crea sfide interattive (quiz, memory, puzzle) per coinvolgere i possessori del pass e raccogliere punti.',
+    reward_empty_title: 'Nessuna campagna Reward',
+    reward_empty_desc: 'Lancia giochi istantanei (scratch, ruota, slot) collegati al pass Wallet e assegna premi ai tuoi contatti.',
+    reward_empty_cta: '+ Nuova campagna Reward',
+    challenge_empty_title: 'Nessuna campagna Challenge',
+    challenge_empty_desc: 'Organizza quiz, memory match o puzzle: i partecipanti guadagnano punti e premi in base ai risultati.',
+    challenge_empty_cta: '+ Nuova campagna Challenge',
 };
 
 const PRODUCT_MENU_COPY = {
@@ -4524,6 +4566,10 @@ const PRODUCT_MENU_COPY = {
         leads_stat_email: 'Con email',
         leads_empty: 'Nessun dipendente — usa Importa da file',
         leads_export_empty: 'Nessun dipendente da esportare',
+        reward_page_blurb: 'Crea campagne Reward per premiare i tuoi dipendenti con riconoscimenti immediati: bonus, voucher welfare, gift card e premi a sorpresa.',
+        challenge_page_blurb: 'Crea sfide basate sulle abilità per i tuoi team: quiz formativi, Memory Match, Puzzle e classifica a punti.',
+        reward_empty_desc: 'Premia i dipendenti con bonus, voucher welfare e gift card tramite giochi collegati al pass HR.',
+        challenge_empty_desc: 'Sfide formative per i team: quiz, memory e puzzle con classifica e premi per dipendenti.',
     },
     engage: {
         nav_leads: 'Customer',
@@ -4532,6 +4578,10 @@ const PRODUCT_MENU_COPY = {
         leads_stat_total: 'Clienti totali',
         leads_empty: 'Nessun cliente registrato',
         leads_export_empty: 'Nessun cliente da esportare',
+        reward_page_blurb: 'Campagne Reward per fidelizzare i clienti: giochi istantanei, voucher e premi collegati al pass Wallet.',
+        challenge_page_blurb: 'Sfide gamificate per i clienti: quiz, memory e puzzle con punti e premi sul pass.',
+        reward_empty_desc: 'Coinvolgi i clienti con scratch, ruota o slot e assegna voucher e premi dal pass Wallet.',
+        challenge_empty_desc: 'Quiz e giochi di abilità per i clienti: classifica e premi legati al programma fedeltà.',
     },
 };
 
@@ -7644,17 +7694,40 @@ async function loadInstantWin() {
 
         const res = await fetch(`${API}/instant-win?brand_id=${brandId}`, { headers: getAuthHeaders() });
         const tbody = document.getElementById('iwTable').querySelector('tbody');
-        const iwEmptyOpts = { title: 'Nessuna campagna Reward', ctaOnclick: 'openIwModal()', icon: 'ticket' };
+        const table = document.getElementById('iwTable');
+        const emptyHost = document.getElementById('iwEmptyHost');
+        const iwEmptyOpts = getEngagementEmptyCopy('reward');
         const iwEmptyRow = typeof fdTableEmptyState === 'function'
             ? fdTableEmptyState(8, iwEmptyOpts)
             : (typeof renderTableEmptyState === 'function' ? renderTableEmptyState(8, iwEmptyOpts) : '');
-        if (!res.ok) { tbody.innerHTML = iwEmptyRow; return; }
+        if (!res.ok) {
+            if (isA2wEngagementEmptyActive() && emptyHost) {
+                emptyHost.hidden = false;
+                emptyHost.innerHTML = renderA2wSectionEmptyState(iwEmptyOpts);
+                if (table) table.hidden = true;
+            } else {
+                tbody.innerHTML = iwEmptyRow;
+            }
+            return;
+        }
         const campaigns = await res.json();
 
         if (!campaigns.length) {
-            tbody.innerHTML = iwEmptyRow;
+            if (isA2wEngagementEmptyActive() && emptyHost) {
+                emptyHost.hidden = false;
+                emptyHost.innerHTML = renderA2wSectionEmptyState(iwEmptyOpts);
+                if (table) table.hidden = true;
+                tbody.innerHTML = '';
+            } else {
+                if (emptyHost) emptyHost.hidden = true;
+                if (table) table.hidden = false;
+                tbody.innerHTML = iwEmptyRow;
+            }
+            if (typeof fdRbacHook === 'function') fdRbacHook('instant-win');
             return;
         }
+        if (emptyHost) emptyHost.hidden = true;
+        if (table) table.hidden = false;
         const gameLabels = { scratch: '🎫 Scratch', wheel: '🎡 Ruota', slots: '🎰 Slot' };
         const statusLabels = { draft: 'Bozza', active: 'Attiva', paused: 'In pausa', ended: 'Terminata' };
         tbody.innerHTML = campaigns.map(c => `
@@ -8213,6 +8286,51 @@ function isA2wLeadsRedesignActive() {
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
     if (typeof isA2wDeploy === 'function' && !isA2wDeploy()) return false;
     return document.documentElement.classList.contains('a2w-shell');
+}
+
+/** Empty state curato Reward/Challenge su shell A2W. */
+function isA2wEngagementEmptyActive() {
+    if (typeof isFiloShell === 'function' && isFiloShell()) return false;
+    return document.documentElement.classList.contains('a2w-shell');
+}
+
+function getEngagementEmptyCopy(kind) {
+    const mc = getMergedProductMenuCopy(getDashboardProductLine());
+    if (kind === 'reward') {
+        return {
+            title: mc.reward_empty_title,
+            description: mc.reward_empty_desc,
+            ctaLabel: mc.reward_empty_cta,
+            ctaOnclick: 'openIwModal()',
+            icon: 'ticket'
+        };
+    }
+    return {
+        title: mc.challenge_empty_title,
+        description: mc.challenge_empty_desc,
+        ctaLabel: mc.challenge_empty_cta,
+        ctaOnclick: 'openGamModal()',
+        icon: 'trophy'
+    };
+}
+
+const A2W_SECTION_EMPTY_ICONS = {
+    ticket: '<svg class="a2w-contacts-empty__icon-svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v2a2 2 0 0 0 0 4v2a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-2a2 2 0 0 0 0-4V9Z"/><path d="M9 8v8"/></svg>',
+    trophy: '<svg class="a2w-contacts-empty__icon-svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>'
+};
+
+function renderA2wSectionEmptyState(opts) {
+    const icon = A2W_SECTION_EMPTY_ICONS[opts.icon] || A2W_SECTION_EMPTY_ICONS.ticket;
+    return `
+      <div class="a2w-contacts-empty" data-a2w-component="section-empty-state">
+        <div class="a2w-contacts-empty__icon" aria-hidden="true">${icon}</div>
+        <h2 class="a2w-contacts-empty__title">${esc(opts.title || 'Nessun elemento')}</h2>
+        <p class="a2w-contacts-empty__desc">${esc(opts.description || '')}</p>
+        <div class="a2w-contacts-empty__actions a2w-contacts-empty__actions--primary">
+          <button type="button" class="btn a2w-btn-primary a2w-contacts-empty__cta" onclick="${opts.ctaOnclick || ''}">${esc(opts.ctaLabel || 'Crea')}</button>
+        </div>
+      </div>
+    `;
 }
 
 function resetLeadsFilters() {
@@ -9122,9 +9240,9 @@ function renderLeadsTable(leads) {
                   <svg class="a2w-contacts-empty__icon-svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
                 </div>
                 <h2 class="a2w-contacts-empty__title">Nessun contatto ancora</h2>
-                <p class="a2w-contacts-empty__desc">Pubblica una landing per raccogliere contatti automaticamente da form e pass Wallet.</p>
+                <p class="a2w-contacts-empty__desc">Crea una campagna con landing page per raccogliere contatti automaticamente da form e pass Wallet.</p>
                 <div class="a2w-contacts-empty__actions a2w-contacts-empty__actions--primary">
-                  <button type="button" class="btn a2w-btn-primary a2w-contacts-empty__cta" onclick="openA2wContactsPrimaryLanding()">Crea la prima landing</button>
+                  <button type="button" class="btn a2w-btn-primary a2w-contacts-empty__cta" onclick="openA2wContactsPrimaryLanding()">Crea la prima campagna</button>
                 </div>
                 <p class="a2w-contacts-empty__or" aria-hidden="true">oppure</p>
                 <div class="a2w-contacts-empty__actions a2w-contacts-empty__actions--secondary">
@@ -9135,7 +9253,7 @@ function renderLeadsTable(leads) {
                 <details class="a2w-contacts-empty__howto">
                   <summary>Come funziona la raccolta contatti</summary>
                   <ol class="a2w-contacts-empty__steps">
-                    <li>Crea una landing page</li>
+                    <li>Crea una campagna (con landing e UTM)</li>
                     <li>Configura un pass</li>
                     <li>Condividi il link o lancia la campagna</li>
                   </ol>
@@ -9919,15 +10037,28 @@ async function loadGamification() {
         document.getElementById('gamStatAwards').textContent = stats.total_awards ?? stats.total_gold ?? 0;
 
         const tbody = document.getElementById('gamTable').querySelector('tbody');
-        const gamEmptyOpts = { title: 'Nessuna campagna Challenge', ctaOnclick: 'openGamModal()', icon: 'ticket' };
+        const table = document.getElementById('gamTable');
+        const emptyHost = document.getElementById('gamEmptyHost');
+        const gamEmptyOpts = getEngagementEmptyCopy('challenge');
         const gamEmptyRow = typeof fdTableEmptyState === 'function'
             ? fdTableEmptyState(8, gamEmptyOpts)
             : (typeof renderTableEmptyState === 'function' ? renderTableEmptyState(8, gamEmptyOpts) : '');
         if (!campaigns.length) {
-            tbody.innerHTML = gamEmptyRow;
+            if (isA2wEngagementEmptyActive() && emptyHost) {
+                emptyHost.hidden = false;
+                emptyHost.innerHTML = renderA2wSectionEmptyState(gamEmptyOpts);
+                if (table) table.hidden = true;
+                tbody.innerHTML = '';
+            } else {
+                if (emptyHost) emptyHost.hidden = true;
+                if (table) table.hidden = false;
+                tbody.innerHTML = gamEmptyRow;
+            }
             if (typeof fdRbacHook === 'function') fdRbacHook('gamification');
             return;
         }
+        if (emptyHost) emptyHost.hidden = true;
+        if (table) table.hidden = false;
         const gameLabels = { quiz: 'Quiz', memory: 'Memory Match', puzzle: 'Puzzle' };
         tbody.innerHTML = campaigns.map(c => `
             <tr>
@@ -11086,7 +11217,6 @@ const brandIdentityState = {
     slugCheckTimer: null,
     slugAvailable: null,
     slugChecking: false,
-    previewTab: 'apple',
     touched: {},
     mediaByType: { logo: [], wallet_icon: [], strip: [], thumbnail: [], background: [] },
     selectedAssets: { logo: null, wallet_icon: null, strip: null, thumbnail: null, background: null }
@@ -11124,6 +11254,33 @@ function a2wBiField(id) {
 function a2wBiGetSlugPreviewUrl(slug) {
     const safe = String(slug || '').trim();
     return `wallet.ads2wallet.com/${safe}`;
+}
+
+function a2wBiFormatLangLabel(code) {
+    const sel = a2wBiField('biLang');
+    if (sel) {
+        const opt = [...sel.options].find((o) => o.value === code);
+        if (opt) return opt.textContent;
+    }
+    const labels = { it: 'Italiano', en: 'English', es: 'Español', fr: 'Français', de: 'Deutsch' };
+    return labels[code] || code || '—';
+}
+
+function a2wBiFormatSettoreLabel(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '—';
+    const labels = {
+        ristorazione: 'Ristorazione',
+        retail: 'Retail',
+        beauty: 'Beauty / Wellness',
+        sport: 'Sport / Fitness',
+        eventi: 'Eventi',
+        hospitality: 'Hospitality',
+        automotive: 'Automotive',
+        tech: 'Tech',
+        altro: 'Altro'
+    };
+    return labels[raw] || raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 function a2wBiSerializeState(data, selectedAssets) {
@@ -11541,28 +11698,31 @@ function a2wBiUpdatePreviewCard() {
     if (!isA2wBrandIdentityV2Enabled()) return;
     const data = a2wBiCollectFormData();
     const logo = brandIdentityState.selectedAssets.logo;
-    const strip = brandIdentityState.selectedAssets.strip;
-    const passLogo = a2wBiField('a2wBiPassLogo');
-    const passName = a2wBiField('a2wBiPassName');
-    const passTagline = a2wBiField('a2wBiPassTagline');
-    const passStrip = a2wBiField('a2wBiPassStrip');
-    if (passName) passName.textContent = data.name || 'Brand';
-    if (passTagline) passTagline.textContent = data.tagline || 'Tagline';
-    if (passLogo) {
+    const nameEl = a2wBiField('a2wBiSummaryName');
+    const taglineEl = a2wBiField('a2wBiSummaryTagline');
+    const logoEl = a2wBiField('a2wBiSummaryLogo');
+    const initialEl = a2wBiField('a2wBiSummaryInitial');
+    const settoreEl = a2wBiField('a2wBiSummarySettore');
+    const langEl = a2wBiField('a2wBiSummaryLang');
+    const brandName = data.name || 'Brand';
+    if (nameEl) nameEl.textContent = brandName;
+    if (taglineEl) taglineEl.textContent = data.tagline || '—';
+    if (settoreEl) settoreEl.textContent = a2wBiFormatSettoreLabel(data.settore);
+    if (langEl) langEl.textContent = a2wBiFormatLangLabel(data.lang);
+    if (logoEl && initialEl) {
         if (logo?.id) {
-            passLogo.src = a2wBiMediaImageUrl(logo);
-            passLogo.style.display = 'block';
+            logoEl.src = a2wBiMediaImageUrl(logo);
+            logoEl.alt = `Logo ${brandName}`;
+            logoEl.hidden = false;
+            initialEl.hidden = true;
         } else {
-            passLogo.removeAttribute('src');
-            passLogo.style.display = 'none';
+            logoEl.removeAttribute('src');
+            logoEl.alt = '';
+            logoEl.hidden = true;
+            initialEl.textContent = brandName.trim().charAt(0).toUpperCase() || 'B';
+            initialEl.hidden = false;
         }
     }
-    if (passStrip) {
-        passStrip.style.backgroundImage = strip?.id ? `url("${a2wBiMediaImageUrl(strip)}")` : '';
-        passStrip.style.backgroundSize = 'cover';
-    }
-    const previewRoot = a2wBiField('a2wBiPassPreview');
-    if (previewRoot) previewRoot.dataset.wallet = brandIdentityState.previewTab || 'apple';
     a2wBiUpdateSlugPreview();
     const slug = data.slug || '';
     const qrHost = a2wBiField('a2wBiPreviewQr');
@@ -11711,17 +11871,6 @@ function a2wBiEnsureUiBound() {
         dangerBtn.addEventListener('click', () => deleteBrandAction());
         dangerHost.appendChild(dangerBtn);
     }
-
-    const previewTabs = document.querySelectorAll('#brand-identity .a2w-bi-preview-tabs button');
-    previewTabs.forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const target = btn.dataset.target || 'apple';
-            brandIdentityState.previewTab = target;
-            previewTabs.forEach((node) => node.classList.toggle('is-active', node === btn));
-            const preview = a2wBiField('a2wBiPassPreview');
-            if (preview) preview.dataset.wallet = target;
-        });
-    });
 
     const formIds = [
         'biName', 'biSlug', 'biTagline', 'biSettore', 'biLang', 'biHomepage', 'biSupportEmail', 'biSupportPhone',

@@ -607,7 +607,9 @@ html.a2w-shell #leads .a2w-leads-pagination select {
   color: var(--a2w-text-primary);
 }
 
-html.a2w-shell #leads .a2w-contacts-empty {
+html.a2w-shell #leads .a2w-contacts-empty,
+html.a2w-shell #instant-win .a2w-contacts-empty,
+html.a2w-shell #gamification .a2w-contacts-empty {
   border: 1px dashed var(--a2w-border-default);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.02);
@@ -615,24 +617,32 @@ html.a2w-shell #leads .a2w-contacts-empty {
   text-align: center;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__icon {
+html.a2w-shell #leads .a2w-contacts-empty__icon,
+html.a2w-shell #instant-win .a2w-contacts-empty__icon,
+html.a2w-shell #gamification .a2w-contacts-empty__icon {
   font-size: 40px;
   margin-bottom: 10px;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__title {
+html.a2w-shell #leads .a2w-contacts-empty__title,
+html.a2w-shell #instant-win .a2w-contacts-empty__title,
+html.a2w-shell #gamification .a2w-contacts-empty__title {
   margin: 0 0 8px;
   font-size: 22px;
   font-weight: 600;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__desc {
+html.a2w-shell #leads .a2w-contacts-empty__desc,
+html.a2w-shell #instant-win .a2w-contacts-empty__desc,
+html.a2w-shell #gamification .a2w-contacts-empty__desc {
   margin: 0 auto 16px;
   max-width: 520px;
   color: rgba(255, 255, 255, 0.72);
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__icon-svg {
+html.a2w-shell #leads .a2w-contacts-empty__icon-svg,
+html.a2w-shell #instant-win .a2w-contacts-empty__icon-svg,
+html.a2w-shell #gamification .a2w-contacts-empty__icon-svg {
   color: var(--a2w-action-primary);
   opacity: 0.9;
 }
@@ -660,11 +670,15 @@ html.a2w-shell #leads .a2w-contacts-empty__actions--secondary {
   color: var(--a2w-text-secondary);
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__actions--primary {
+html.a2w-shell #leads .a2w-contacts-empty__actions--primary,
+html.a2w-shell #instant-win .a2w-contacts-empty__actions--primary,
+html.a2w-shell #gamification .a2w-contacts-empty__actions--primary {
   margin-bottom: 4px;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__cta {
+html.a2w-shell #leads .a2w-contacts-empty__cta,
+html.a2w-shell #instant-win .a2w-contacts-empty__cta,
+html.a2w-shell #gamification .a2w-contacts-empty__cta {
   min-height: 46px;
   padding: 0 22px;
   font-size: 0.9375rem;
@@ -807,20 +821,28 @@ html.a2w-shell #leads .a2w-contacts-help-tooltip {
   color: rgba(226, 232, 240, 0.85);
 }
 
-html.a2w-shell #leads .a2w-contacts-empty {
+html.a2w-shell #leads .a2w-contacts-empty,
+html.a2w-shell #instant-win .a2w-contacts-empty,
+html.a2w-shell #gamification .a2w-contacts-empty {
   padding: 26px 18px;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__icon {
+html.a2w-shell #leads .a2w-contacts-empty__icon,
+html.a2w-shell #instant-win .a2w-contacts-empty__icon,
+html.a2w-shell #gamification .a2w-contacts-empty__icon {
   font-size: 36px;
   margin-bottom: 8px;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__title {
+html.a2w-shell #leads .a2w-contacts-empty__title,
+html.a2w-shell #instant-win .a2w-contacts-empty__title,
+html.a2w-shell #gamification .a2w-contacts-empty__title {
   font-size: 20px;
 }
 
-html.a2w-shell #leads .a2w-contacts-empty__desc {
+html.a2w-shell #leads .a2w-contacts-empty__desc,
+html.a2w-shell #instant-win .a2w-contacts-empty__desc,
+html.a2w-shell #gamification .a2w-contacts-empty__desc {
   margin-bottom: 14px;
 }
 
