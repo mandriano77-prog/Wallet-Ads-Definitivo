@@ -16,8 +16,9 @@ html[data-app='filodiretto'] #analytics .fd-analytics-lead {
   max-width: 65ch;
 }
 
-html[data-app='filodiretto'] #analytics .fd-analytics-tabs {
-  margin-bottom: var(--fd-space-5, 24px);
+html[data-app='filodiretto'] #analytics .fd-analytics-tabs,
+html[data-app='filodiretto'] #analytics #analyticsSectionTabs {
+  display: none;
 }
 
 html[data-app='filodiretto'] #analytics .fd-analytics-stat-grid {

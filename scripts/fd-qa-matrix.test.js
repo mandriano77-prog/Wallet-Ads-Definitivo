@@ -125,10 +125,10 @@ test('fd.bundle.js is valid JavaScript after build', () => {
   );
 });
 
-test('index.html bundle cache references bundle-syntax-fix2 tag', () => {
+test('index.html bundle cache references analytics-log-split tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260619-bundle-syntax-fix2/);
-  assert.match(html, /fd\.bundle\.js\?v=20260619-bundle-syntax-fix2/);
+  assert.match(html, /fd\.bundle\.css\?v=20260619-analytics-log-split/);
+  assert.match(html, /fd\.bundle\.js\?v=20260619-analytics-log-split/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
   assert.match(html, /fd-page-states\.js/);
   assert.match(html, /fd-mobile-gate\.js/);

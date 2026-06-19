@@ -100,10 +100,24 @@
     }
   }
 
+  /** Logical tab id → DOM suffix (HTML uses analyticsTab_activity, not activity-log). */
+  var ANALYTICS_TAB_DOM = {
+    metrics: 'metrics',
+    'activity-log': 'activity'
+  };
+
+  function tabDomSuffix(prefix, logicalTab) {
+    if (prefix === 'analytics' && ANALYTICS_TAB_DOM[logicalTab]) {
+      return ANALYTICS_TAB_DOM[logicalTab];
+    }
+    return logicalTab;
+  }
+
   function setTabUi(prefix, tab, tabs) {
     tabs.forEach(function (t) {
-      var btn = document.getElementById(prefix + 'Tab_' + t);
-      var panel = document.getElementById(prefix + 'TabPanel_' + t);
+      var domTab = tabDomSuffix(prefix, t);
+      var btn = document.getElementById(prefix + 'Tab_' + domTab);
+      var panel = document.getElementById(prefix + 'TabPanel_' + domTab);
       var on = t === tab;
       if (btn) {
         btn.classList.toggle('active', on);

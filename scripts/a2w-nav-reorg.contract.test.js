@@ -67,6 +67,53 @@ test('sectionPath builds canonical dashboard URLs', () => {
   assert.equal(g.sectionPath('analytics', 'activity-log'), '/dashboard/analytics/log');
 });
 
+test('switchAnalyticsSectionTab uses analyticsTabPanel_activity DOM ids', () => {
+  const panels = {
+    metrics: { hidden: false, ariaHidden: 'false' },
+    activity: { hidden: true, ariaHidden: 'true' }
+  };
+  const buttons = {
+    metrics: { classList: { active: true }, ariaSelected: 'true', tabIndex: 0 },
+    activity: { classList: { active: false }, ariaSelected: 'false', tabIndex: -1 }
+  };
+  const doc = {
+    getElementById(id) {
+      if (id === 'analyticsTabPanel_metrics') return panels.metrics;
+      if (id === 'analyticsTabPanel_activity') return panels.activity;
+      if (id === 'analyticsTab_metrics') return buttons.metrics;
+      if (id === 'analyticsTab_activity') return buttons.activity;
+      return null;
+    }
+  };
+  panels.metrics.setAttribute = (k, v) => { if (k === 'aria-hidden') panels.metrics.ariaHidden = v; };
+  panels.activity.setAttribute = (k, v) => { if (k === 'aria-hidden') panels.activity.ariaHidden = v; };
+  buttons.metrics.setAttribute = (k, v) => { if (k === 'aria-selected') buttons.metrics.ariaSelected = v; };
+  buttons.activity.setAttribute = (k, v) => { if (k === 'aria-selected') buttons.activity.ariaSelected = v; };
+  buttons.metrics.classList.toggle = (c, on) => { if (c === 'active') buttons.metrics.classList.active = on; };
+  buttons.activity.classList.toggle = (c, on) => { if (c === 'active') buttons.activity.classList.active = on; };
+
+  const g = loadSubnav({
+    location: { pathname: '/dashboard/analytics/log', search: '', hash: '' },
+    history: { replaceState() {} },
+    document: doc,
+    getActiveSectionId: () => 'analytics'
+  });
+
+  g.switchAnalyticsSectionTab('activity-log', { skipUrl: true, skipLoad: true, skipBreadcrumb: true });
+
+  assert.equal(panels.metrics.hidden, true);
+  assert.equal(panels.activity.hidden, false);
+  assert.equal(buttons.activity.classList.active, true);
+  assert.equal(buttons.metrics.classList.active, false);
+});
+
+test('index.html analytics tab panel ids use activity slug not activity-log', () => {
+  const html = read('src/dashboard/index.html');
+  assert.match(html, /id="analyticsTabPanel_activity"/);
+  assert.match(html, /id="analyticsTab_activity"/);
+  assert.doesNotMatch(html, /id="analyticsTabPanel_activity-log"/);
+});
+
 test('index.html sidebar has merged nav items and section tabs', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /nav-group-label">Engagement<\/summary>/);

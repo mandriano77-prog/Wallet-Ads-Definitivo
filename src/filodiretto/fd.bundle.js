@@ -8502,6 +8502,25 @@
       'px;border-radius:var(--fd-radius-md,12px)"></span></div>'
     );
   }
+  function syncAnalyticsHrChrome(tab) {
+    if (!isFiloAnalyticsApp()) return;
+    if (!tab && typeof window.getAnalyticsSectionTab === 'function') {
+      tab = window.getAnalyticsSectionTab();
+    }
+    tab = tab === 'activity-log' ? 'activity-log' : 'metrics';
+    var tabsBar = document.getElementById('analyticsSectionTabs');
+    if (tabsBar) tabsBar.hidden = true;
+    var titleText = tab === 'activity-log' ? 'Log Attività' : 'Analytics';
+    var h1 = document.querySelector('#analytics h1.page-title, #analytics .fd-page-header__title');
+    if (h1) h1.textContent = titleText;
+    var lead = document.querySelector('#analytics .fd-analytics-lead');
+    if (lead) {
+      lead.textContent =
+        tab === 'activity-log'
+          ? 'Cronologia eventi pass, download, push e azioni sul wallet.'
+          : 'Metriche pass, installazioni wallet e andamento campagne per monitorare l\'adozione HR.';
+    }
+  }
   function enhanceAnalyticsSectionDesign() {
     var section = document.getElementById('analytics');
     if (!section || section.dataset.fdDsSection === '1') return;
@@ -8652,9 +8671,20 @@
     enhanceAnalyticsToolbars();
     wrapCampaignTable();
     enhanceActivityLogPanel();
+    syncAnalyticsHrChrome();
     if (typeof window.fdEnhanceResponsiveTables === 'function') {
       window.fdEnhanceResponsiveTables();
     }
+  }
+  function patchAnalyticsSubnav() {
+    if (window.__fdAnalyticsSubnavPatched || typeof window.switchAnalyticsSectionTab !== 'function') return;
+    window.__fdAnalyticsSubnavPatched = true;
+    var orig = window.switchAnalyticsSectionTab;
+    window.switchAnalyticsSectionTab = function (tab, options) {
+      var active = orig.apply(this, arguments);
+      if (isFiloAnalyticsApp()) syncAnalyticsHrChrome(active || tab);
+      return active;
+    };
   }
   function patchLoader() {
     if (window.__fdAnalyticsPatched) return;
@@ -8684,7 +8714,9 @@
         : { section: sectionId, tab: options.tab || '' };
       if (resolved.section === 'analytics' || sectionId === 'analytics' || sectionId === 'activity-log') {
         setTimeout(function () {
-          if (isFiloAnalyticsApp()) enhanceAnalyticsDom();
+          if (!isFiloAnalyticsApp()) return;
+          enhanceAnalyticsDom();
+          syncAnalyticsHrChrome(resolved.tab || (sectionId === 'activity-log' ? 'activity-log' : 'metrics'));
         }, 120);
       }
       return out;
@@ -8693,6 +8725,7 @@
   function init() {
     if (!isFiloAnalyticsApp()) return;
     patchLoader();
+    patchAnalyticsSubnav();
     patchNav();
     enhanceAnalyticsDom();
   }
