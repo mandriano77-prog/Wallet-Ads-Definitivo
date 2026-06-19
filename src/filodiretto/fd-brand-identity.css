@@ -94,6 +94,34 @@ html[data-app='filodiretto'] #brand-identity .a2w-bi-main {
   max-width: 560px;
 }
 
+/* HR brand-only: Informazioni base + Contatti affiancati, full width */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main {
+  max-width: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fd-space-4);
+  align-items: start;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--social {
+  grid-column: 1 / -1;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-contact-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-danger-zone {
+  grid-column: 1 / -1;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only + .a2w-bi-danger-zone.fd-danger-zone {
+  max-width: none;
+}
+
 html[data-app='filodiretto'] #brand-identity .fd-bi-aside {
   display: flex;
   flex-direction: column;
@@ -529,6 +557,10 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:not(:disabled) {
 
   html[data-app='filodiretto'] #brand-identity .a2w-bi-main {
     max-width: 100%;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main {
+    grid-template-columns: 1fr;
   }
 
   html[data-app='filodiretto'] #brand-identity .fd-bi-aside {
