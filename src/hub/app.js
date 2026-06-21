@@ -9,7 +9,12 @@
     viaggi: 'Viaggi',
     tech: 'Tech',
     servizi: 'Servizi',
-    altro: 'Altro'
+    altro: 'Altro',
+    career: 'Carriera',
+    time: 'Tempo',
+    learning: 'Formazione',
+    softskill: 'Soft skill',
+    purpose: 'Purpose'
   };
 
   const STORAGE_KEY = 'hub_bootstrap_v1';
@@ -21,6 +26,10 @@
     profile: null,
     brand: null,
     settings: null,
+    pga_settings: null,
+    coin_balance: 0,
+    experiences: [],
+    meData: null,
     merchants: [],
     category: '',
     search: '',
@@ -82,6 +91,64 @@
     showToast._t = setTimeout(() => el.classList.add('hidden'), 2400);
   }
 
+  function ensureModalShell() {
+    let modal = $('#hub-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'hub-modal';
+    modal.className = 'hub-modal hidden';
+    modal.innerHTML = `
+      <div class="hub-modal-backdrop" data-modal-close></div>
+      <div class="hub-modal-panel" role="dialog" aria-modal="true">
+        <h2 class="hub-modal-title" id="hub-modal-title"></h2>
+        <div class="hub-modal-body" id="hub-modal-body"></div>
+        <div class="hub-modal-actions" id="hub-modal-actions"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('[data-modal-close]')?.addEventListener('click', hideModal);
+    return modal;
+  }
+
+  function hideModal() {
+    const modal = $('#hub-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function showModal({ title, bodyHtml, actions }) {
+    const modal = ensureModalShell();
+    const titleEl = $('#hub-modal-title');
+    const bodyEl = $('#hub-modal-body');
+    const actionsEl = $('#hub-modal-actions');
+    if (titleEl) titleEl.textContent = title || '';
+    if (bodyEl) bodyEl.innerHTML = bodyHtml || '';
+    if (actionsEl) {
+      actionsEl.innerHTML = '';
+      (actions || []).forEach((action) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `hub-btn${action.secondary ? ' secondary' : ''}`;
+        btn.textContent = action.label;
+        btn.addEventListener('click', () => {
+          if (action.close !== false) hideModal();
+          action.onClick?.();
+        });
+        actionsEl.appendChild(btn);
+      });
+    }
+    modal.classList.remove('hidden');
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(`${apiBase()}${path}?token=${encodeURIComponent(getToken())}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(body || {}), token: getToken() })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  }
+
   function applyWhiteLabel() {
     const accent = state.settings?.accent_color || '#8B5CF6';
     document.documentElement.style.setProperty('--hub-accent', accent);
@@ -102,15 +169,73 @@
       subtitle.textContent = state.brand.name;
       subtitle.classList.remove('hidden');
     }
+    updateCoinWidget();
+  }
+
+  function pgaEnabled() {
+    return !!state.pga_settings?.enabled;
+  }
+
+  function updateCoinWidget() {
+    const pill = $('#hub-coin-pill');
+    if (!pill) return;
+    if (!pgaEnabled()) {
+      pill.classList.add('hidden');
+      return;
+    }
+    pill.classList.remove('hidden');
+    const val = $('#hub-coin-value');
+    if (val) val.textContent = String(state.coin_balance ?? 0);
+  }
+
+  function setTabbarPadding(on) {
+    const main = $('#hub-main');
+    if (!main) return;
+    main.classList.toggle('has-tabbar', on && pgaEnabled());
+  }
+
+  function renderTabBar(active) {
+    const bar = $('#hub-tabbar');
+    if (!bar) return;
+    if (!pgaEnabled() || active == null) {
+      bar.classList.add('hidden');
+      bar.innerHTML = '';
+      return;
+    }
+    bar.classList.remove('hidden');
+    bar.innerHTML = `
+      <a href="#" class="hub-tab${active === 'conv' ? ' active' : ''}" data-tab="conv">Convenzioni</a>
+      <a href="#" class="hub-tab${active === 'pga' ? ' active' : ''}" data-tab="pga">PGA</a>
+      <a href="#" class="hub-tab${active === 'me' ? ' active' : ''}" data-tab="me">Profilo</a>
+    `;
+    bar.querySelectorAll('[data-tab]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tab = link.getAttribute('data-tab');
+        if (tab === 'conv') navigate('/conv');
+        else if (tab === 'pga') navigate('/pga');
+        else if (tab === 'me') navigate('/me');
+      });
+    });
   }
 
   function parseRoute() {
     const path = window.location.pathname.replace(BASE, '') || '/';
     const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'error') return { name: 'error' };
-    if (parts[0] === 'qr' && parts[1]) return { name: 'qr', id: parts[1] };
-    if (parts[0] === 'merchants' && parts[1]) return { name: 'detail', id: parts[1] };
-    if (parts[0] === 'merchants' || parts.length === 0) return { name: 'list' };
+    if (parts[0] === 'me') return { name: 'me' };
+    if (parts[0] === 'pga' && parts[1]) return { name: 'pga-detail', id: parts[1] };
+    if (parts[0] === 'pga') return { name: 'pga' };
+    if (parts[0] === 'qr') {
+      const id = parts[1] === 'conv' ? parts[2] : parts[1];
+      if (id) return { name: 'qr', id };
+    }
+    if ((parts[0] === 'conv' || parts[0] === 'merchants') && parts[1]) {
+      return { name: 'detail', id: parts[1] };
+    }
+    if (parts[0] === 'conv' || parts[0] === 'merchants' || parts.length === 0) {
+      return { name: 'list' };
+    }
     return { name: 'list' };
   }
 
@@ -149,6 +274,9 @@
       state.profile = data.profile;
       state.brand = data.brand;
       state.settings = data.settings;
+      state.pga_settings = data.pga_settings || null;
+      state.coin_balance = Number(data.coin_balance || 0);
+      state.experiences = Array.isArray(data.experiences) ? data.experiences : [];
       state.merchants = Array.isArray(data.merchants) ? data.merchants : [];
       state.bootstrapped = true;
 
@@ -157,6 +285,9 @@
           profile: state.profile,
           brand: state.brand,
           settings: state.settings,
+          pga_settings: state.pga_settings,
+          coin_balance: state.coin_balance,
+          experiences: state.experiences,
           merchants: state.merchants,
           saved_at: Date.now()
         }));
@@ -166,7 +297,7 @@
 
       const route = parseRoute();
       if (route.name === 'list' && (window.location.pathname === BASE || window.location.pathname === `${BASE}/`)) {
-        navigate('/merchants');
+        navigate('/conv');
         return;
       }
       renderRoute();
@@ -177,6 +308,9 @@
           state.profile = cached.profile;
           state.brand = cached.brand;
           state.settings = cached.settings;
+          state.pga_settings = cached.pga_settings || null;
+          state.coin_balance = Number(cached.coin_balance || 0);
+          state.experiences = Array.isArray(cached.experiences) ? cached.experiences : [];
           state.merchants = cached.merchants;
           state.bootstrapped = true;
           applyWhiteLabel();
@@ -324,6 +458,20 @@
     }
   }
 
+  function formatDateTime(value) {
+    if (!value) return null;
+    try {
+      return new Date(value).toLocaleString('it-IT', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return value;
+    }
+  }
+
   function renderLoading() {
     $('#hub-back')?.classList.add('hidden');
     $('#hub-title').textContent = 'Convenzioni';
@@ -430,7 +578,7 @@
     $('#hub-main').addEventListener('click', (e) => {
       const card = e.target.closest('[data-merchant-id]');
       if (!card) return;
-      navigate(`/merchants/${card.getAttribute('data-merchant-id')}`);
+      navigate(`/conv/${card.getAttribute('data-merchant-id')}`);
     }, { once: true });
   }
 
@@ -528,8 +676,239 @@
     });
 
     $('#hub-show-qr')?.addEventListener('click', () => {
-      navigate(`/qr/${merchant.id}`);
+      navigate(`/qr/conv/${merchant.id}`);
     });
+  }
+
+  function renderPga() {
+    $('#hub-back')?.classList.add('hidden');
+    $('#hub-title').textContent = 'PGA Marketplace';
+
+    if (!pgaEnabled()) {
+      $('#hub-main').innerHTML = '<div class="hub-empty">PGA non attivo per la tua azienda.</div>';
+      return;
+    }
+
+    const welcome = state.pga_settings?.welcome_message
+      ? `<div class="hub-welcome">${esc(state.pga_settings.welcome_message)}</div>`
+      : '';
+
+    const rows = (Array.isArray(state.experiences) ? [...state.experiences] : [])
+      .sort((a, b) => (Number(a.display_order) || 100) - (Number(b.display_order) || 100));
+
+    const cards = rows.length
+      ? `<div class="hub-pga-grid">${rows.map((e) => {
+        const cat = e.category ? (CATEGORY_LABELS[e.category] || e.category) : '';
+        const maxYear = e.max_per_user_per_year != null
+          ? `<span class="hub-pga-hint">Max ${esc(String(e.max_per_user_per_year))}/anno</span>`
+          : '';
+        return `<button type="button" class="hub-pga-card" data-exp-id="${esc(e.id)}">
+          <div class="hub-pga-card-head">
+            <strong>${esc(e.name)}</strong>
+            <span class="hub-pga-cost">${esc(String(e.coin_cost))} coin</span>
+          </div>
+          ${cat ? `<span class="hub-pga-category">${esc(cat)}</span>` : ''}
+          ${e.description ? `<p class="hub-meta hub-pga-desc">${esc(e.description)}</p>` : ''}
+          ${maxYear}
+        </button>`;
+      }).join('')}</div>`
+      : '<div class="hub-empty">Nessuna esperienza disponibile.</div>';
+
+    $('#hub-main').innerHTML = `${welcome}${cards}`;
+    $('#hub-main').querySelectorAll('[data-exp-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        navigate(`/pga/${btn.getAttribute('data-exp-id')}`);
+      });
+    });
+  }
+
+  async function renderPgaDetail(id) {
+    $('#hub-back')?.classList.remove('hidden');
+    $('#hub-title').textContent = 'Esperienza';
+    $('#hub-main').innerHTML = '<div class="hub-loading"><div class="hub-spinner"></div><div>Caricamento…</div></div>';
+
+    try {
+      const res = await fetch(`${apiBase()}/hub/experiences/${encodeURIComponent(id)}?token=${encodeURIComponent(getToken())}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Esperienza non trovata');
+
+      const exp = data.experience;
+      const avail = data.availability || {};
+      const balance = Number(data.coin_balance ?? state.coin_balance ?? 0);
+      state.coin_balance = balance;
+      updateCoinWidget();
+
+      const cat = exp.category ? (CATEGORY_LABELS[exp.category] || exp.category) : '';
+      const limits = [];
+      if (avail.max_per_user_per_year != null) {
+        limits.push(`Limite personale: ${avail.user_bookings_this_year}/${avail.max_per_user_per_year} quest&apos;anno`);
+      }
+      if (avail.max_total_per_month != null) {
+        limits.push(`Posti mese: ${avail.slots_remaining_this_month ?? 0} rimasti su ${avail.max_total_per_month}`);
+      }
+
+      let blockReason = '';
+      if (!avail.can_redeem) {
+        if (avail.reason === 'MONTHLY_EXHAUSTED') blockReason = 'esaurito questo mese';
+        else if (avail.reason === 'YEARLY_LIMIT') blockReason = 'limite annuale raggiunto';
+      } else if (balance < Number(exp.coin_cost)) {
+        blockReason = 'saldo insufficiente';
+      }
+
+      const canRedeem = avail.can_redeem && balance >= Number(exp.coin_cost);
+      const slots = Array.isArray(data.suggested_slots) ? data.suggested_slots : [];
+      const slotPicker = exp.requires_booking && slots.length
+        ? `<label class="hub-field">
+            <span class="hub-field-label">Scegli data e ora</span>
+            <select class="hub-select" id="hub-pga-slot">
+              ${slots.map((s) => `<option value="${esc(s)}">${esc(formatDateTime(s))}</option>`).join('')}
+            </select>
+          </label>`
+        : '';
+
+      const afterBalance = balance - Number(exp.coin_cost);
+
+      $('#hub-main').innerHTML = `
+        <section class="hub-section hub-pga-detail">
+          <h2 style="margin-top:0">${esc(exp.name)}</h2>
+          ${cat ? `<span class="hub-pga-category">${esc(cat)}</span>` : ''}
+          ${exp.description ? `<p>${esc(exp.description)}</p>` : ''}
+          <span class="hub-pga-cost">${esc(String(exp.coin_cost))} coin</span>
+          ${limits.length ? `<ul class="hub-pga-limits">${limits.map((l) => `<li>${l}</li>`).join('')}</ul>` : ''}
+          ${slotPicker}
+          ${blockReason ? `<p class="hub-pga-blocked">${esc(blockReason)}</p>` : ''}
+          <button type="button" class="hub-btn" id="hub-pga-redeem"${canRedeem ? '' : ' disabled'}>
+            Riscatta con ${esc(String(exp.coin_cost))} coin
+          </button>
+        </section>
+      `;
+
+      const redeemBtn = $('#hub-pga-redeem');
+      if (!redeemBtn || !canRedeem) return;
+
+      redeemBtn.addEventListener('click', () => {
+        showModal({
+          title: 'Conferma riscatto',
+          bodyHtml: `
+            <p>Stai per riscattare <strong>${esc(exp.name)}</strong> per <strong>${esc(String(exp.coin_cost))} coin</strong>.</p>
+            <p class="hub-meta">Saldo dopo il riscatto: <strong>${esc(String(afterBalance))} coin</strong></p>
+          `,
+          actions: [
+            { label: 'Annulla', secondary: true },
+            {
+              label: 'Conferma riscatto',
+              onClick: async () => {
+                redeemBtn.disabled = true;
+                const slotEl = $('#hub-pga-slot');
+                const payload = {};
+                if (slotEl?.value) payload.scheduled_at = slotEl.value;
+                const out = await apiPost(`/hub/experiences/${encodeURIComponent(id)}/redeem`, payload);
+                if (!out.ok) {
+                  redeemBtn.disabled = false;
+                  showToast(out.data.error || 'Riscatto non riuscito');
+                  return;
+                }
+                state.coin_balance = Number(out.data.new_balance ?? afterBalance);
+                updateCoinWidget();
+                showToast('Prenotazione inviata!');
+                navigate('/me');
+              }
+            }
+          ]
+        });
+      });
+    } catch (err) {
+      $('#hub-main').innerHTML = `<div class="hub-empty">${esc(err.message || 'Impossibile caricare l&apos;esperienza')}</div>`;
+    }
+  }
+
+  async function renderMe() {
+    $('#hub-back')?.classList.add('hidden');
+    $('#hub-title').textContent = 'Profilo';
+    $('#hub-main').innerHTML = '<div class="hub-loading"><div class="hub-spinner"></div><div>Caricamento…</div></div>';
+
+    if (!pgaEnabled()) {
+      $('#hub-main').innerHTML = '<div class="hub-empty">PGA non attivo per la tua azienda.</div>';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiBase()}/hub/me?token=${encodeURIComponent(getToken())}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Errore profilo');
+
+      state.meData = data;
+      state.coin_balance = Number(data.coin_balance || 0);
+      updateCoinWidget();
+
+      const profileName = [data.profile?.first_name, data.profile?.last_name]
+        .filter(Boolean)
+        .join(' ') || 'Dipendente';
+      const ledger = Array.isArray(data.ledger) ? data.ledger : [];
+      const bookings = Array.isArray(data.bookings) ? data.bookings : [];
+
+      const ledgerHtml = ledger.length
+        ? `<ul class="hub-ledger-list">${ledger.map((row) => {
+          const amt = Number(row.coin_amount || 0);
+          const cls = amt >= 0 ? 'positive' : 'negative';
+          const sign = amt >= 0 ? '+' : '';
+          const when = formatDateTime(row.created_at);
+          return `<li class="hub-ledger-item ${cls}">
+            <div class="hub-ledger-row">
+              <span>${esc(row.description || row.action_key || 'Movimento')}</span>
+              <span class="hub-ledger-amount">${sign}${amt}</span>
+            </div>
+            ${when ? `<p class="hub-meta">${esc(when)}</p>` : ''}
+          </li>`;
+        }).join('')}</ul>`
+        : '<div class="hub-empty">Nessun movimento ancora.</div>';
+
+      const bookingsHtml = bookings.length
+        ? `<ul class="hub-booking-list">${bookings.map((b) => {
+          const when = formatDateTime(b.created_at);
+          const sched = b.scheduled_at ? formatDateTime(b.scheduled_at) : null;
+          const status = b.status || 'pending';
+          const cancelBtn = status === 'pending'
+            ? `<button type="button" class="hub-btn secondary hub-booking-cancel" data-booking-id="${esc(b.id)}">Annulla</button>`
+            : '';
+          return `<li class="hub-booking-item">
+            <strong>${esc(b.experience_name || 'Esperienza')}</strong>
+            <p class="hub-meta">${esc(status)}${when ? ` · ${esc(when)}` : ''}${sched ? `<br>Slot: ${esc(sched)}` : ''}</p>
+            ${cancelBtn}
+          </li>`;
+        }).join('')}</ul>`
+        : '';
+
+      $('#hub-main').innerHTML = `
+        <p class="hub-meta" style="margin-top:0">${esc(profileName)}</p>
+        <div class="hub-me-balance">
+          <div class="hub-me-balance-value">${esc(String(data.coin_balance ?? 0))}</div>
+          <div class="hub-me-balance-label">Coin disponibili</div>
+        </div>
+        <section class="hub-section"><h2>Ultimi movimenti</h2>${ledgerHtml}</section>
+        ${bookings.length ? `<section class="hub-section"><h2>Prenotazioni</h2>${bookingsHtml}</section>` : ''}
+      `;
+
+      $('#hub-main').querySelectorAll('.hub-booking-cancel').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const bookingId = btn.getAttribute('data-booking-id');
+          if (!bookingId) return;
+          btn.disabled = true;
+          const out = await apiPost(`/hub/bookings/${encodeURIComponent(bookingId)}/cancel`, {});
+          if (!out.ok) {
+            btn.disabled = false;
+            showToast(out.data.error || 'Annullamento non riuscito');
+            return;
+          }
+          state.coin_balance = Number(out.data.new_balance ?? state.coin_balance);
+          updateCoinWidget();
+          showToast('Prenotazione annullata — coin rimborsati');
+          renderMe();
+        });
+      });
+    } catch (err) {
+      $('#hub-main').innerHTML = `<div class="hub-empty">${esc(err.message || 'Impossibile caricare il profilo')}</div>`;
+    }
   }
 
   async function renderQr(merchantId) {
@@ -579,30 +958,66 @@
       return;
     }
     const route = parseRoute();
+    updateCoinWidget();
+
     if (route.name === 'error') {
+      renderTabBar(null);
+      setTabbarPadding(false);
       renderError();
       return;
     }
+    if (route.name === 'me') {
+      renderTabBar('me');
+      setTabbarPadding(true);
+      renderMe();
+      return;
+    }
+    if (route.name === 'pga') {
+      renderTabBar('pga');
+      setTabbarPadding(true);
+      renderPga();
+      return;
+    }
+    if (route.name === 'pga-detail') {
+      renderTabBar('pga');
+      setTabbarPadding(true);
+      renderPgaDetail(route.id);
+      return;
+    }
     if (route.name === 'detail') {
+      renderTabBar('conv');
+      setTabbarPadding(true);
       renderDetail(route.id);
       return;
     }
     if (route.name === 'qr') {
+      renderTabBar(null);
+      setTabbarPadding(false);
       renderQr(route.id);
       return;
     }
+    renderTabBar('conv');
+    setTabbarPadding(true);
     renderList();
   }
 
   $('#hub-back')?.addEventListener('click', () => {
     const route = parseRoute();
     if (route.name === 'qr') {
-      const merchantId = route.id;
-      navigate(`/merchants/${merchantId}`);
+      navigate(`/conv/${route.id}`);
       return;
     }
-    navigate('/merchants');
+    if (route.name === 'pga-detail') {
+      navigate('/pga');
+      return;
+    }
+    if (route.name === 'detail') {
+      navigate('/conv');
+      return;
+    }
+    navigate('/conv');
   });
+  $('#hub-coin-link')?.addEventListener('click', () => navigate('/me'));
   window.addEventListener('popstate', renderRoute);
 
   registerSw();

@@ -26,10 +26,10 @@
                 var fdLegacyMediaHide = document.createElement('style');
                 fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
                 document.head.appendChild(fdLegacyMediaHide);
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260621-tpl-flip-fix';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260621-tpl-flip-fix';
-                var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
-                var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js'];
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260621-pga-s4';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260621-pga-s4';
+                var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
+                var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
                 if (useFdBundle) {
                     var bundleCss = document.createElement('link');
@@ -1392,6 +1392,8 @@
                     <div class="nav-item" onclick="nav('gamification')" data-section-id="gamification" data-requires-perm="challenges" role="button" tabindex="0">Challenge</div>
                     <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-requires-perm="employees" data-menu-key="nav_leads" data-menu-default="Contatti" role="button" tabindex="0">Contatti <span id="navNoMatricolaBadge" class="nav-badge" style="display:none;" title="Dipendenti senza matricola"></span></div>
                     <div class="nav-item" onclick="nav('conventions')" data-section-id="conventions" data-requires-perm="conventions" role="button" tabindex="0">Convenzioni</div>
+                    <div class="nav-item" onclick="nav('pga-catalog')" data-section-id="pga-catalog" data-requires-perm="pga_catalog" role="button" tabindex="0">PGA Catalog</div>
+                    <div class="nav-item" onclick="nav('pga-engagement')" data-section-id="pga-engagement" data-requires-perm="pga_engagement" role="button" tabindex="0">Engagement Coin</div>
                 </div>
             </details>
 
@@ -2874,6 +2876,7 @@
                 <h1 class="sec-title page-title">Convenzioni</h1>
                 <div class="tabs-bar a2w-section-tabs fd-conventions-tabs" role="tablist" aria-label="Sezione Convenzioni" id="conventionsSectionTabs">
                     <button type="button" class="tabs-bar__tab active" role="tab" id="conventionsTab_merchants" aria-selected="true" aria-controls="conventionsTabPanel_merchants" onclick="switchConventionsTab('merchants')">Merchant</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="conventionsTab_onboarding" aria-selected="false" aria-controls="conventionsTabPanel_onboarding" onclick="switchConventionsTab('onboarding')">Avvio rapido</button>
                     <button type="button" class="tabs-bar__tab" role="tab" id="conventionsTab_settings" aria-selected="false" aria-controls="conventionsTabPanel_settings" onclick="switchConventionsTab('settings')">Impostazioni Hub</button>
                     <button type="button" class="tabs-bar__tab" role="tab" id="conventionsTab_guide" aria-selected="false" aria-controls="conventionsTabPanel_guide" onclick="switchConventionsTab('guide')">Guida</button>
                 </div>
@@ -2906,6 +2909,36 @@
                             </tr></thead>
                             <tbody><tr><td colspan="6" style="color:var(--text2)">Caricamento…</td></tr></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div id="conventionsTabPanel_onboarding" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="conventionsTab_onboarding" hidden>
+                    <div class="fd-conventions-guide-steps">
+                        <div class="fd-conventions-guide-step">
+                            <span class="fd-conventions-guide-step__num">1</span>
+                            <div>
+                                <strong>Importa merchant CSV</strong>
+                                <p style="margin:8px 0 12px;color:var(--text2);font-size:13px">Carica le convenzioni aziendali dalla tab Merchant.</p>
+                                <button type="button" class="btn sec small" onclick="switchConventionsTab('merchants')">Vai a Merchant</button>
+                                <button type="button" class="btn sec small" id="hubOnboardingTemplateBtn" style="margin-left:8px">Scarica template</button>
+                            </div>
+                        </div>
+                        <div class="fd-conventions-guide-step">
+                            <span class="fd-conventions-guide-step__num">2</span>
+                            <div>
+                                <strong>Attiva PGA</strong>
+                                <p style="margin:8px 0 12px;color:var(--text2);font-size:13px">Abilita il catalogo esperienze e le regole coin per i dipendenti.</p>
+                                <button type="button" class="btn sec small" onclick="nav('pga-catalog')">Vai a PGA Catalog</button>
+                            </div>
+                        </div>
+                        <div class="fd-conventions-guide-step">
+                            <span class="fd-conventions-guide-step__num">3</span>
+                            <div>
+                                <strong>Rivedi le esperienze</strong>
+                                <p style="margin:8px 0 12px;color:var(--text2);font-size:13px">Controlla costi coin, limiti annuali e prenotazioni in attesa.</p>
+                                <button type="button" class="btn sec small" onclick="nav('pga-catalog'); if(typeof switchPgaTab==='function') switchPgaTab('catalog')">Catalogo esperienze</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2964,6 +2997,140 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- PGA CATALOG -->
+            <div id="pga-catalog" class="section" data-rbac-section="pga-catalog" hidden aria-hidden="true">
+                <h1 class="sec-title page-title">PGA Catalog</h1>
+                <div class="tabs-bar a2w-section-tabs fd-pga-tabs" role="tablist" aria-label="Sezione PGA Catalog" id="pgaCatalogSectionTabs">
+                    <button type="button" class="tabs-bar__tab active" role="tab" id="pgaTab_catalog" aria-selected="true" aria-controls="pgaTabPanel_catalog" onclick="switchPgaTab('catalog')">Catalogo</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="pgaTab_bookings" aria-selected="false" aria-controls="pgaTabPanel_bookings" onclick="switchPgaTab('bookings')">Prenotazioni</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="pgaTab_coins" aria-selected="false" aria-controls="pgaTabPanel_coins" onclick="switchPgaTab('coins')">Regole coin</button>
+                    <button type="button" class="tabs-bar__tab" role="tab" id="pgaTab_settings" aria-selected="false" aria-controls="pgaTabPanel_settings" onclick="switchPgaTab('settings')">Impostazioni</button>
+                </div>
+
+                <div id="pgaOnboardingBanner" class="fd-pga-onboarding-banner" hidden></div>
+
+                <div id="pgaTabPanel_catalog" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="pgaTab_catalog">
+                    <div class="fd-pga-toolbar">
+                        <div id="pgaEnabledToggleHost"></div>
+                    </div>
+                    <div class="fd-pga-table-wrap">
+                        <table class="table" id="pgaExperiencesTable">
+                            <caption class="sr-only">Catalogo esperienze PGA</caption>
+                            <thead><tr>
+                                <th>Nome</th><th>Categoria</th><th>Costo coin</th><th>Tipo</th><th>Stato</th><th>Max/anno</th><th></th>
+                            </tr></thead>
+                            <tbody><tr><td colspan="7" style="color:var(--text2)">Caricamento…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="pgaTabPanel_bookings" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="pgaTab_bookings" hidden>
+                    <div class="fd-pga-toolbar">
+                        <label for="pgaBookingStatusFilter">Stato</label>
+                        <select id="pgaBookingStatusFilter" class="fd-pga-range-select">
+                            <option value="">Tutti</option>
+                            <option value="pending" selected>In attesa</option>
+                            <option value="confirmed">Confermate</option>
+                            <option value="delivered">Erogate</option>
+                            <option value="cancelled">Annullate</option>
+                        </select>
+                    </div>
+                    <div class="fd-pga-table-wrap">
+                        <table class="table" id="pgaBookingsTable">
+                            <caption class="sr-only">Prenotazioni PGA</caption>
+                            <thead><tr>
+                                <th>Pass</th><th>Esperienza</th><th>Data</th><th>Stato</th><th>Azioni</th>
+                            </tr></thead>
+                            <tbody><tr><td colspan="5" style="color:var(--text2)">Caricamento…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="pgaTabPanel_coins" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="pgaTab_coins" hidden>
+                    <div class="fd-pga-table-wrap">
+                        <table class="table" id="pgaCoinActionsTable">
+                            <caption class="sr-only">Regole assegnazione coin</caption>
+                            <thead><tr>
+                                <th>Azione</th><th>Descrizione</th><th>Coin</th><th></th>
+                            </tr></thead>
+                            <tbody><tr><td colspan="4" style="color:var(--text2)">Caricamento…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="pgaTabPanel_settings" class="a2w-section-tab-panel" role="tabpanel" aria-labelledby="pgaTab_settings" hidden>
+                    <div class="card fd-pga-card">
+                        <h2 class="sec-title" style="font-size:16px;margin-bottom:16px;">Impostazioni PGA</h2>
+                        <form id="pgaSettingsForm" class="fd-pga-settings-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="pgaSettingsWelcome">Messaggio di benvenuto PGA</label>
+                                <textarea id="pgaSettingsWelcome" rows="3" placeholder="Benvenuto nel programma PGA"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="pgaSettingsNotifyEmail">Email notifiche HR</label>
+                                <input type="email" id="pgaSettingsNotifyEmail" placeholder="hr@azienda.it">
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="pgaSettingsNotifyBooking" checked> Notifica HR su nuova prenotazione</label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="pgaSettingsBudget">Budget annuale esterno (€)</label>
+                                <input type="number" id="pgaSettingsBudget" min="0" step="0.01" placeholder="5000">
+                            </div>
+                            <div>
+                                <button type="submit" class="btn fd-rbac-write">Salva impostazioni</button>
+                            </div>
+                        </form>
+                        <div class="fd-pga-manual-grant">
+                            <h3 class="sec-title" style="font-size:14px;margin-bottom:12px;">Assegnazione manuale coin</h3>
+                            <form id="pgaManualGrantForm" class="fd-pga-form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="pgaManualPassSerial">Serial pass</label>
+                                    <input type="text" id="pgaManualPassSerial" placeholder="es. ABC123…" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="pgaManualCoinAmount">Coin da assegnare</label>
+                                    <input type="number" id="pgaManualCoinAmount" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="pgaManualDescription">Note (opzionale)</label>
+                                    <input type="text" id="pgaManualDescription" placeholder="Motivo assegnazione">
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn fd-rbac-write">Assegna coin</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PGA ENGAGEMENT -->
+            <div id="pga-engagement" class="section" data-rbac-section="pga-engagement" hidden aria-hidden="true">
+                <h1 class="sec-title page-title">Engagement Coin</h1>
+                <div class="fd-pga-toolbar">
+                    <label for="pgaEngagementDays">Periodo</label>
+                    <select id="pgaEngagementDays" class="fd-pga-range-select">
+                        <option value="30" selected>Ultimi 30 giorni</option>
+                        <option value="90">Ultimi 90 giorni</option>
+                    </select>
+                    <button type="button" class="btn sec small" id="pgaEngagementExportBtn" data-allow-readonly="true">Esporta CSV</button>
+                </div>
+                <div id="pgaEngagementKpis" class="fd-pga-kpi-grid" aria-live="polite"></div>
+                <div class="card fd-pga-card">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Top 5 esperienze</div>
+                    <div id="pgaEngagementTopExp"></div>
+                </div>
+                <div class="card fd-pga-card">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Top 5 azioni coin</div>
+                    <div id="pgaEngagementTopActions"></div>
+                </div>
+                <div class="card fd-pga-card">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Attività per giorno settimana</div>
+                    <div id="pgaEngagementByWeekday"></div>
                 </div>
             </div>
 
@@ -3128,6 +3295,32 @@
             </div>
             <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
                 <button type="button" class="btn sec" data-hub-modal-close>Annulla</button>
+                <button type="submit" class="btn fd-rbac-write">Salva</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- PGA Experience Modal -->
+<div id="pgaExperienceModal" class="modal" data-rbac-section="pga-catalog" style="display:none;">
+    <div class="modal-content" style="max-width:480px;width:96%;">
+        <button type="button" class="modal-close" data-pga-modal-close aria-label="Chiudi">&times;</button>
+        <div class="modal-header">Modifica esperienza</div>
+        <p style="margin:0 0 16px;color:var(--text2);font-size:14px"><strong id="pgaExpModalName"></strong></p>
+        <form id="pgaExperienceForm" class="fd-pga-form-grid">
+            <div class="form-group">
+                <label class="form-label" for="pgaExpModalCoinCost">Costo coin</label>
+                <input type="number" id="pgaExpModalCoinCost" min="0" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pgaExpModalMaxYear">Max per utente / anno</label>
+                <input type="number" id="pgaExpModalMaxYear" min="0" placeholder="Illimitato se vuoto">
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="pgaExpModalActive" checked> Attiva</label>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+                <button type="button" class="btn sec" data-pga-modal-close>Annulla</button>
                 <button type="submit" class="btn fd-rbac-write">Salva</button>
             </div>
         </form>
@@ -4510,6 +4703,12 @@ function nav(id, options) {
         },
         conventions: () => {
             if (typeof loadConventionsHub === 'function') loadConventionsHub();
+        },
+        'pga-catalog': () => {
+            if (typeof loadPgaCatalog === 'function') loadPgaCatalog();
+        },
+        'pga-engagement': () => {
+            if (typeof loadPgaEngagement === 'function') loadPgaEngagement();
         }
     };
     if (loaders[id]) loaders[id]();
@@ -6599,7 +6798,7 @@ async function saveTemplate() {
     loadTemplates();
 }
 
-function previewHubUrl() {
+function previewHubAppUrl(subPath) {
     const host = window.location.hostname;
     let base;
     if (host === 'localhost' || host === '127.0.0.1') {
@@ -6609,9 +6808,14 @@ function previewHubUrl() {
     } else {
         base = 'https://hub.filodiretto.app';
     }
+    const segment = subPath ? `/${String(subPath).replace(/^\/+/, '')}` : '';
     const params = new URLSearchParams({ token: 'TOKEN_AUTOMATICO' });
     if (currentBrandSlug) params.set('brand', currentBrandSlug);
-    return `${base.replace(/\/+$/, '')}/?${params.toString()}`;
+    return `${base.replace(/\/+$/, '')}${segment}?${params.toString()}`;
+}
+
+function previewHubUrl() {
+    return previewHubAppUrl('conv');
 }
 
 function updatePassPreview() {
@@ -6647,6 +6851,7 @@ function updatePassPreview() {
             hrHf.innerHTML = '';
         }
         document.getElementById('ppSecondary').innerHTML =
+            '<div class="pp-field"><div class="pp-field-label">COIN</div><div class="pp-field-value">247</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>';
         document.getElementById('ppAuxiliary').innerHTML =
@@ -6666,6 +6871,8 @@ function updatePassPreview() {
         );
         addBackText('CONTATTI HR', 'Gestiti in Identità Brand');
         addBackLink('HUB CONVENZIONI', previewHubUrl());
+        addBackLink('PGA · GROWTH MARKETPLACE', previewHubAppUrl('pga'));
+        addBackLink('ACTIVITY & COINS', previewHubAppUrl('me'));
         addBackLink('PROFILO PERSONALE', `${window.location.origin}/portal/?t=TOKEN_AUTOMATICO`);
         document.getElementById('ppBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Configura il retro HR</div>';
         return;

@@ -60,11 +60,16 @@ function verifyHubToken(token) {
 }
 
 function buildHubUrl(token, brandSlug) {
+  return buildHubAppUrl(token, brandSlug, 'conv');
+}
+
+function buildHubAppUrl(token, brandSlug, appPath = '') {
   if (!token) return null;
   const base = getHubBaseUrl();
+  const segment = appPath ? `/${String(appPath).replace(/^\/+/, '')}` : '';
   const params = new URLSearchParams({ token: String(token) });
   if (brandSlug) params.set('brand', String(brandSlug));
-  return `${base}/?${params.toString()}`;
+  return `${base.replace(/\/+$/, '')}${segment}?${params.toString()}`;
 }
 
 module.exports = {
@@ -73,5 +78,6 @@ module.exports = {
   getHubBaseUrl,
   signHubToken,
   verifyHubToken,
-  buildHubUrl
+  buildHubUrl,
+  buildHubAppUrl
 };

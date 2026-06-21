@@ -29,10 +29,14 @@ test('fd-templates.css applies flip transform for Filo template modal', () => {
 test('index.html HR pass preview includes HUB CONVENZIONI back link', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /function previewHubUrl\(\)/);
+  assert.match(html, /function previewHubAppUrl/);
+  assert.match(html, /previewHubAppUrl\('conv'\)/);
   assert.match(html, /TOKEN_AUTOMATICO/);
   assert.match(html, /addBackLink\('HUB CONVENZIONI', previewHubUrl\(\)\)/);
+  assert.match(html, /addBackLink\('PGA · GROWTH MARKETPLACE'/);
   assert.match(html, /addBackLink\('PROFILO PERSONALE'/);
   const hubIdx = html.indexOf("addBackLink('HUB CONVENZIONI', previewHubUrl())");
+  const pgaIdx = html.indexOf("addBackLink('PGA · GROWTH MARKETPLACE'");
   const portalIdx = html.indexOf("addBackLink('PROFILO PERSONALE'");
-  assert.ok(hubIdx > -1 && portalIdx > -1 && hubIdx < portalIdx, 'HUB CONVENZIONI must appear before PROFILO PERSONALE');
+  assert.ok(hubIdx > -1 && pgaIdx > hubIdx && portalIdx > pgaIdx);
 });

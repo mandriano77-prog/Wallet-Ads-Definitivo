@@ -26,7 +26,9 @@
                 { id: 'instant-win', label: 'Reward' },
                 { id: 'gamification', label: 'Challenge' },
                 { id: 'leads', label: 'Contatti' },
-                { id: 'conventions', label: 'Convenzioni' }
+                { id: 'conventions', label: 'Convenzioni' },
+                { id: 'pga-catalog', label: 'PGA Catalog' },
+                { id: 'pga-engagement', label: 'Engagement Coin' }
             ]
         },
         {

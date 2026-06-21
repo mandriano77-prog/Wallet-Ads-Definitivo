@@ -148,7 +148,20 @@ function sendHubSpa(req, res) {
 }
 
 app.use('/hub', express.static(hubDir));
-app.get(['/hub', '/hub/', '/hub/merchants', '/hub/merchants/:id', '/hub/qr/:merchantId', '/hub/error'], sendHubSpa);
+app.get([
+  '/hub',
+  '/hub/',
+  '/hub/conv',
+  '/hub/conv/:id',
+  '/hub/merchants',
+  '/hub/merchants/:id',
+  '/hub/pga',
+  '/hub/pga/:id',
+  '/hub/me',
+  '/hub/qr/:merchantId',
+  '/hub/qr/conv/:merchantId',
+  '/hub/error'
+], sendHubSpa);
 
 app.use((req, res, next) => {
   if (!isHubSubdomain(req)) return next();
@@ -158,7 +171,19 @@ app.use((req, res, next) => {
   express.static(hubDir)(req, res, next);
 });
 
-app.get(['/merchants', '/merchants/:id', '/qr/:merchantId', '/error'], (req, res, next) => {
+app.get([
+  '/',
+  '/conv',
+  '/conv/:id',
+  '/merchants',
+  '/merchants/:id',
+  '/pga',
+  '/pga/:id',
+  '/me',
+  '/qr/:merchantId',
+  '/qr/conv/:merchantId',
+  '/error'
+], (req, res, next) => {
   if (!isHubSubdomain(req)) return next();
   sendHubSpa(req, res);
 });
@@ -475,6 +500,9 @@ getDb().then((db) => {
       }
     };
     console.log('📧 Activation reminder cron started (every 6h)');
+
+    const { scheduleCoinAnniversariesJob } = require('./engine/coin-anniversaries');
+    scheduleCoinAnniversariesJob();
     setInterval(runHrReminderTick, 6 * 60 * 60 * 1000);
     setTimeout(runHrReminderTick, 2 * 60 * 1000);
   });

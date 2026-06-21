@@ -228,7 +228,7 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null }) {
+function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null, pgaUrl = null, meUrl = null }) {
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
@@ -242,6 +242,26 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       label: 'HUB CONVENZIONI',
       url: hubUrl,
       linkText: 'Apri convenzioni'
+    });
+  }
+
+  if (pgaUrl) {
+    sections.push({
+      kind: 'link',
+      key: 'pga_marketplace',
+      label: 'PGA · GROWTH MARKETPLACE',
+      url: pgaUrl,
+      linkText: 'Apri marketplace'
+    });
+  }
+
+  if (meUrl) {
+    sections.push({
+      kind: 'link',
+      key: 'coin_activity',
+      label: 'ACTIVITY & COINS',
+      url: meUrl,
+      linkText: 'Vedi coin e attività'
     });
   }
 
@@ -297,7 +317,7 @@ function walletImageUrls({ apiBase, brand, template }) {
 /**
  * Build unified employee_pass from DB rows.
  */
-function buildEmployeePass({ brand, template, instance, member, brandConfig, apiBase, portalUrl = null, hubUrl = null }) {
+function buildEmployeePass({ brand, template, instance, member, brandConfig, apiBase, portalUrl = null, hubUrl = null, pgaUrl = null, meUrl = null, coinBalance = null }) {
   const cfg = brandConfig || brand?.config || {};
   const profile = resolveMemberProfile(member, instance);
   const colors = resolveEmployeePassColors(template, cfg);
@@ -332,8 +352,19 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     member,
     brandConfig: cfg,
     portalUrl,
-    hubUrl
+    hubUrl,
+    pgaUrl,
+    meUrl
   });
+
+  const primary = [];
+  if (coinBalance != null && Number.isFinite(Number(coinBalance))) {
+    primary.push({
+      key: 'coin_balance',
+      label: 'COIN',
+      value: String(Math.max(0, Math.floor(Number(coinBalance))))
+    });
+  }
 
   const barcodeValue = instance?.serial_number || '';
 
@@ -357,7 +388,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
       background: !!tplImages.background,
       logo: !!tplImages.logo
     },
-    front: { secondary, auxiliary },
+    front: { primary, secondary, auxiliary },
     backSections,
     barcode: { value: barcodeValue }
   };
@@ -399,7 +430,7 @@ function resolvePassHeaderHint(template, brandConfig) {
 function toApplePass(employeePass) {
   const passStructure = {
     headerFields: employeePass.headerHint ? [employeePass.headerHint] : [],
-    primaryFields: [],
+    primaryFields: employeePass.front.primary || [],
     secondaryFields: employeePass.front.secondary || [],
     auxiliaryFields: employeePass.front.auxiliary || []
   };
