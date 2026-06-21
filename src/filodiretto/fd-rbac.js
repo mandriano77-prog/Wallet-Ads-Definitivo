@@ -11,19 +11,22 @@
       brand_identity: 'full', media_library: 'full', templates: 'full', passes: 'full',
       push: 'full', rewards: 'full', challenges: 'full', employees: 'full',
       audiences: 'full', analytics: 'full', activity_log: 'none', users: 'none', welcome: 'full',
-      profile: 'full', conventions: 'full'
+      profile: 'full', conventions: 'full',
+      pga_catalog: 'full', pga_engagement: 'full'
     },
     sender: {
       brand_identity: 'none', media_library: 'read', templates: 'read', passes: 'read',
       push: 'full', rewards: 'read', challenges: 'read', employees: 'none',
       audiences: 'read', analytics: 'read', activity_log: 'none', users: 'none', welcome: 'read',
-      profile: 'full', conventions: 'none'
+      profile: 'full', conventions: 'none',
+      pga_catalog: 'none', pga_engagement: 'none'
     },
     reporter: {
       brand_identity: 'read', media_library: 'none', templates: 'none', passes: 'read',
       push: 'none', rewards: 'none', challenges: 'none', employees: 'none',
       audiences: 'none', analytics: 'read', activity_log: 'read', users: 'none', welcome: 'read',
-      profile: 'full', conventions: 'read'
+      profile: 'full', conventions: 'read',
+      pga_catalog: 'read', pga_engagement: 'read'
     }
   };
 
@@ -42,7 +45,9 @@
     'activity-log': 'activity_log',
     users: 'users',
     profile: 'profile',
-    conventions: 'conventions'
+    conventions: 'conventions',
+    'pga-catalog': 'pga_catalog',
+    'pga-engagement': 'pga_engagement'
   };
 
   var DEFAULT_LANDING = {

@@ -96,11 +96,13 @@
     if (panel && !panel.hidden) return 'settings';
     panel = document.getElementById('conventionsTabPanel_guide');
     if (panel && !panel.hidden) return 'guide';
+    panel = document.getElementById('conventionsTabPanel_onboarding');
+    if (panel && !panel.hidden) return 'onboarding';
     return 'merchants';
   }
 
   function setConventionsTabUi(tab) {
-    ['merchants', 'settings', 'guide'].forEach(function (t) {
+    ['merchants', 'onboarding', 'settings', 'guide'].forEach(function (t) {
       var btn = document.getElementById('conventionsTab_' + t);
       var panel = document.getElementById('conventionsTabPanel_' + t);
       var on = t === tab;
@@ -521,6 +523,9 @@
 
     var guideTemplateBtn = document.getElementById('hubGuideTemplateBtn');
     if (guideTemplateBtn) guideTemplateBtn.addEventListener('click', downloadCsvTemplate);
+
+    var onboardingTemplateBtn = document.getElementById('hubOnboardingTemplateBtn');
+    if (onboardingTemplateBtn) onboardingTemplateBtn.addEventListener('click', downloadCsvTemplate);
 
     var catFilter = document.getElementById('hubMerchantCategoryFilter');
     if (catFilter) {

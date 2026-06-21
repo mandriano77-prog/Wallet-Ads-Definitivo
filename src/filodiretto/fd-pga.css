@@ -1,0 +1,167 @@
+/**
+ * FD — PGA Catalog HR dashboard (Sprint 4).
+ */
+
+html[data-app='filodiretto'] #pga-catalog.pga--fd-ds,
+html[data-app='filodiretto'] #pga-engagement.pga--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-header,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-header {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-lead,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-lead {
+  max-width: 65ch;
+  color: var(--fd-color-text-secondary, var(--text2));
+  font-size: var(--fd-font-size-sm, 13px);
+  margin: var(--fd-space-2, 8px) 0 0;
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-tabs,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-tabs {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-3, 12px);
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  padding: var(--fd-space-2, 8px) var(--fd-space-3, 12px);
+  border: 1px solid var(--fd-border-subtle, var(--border));
+  border-radius: var(--fd-radius-md, 12px);
+  background: var(--fd-color-bg-elevated, var(--surface));
+  font-size: var(--fd-font-size-sm, 13px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-kpi-grid,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--fd-space-3, 12px);
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] .fd-pga-kpi {
+  padding: var(--fd-space-3, 12px) var(--fd-space-4, 16px);
+  border: 1px solid var(--fd-border-subtle, var(--border));
+  border-radius: var(--fd-radius-md, 12px);
+  background: var(--fd-color-bg-elevated, var(--surface));
+}
+
+html[data-app='filodiretto'] .fd-pga-kpi__label {
+  font-size: var(--fd-font-size-xs, 11px);
+  color: var(--fd-color-text-secondary, var(--text2));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+html[data-app='filodiretto'] .fd-pga-kpi__value {
+  font-size: var(--fd-font-size-xl, 22px);
+  font-weight: 700;
+  margin-top: var(--fd-space-1, 4px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-card,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-card {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-table-wrap,
+html[data-app='filodiretto'] #pga-engagement .fd-pga-table-wrap {
+  overflow-x: auto;
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-settings-grid {
+  display: grid;
+  gap: var(--fd-space-4, 16px);
+  max-width: 560px;
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-booking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-1, 4px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-booking-actions .btn {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-onboarding-banner {
+  padding: var(--fd-space-3, 12px) var(--fd-space-4, 16px);
+  margin-bottom: var(--fd-space-4, 16px);
+  border: 1px dashed var(--fd-border-strong, var(--border));
+  border-radius: var(--fd-radius-md, 12px);
+  background: var(--fd-color-bg-subtle, rgba(139, 92, 246, 0.06));
+  font-size: var(--fd-font-size-sm, 13px);
+}
+
+html[data-app='filodiretto'] #pga-engagement .fd-pga-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #pga-engagement .fd-pga-range-select {
+  min-height: 36px;
+  padding: var(--fd-space-2, 8px) var(--fd-space-3, 12px);
+  border: 1px solid var(--fd-border-strong, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  font-size: var(--fd-font-size-sm, 13px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-form-grid {
+  display: grid;
+  gap: var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #pga-catalog .fd-pga-manual-grant {
+  margin-top: var(--fd-space-4, 16px);
+  padding-top: var(--fd-space-4, 16px);
+  border-top: 1px solid var(--fd-border-subtle, var(--border));
+}
+
+html[data-app='filodiretto'] .fd-pga-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+html[data-app='filodiretto'] .fd-pga-status-badge--pending {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+
+html[data-app='filodiretto'] .fd-pga-status-badge--confirmed {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+html[data-app='filodiretto'] .fd-pga-status-badge--delivered {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+html[data-app='filodiretto'] .fd-pga-status-badge--cancelled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}

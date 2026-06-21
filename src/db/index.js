@@ -3998,6 +3998,28 @@ async function listExperienceBookings(experienceId, brandId, { status } = {}) {
   return res.rows;
 }
 
+async function listBrandBookings(brandId, { status, limit } = {}) {
+  const clauses = ['b.brand_id = $1'];
+  const params = [brandId];
+  let idx = 2;
+  if (status) {
+    clauses.push(`b.status = $${idx++}`);
+    params.push(status);
+  }
+  const limitVal = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+  params.push(limitVal);
+  const res = await pool.query(
+    `SELECT b.*, e.name AS experience_name
+     FROM experience_bookings b
+     JOIN experiences_catalog e ON e.id = b.experience_id
+     WHERE ${clauses.join(' AND ')}
+     ORDER BY b.created_at DESC
+     LIMIT $${idx}`,
+    params
+  );
+  return res.rows;
+}
+
 async function updateExperienceBookingStatus(id, brandId, status) {
   const allowed = new Set(['pending', 'confirmed', 'delivered', 'cancelled']);
   if (!allowed.has(status)) throw new Error('status non valido');
@@ -4032,6 +4054,25 @@ async function getEngagementAnalytics(brandId, days = 30) {
      LIMIT 10`,
     [brandId, since.toISOString()]
   );
+  const topActions = await pool.query(
+    `SELECT action_key, COUNT(*)::int AS events,
+            COALESCE(SUM(coin_amount), 0)::int AS total_coins
+     FROM coin_ledger
+     WHERE brand_id = $1 AND created_at >= $2 AND coin_amount > 0
+     GROUP BY action_key
+     ORDER BY events DESC
+     LIMIT 5`,
+    [brandId, since.toISOString()]
+  );
+  const byWeekday = await pool.query(
+    `SELECT EXTRACT(DOW FROM created_at)::int AS dow, COUNT(*)::int AS events,
+            COALESCE(SUM(coin_amount), 0)::int AS total_coins
+     FROM coin_ledger
+     WHERE brand_id = $1 AND created_at >= $2
+     GROUP BY dow
+     ORDER BY dow`,
+    [brandId, since.toISOString()]
+  );
   const row = coinRes.rows[0] || {};
   return {
     days: Math.max(1, parseInt(days, 10) || 30),
@@ -4039,7 +4080,9 @@ async function getEngagementAnalytics(brandId, days = 30) {
     coins_redeemed: Math.abs(Number(row.coins_redeemed || 0)),
     grant_events: Number(row.grant_events || 0),
     redemption_events: Number(row.redemption_events || 0),
-    top_experiences: topExp.rows
+    top_experiences: topExp.rows,
+    top_actions: topActions.rows,
+    by_weekday: byWeekday.rows
   };
 }
 
@@ -4423,6 +4466,7 @@ module.exports = {
   updateExperience,
   softDeleteExperience,
   listExperienceBookings,
+  listBrandBookings,
   updateExperienceBookingStatus,
   getEngagementAnalytics,
   hasCoinGrantToday,

@@ -22,6 +22,8 @@ const SECTION_PERMS = Object.freeze({
     users: 'none',
     welcome: 'full',
     conventions: 'full',
+    pga_catalog: 'full',
+    pga_engagement: 'full',
   },
   sender: {
     brand_identity: 'none',
@@ -38,6 +40,8 @@ const SECTION_PERMS = Object.freeze({
     users: 'none',
     welcome: 'read',
     conventions: 'none',
+    pga_catalog: 'none',
+    pga_engagement: 'none',
   },
   reporter: {
     brand_identity: 'read',
@@ -54,6 +58,8 @@ const SECTION_PERMS = Object.freeze({
     users: 'none',
     welcome: 'read',
     conventions: 'read',
+    pga_catalog: 'read',
+    pga_engagement: 'read',
   },
 });
 
@@ -74,6 +80,8 @@ const UI_SECTION_MAP = Object.freeze({
   users: 'users',
   campaigns: 'push',
   conventions: 'conventions',
+  'pga-catalog': 'pga_catalog',
+  'pga-engagement': 'pga_engagement',
 });
 
 const DEFAULT_LANDING = Object.freeze({
@@ -163,6 +171,25 @@ function classifyApiRoute(method, path) {
   if (/^\/locations\/[^/]+$/.test(p) && m !== 'GET') return { section: 'conventions', write: true };
   if (/^\/brands\/[^/]+\/hub-(settings|analytics)/.test(p)) {
     return { section: 'conventions', write: write && /hub-settings/.test(p) };
+  }
+
+  if (/^\/brands\/[^/]+\/pga-settings/.test(p)) {
+    return { section: 'pga_catalog', write: write };
+  }
+  if (/^\/brands\/[^/]+\/engagement-analytics/.test(p)) {
+    return { section: 'pga_engagement', write: false };
+  }
+  if (/^\/brands\/[^/]+\/bookings/.test(p)) {
+    return { section: 'pga_catalog', write: false };
+  }
+  if (/^\/experiences(?:\/|$)/.test(p)) {
+    return { section: 'pga_catalog', write };
+  }
+  if (/^\/bookings\/[^/]+\/status$/.test(p)) {
+    return { section: 'pga_catalog', write: true };
+  }
+  if (/^\/coins\/(?:actions|manual-grant)/.test(p)) {
+    return { section: 'pga_catalog', write };
   }
 
   if (/^\/push(?:\/|$)/.test(p)) return { section: 'push', write };

@@ -9,6 +9,7 @@ const {
   updateExperience,
   softDeleteExperience,
   listExperienceBookings,
+  listBrandBookings,
   updateExperienceBookingStatus,
   listCoinActions,
   updateCoinAction,
@@ -18,6 +19,19 @@ const {
 const { grantCoin } = require('../engine/coins');
 
 function registerPgaDashboardRoutes(router, { requireBrandId, requireOwnedBrandPk, requireWriteAccess }) {
+  router.get('/brands/:id/bookings', async (req, res) => {
+    try {
+      if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+      const rows = await listBrandBookings(req.params.id, {
+        status: req.query.status,
+        limit: req.query.limit
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.get('/brands/:id/pga-settings', async (req, res) => {
     try {
       if (!requireOwnedBrandPk(req, res, req.params.id)) return;
