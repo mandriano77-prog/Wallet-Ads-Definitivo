@@ -3333,6 +3333,68 @@ async function upsertHubSettings(brandId, fields = {}) {
   return res.rows[0];
 }
 
+const HUB_ACTIVATION_TYPES = new Set([
+  'view', 'search_found', 'click_site', 'copy_code', 'show_qr', 'scan_qr', 'geofence_push'
+]);
+
+async function listActiveMerchantsForHub(brandId, { category, search } = {}) {
+  const clauses = [
+    'brand_id = $1',
+    'active = TRUE',
+    '(valid_from IS NULL OR valid_from <= CURRENT_DATE)',
+    '(valid_until IS NULL OR valid_until >= CURRENT_DATE)'
+  ];
+  const params = [brandId];
+  let idx = 2;
+  if (category) {
+    clauses.push(`category = $${idx++}`);
+    params.push(category);
+  }
+  if (search && String(search).trim()) {
+    clauses.push(`(name ILIKE $${idx} OR description ILIKE $${idx} OR category ILIKE $${idx})`);
+    params.push(`%${String(search).trim()}%`);
+    idx++;
+  }
+  const res = await pool.query(
+    `SELECT * FROM merchants WHERE ${clauses.join(' AND ')} ORDER BY name ASC`,
+    params
+  );
+  return res.rows;
+}
+
+async function logConventionActivation({
+  brand_id,
+  merchant_id,
+  pass_serial,
+  user_id = null,
+  activation_type,
+  location_id = null,
+  metadata = null
+}) {
+  if (!brand_id || !merchant_id || !pass_serial || !activation_type) {
+    throw new Error('brand_id, merchant_id, pass_serial e activation_type sono obbligatori');
+  }
+  if (!HUB_ACTIVATION_TYPES.has(activation_type)) {
+    throw new Error(`activation_type non valido: ${activation_type}`);
+  }
+  const res = await pool.query(
+    `INSERT INTO convention_activations (
+      brand_id, merchant_id, pass_serial, user_id, activation_type, location_id, metadata
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
+    RETURNING *`,
+    [
+      brand_id,
+      merchant_id,
+      pass_serial,
+      user_id != null ? String(user_id) : null,
+      activation_type,
+      location_id || null,
+      metadata != null ? JSON.stringify(metadata) : null
+    ]
+  );
+  return res.rows[0];
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -3496,6 +3558,8 @@ module.exports = {
   getMerchantAnalytics,
   getHubSettings,
   upsertHubSettings,
+  listActiveMerchantsForHub,
+  logConventionActivation,
   // Employee portal (see src/db/portal.js)
   ...require('./portal')
 };
