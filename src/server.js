@@ -475,6 +475,9 @@ getDb().then((db) => {
       }
     };
     console.log('📧 Activation reminder cron started (every 6h)');
+
+    const { scheduleCoinAnniversariesJob } = require('./engine/coin-anniversaries');
+    scheduleCoinAnniversariesJob();
     setInterval(runHrReminderTick, 6 * 60 * 60 * 1000);
     setTimeout(runHrReminderTick, 2 * 60 * 1000);
   });

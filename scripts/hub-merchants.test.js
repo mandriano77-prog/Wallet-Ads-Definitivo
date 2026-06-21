@@ -61,7 +61,7 @@ test('hub JWT sign and verify with 90d-style claims', () => {
 
   process.env.HUB_BASE_URL = 'https://hub.test.example';
   const url = buildHubUrl(token, 'acme');
-  assert.match(url, /^https:\/\/hub\.test\.example\/\?/);
+  assert.match(url, /^https:\/\/hub\.test\.example\/conv\?/);
   assert.match(url, /token=/);
   assert.match(url, /brand=acme/);
 });
