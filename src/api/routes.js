@@ -98,6 +98,7 @@ const os = require('os');
 const router = express.Router();
 const { registerHubMerchantRoutes } = require('./hub-merchants');
 const { registerHubPwaRoutes } = require('./hub-pwa');
+const { registerPgaDashboardRoutes } = require('./pga-dashboard');
 
 const DEPLOY_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
 /** When set (e.g. hr on hr.2wallet.app), API only exposes brands for that product line. */
@@ -1486,6 +1487,12 @@ router.use((req, res, next) => {
 });
 
 registerHubMerchantRoutes(router, {
+  requireBrandId,
+  requireOwnedBrandPk,
+  requireWriteAccess
+});
+
+registerPgaDashboardRoutes(router, {
   requireBrandId,
   requireOwnedBrandPk,
   requireWriteAccess

@@ -1567,6 +1567,7 @@ async function ensureMembersHrSchema() {
   await addColumn('privacy_policy_accepted_ip', 'VARCHAR(64)');
   await addColumn('phone', 'TEXT');
   await addColumn('lead_source', 'VARCHAR(32)');
+  await addColumn('birth_date', 'DATE');
 
   if (have.has('name') && have.has('first_name')) {
     await pool.query(`
@@ -3762,6 +3763,323 @@ async function getPgaSettings(brandId) {
   };
 }
 
+async function upsertPgaSettings(brandId, fields = {}) {
+  const existing = await getPgaSettings(brandId);
+  const wasEnabled = !!existing.enabled;
+  const payload = {
+    enabled: fields.enabled !== undefined ? !!fields.enabled : !!existing.enabled,
+    welcome_message: fields.welcome_message !== undefined ? fields.welcome_message : existing.welcome_message,
+    annual_budget_external_eur: fields.annual_budget_external_eur !== undefined
+      ? fields.annual_budget_external_eur
+      : existing.annual_budget_external_eur,
+    annual_budget_used_eur: fields.annual_budget_used_eur !== undefined
+      ? fields.annual_budget_used_eur
+      : (existing.annual_budget_used_eur || 0),
+    notify_hr_on_booking: fields.notify_hr_on_booking !== undefined
+      ? !!fields.notify_hr_on_booking
+      : existing.notify_hr_on_booking !== false,
+    notify_hr_email: fields.notify_hr_email !== undefined ? fields.notify_hr_email : existing.notify_hr_email
+  };
+  const res = await pool.query(
+    `INSERT INTO pga_settings (
+      brand_id, enabled, welcome_message, annual_budget_external_eur,
+      annual_budget_used_eur, notify_hr_on_booking, notify_hr_email, updated_at
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+    ON CONFLICT (brand_id) DO UPDATE SET
+      enabled = EXCLUDED.enabled,
+      welcome_message = EXCLUDED.welcome_message,
+      annual_budget_external_eur = EXCLUDED.annual_budget_external_eur,
+      annual_budget_used_eur = EXCLUDED.annual_budget_used_eur,
+      notify_hr_on_booking = EXCLUDED.notify_hr_on_booking,
+      notify_hr_email = EXCLUDED.notify_hr_email,
+      updated_at = NOW()
+    RETURNING *`,
+    [
+      brandId, payload.enabled, payload.welcome_message, payload.annual_budget_external_eur,
+      payload.annual_budget_used_eur, payload.notify_hr_on_booking, payload.notify_hr_email
+    ]
+  );
+  const row = res.rows[0];
+  if (!wasEnabled && row.enabled) {
+    const { seedPgaDefaultsForBrand } = require('../engine/pga-seed');
+    await seedPgaDefaultsForBrand(brandId, {
+      seedExperiencesCatalog,
+      seedCoinActionsConfig
+    });
+  }
+  return row;
+}
+
+async function seedExperiencesCatalog(brandId, items) {
+  let count = 0;
+  for (const item of items) {
+    const exists = await pool.query(
+      'SELECT id FROM experiences_catalog WHERE brand_id = $1 AND key = $2 LIMIT 1',
+      [brandId, item.key]
+    );
+    if (exists.rows[0]) continue;
+    await pool.query(
+      `INSERT INTO experiences_catalog (
+        brand_id, key, name, description, category, coin_cost, max_per_user_per_year,
+        max_total_per_month, internal, external_provider, external_cost_eur,
+        requires_booking, active, display_order
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,TRUE,$13)`,
+      [
+        brandId, item.key, item.name, item.description || null, item.category, item.coin_cost,
+        item.max_per_user_per_year ?? null, item.max_total_per_month ?? null,
+        item.internal !== false, item.external_provider || null, item.external_cost_eur ?? null,
+        item.requires_booking !== false, item.display_order ?? 100
+      ]
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function seedCoinActionsConfig(brandId, items) {
+  let count = 0;
+  for (const item of items) {
+    const exists = await pool.query(
+      'SELECT id FROM coin_actions_config WHERE brand_id = $1 AND action_key = $2 LIMIT 1',
+      [brandId, item.action_key]
+    );
+    if (exists.rows[0]) continue;
+    await pool.query(
+      `INSERT INTO coin_actions_config (brand_id, action_key, coin_amount, description, active)
+       VALUES ($1,$2,$3,$4,TRUE)`,
+      [brandId, item.action_key, item.coin_amount, item.description || null]
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function listCoinActions(brandId) {
+  const res = await pool.query(
+    'SELECT * FROM coin_actions_config WHERE brand_id = $1 ORDER BY action_key ASC',
+    [brandId]
+  );
+  return res.rows;
+}
+
+async function updateCoinAction(id, brandId, fields) {
+  const sets = [];
+  const params = [];
+  let idx = 1;
+  if (fields.coin_amount !== undefined) {
+    sets.push(`coin_amount = $${idx++}`);
+    params.push(fields.coin_amount);
+  }
+  if (fields.description !== undefined) {
+    sets.push(`description = $${idx++}`);
+    params.push(fields.description);
+  }
+  if (fields.active !== undefined) {
+    sets.push(`active = $${idx++}`);
+    params.push(!!fields.active);
+  }
+  if (!sets.length) {
+    const cur = await pool.query(
+      'SELECT * FROM coin_actions_config WHERE id = $1 AND brand_id = $2',
+      [id, brandId]
+    );
+    return cur.rows[0] || null;
+  }
+  params.push(id, brandId);
+  const res = await pool.query(
+    `UPDATE coin_actions_config SET ${sets.join(', ')}
+     WHERE id = $${idx++} AND brand_id = $${idx} RETURNING *`,
+    params
+  );
+  return res.rows[0] || null;
+}
+
+async function listExperiences(brandId, { active, category } = {}) {
+  const clauses = ['brand_id = $1'];
+  const params = [brandId];
+  let idx = 2;
+  if (active === true || active === 'true') {
+    clauses.push('active = TRUE');
+  } else if (active === false || active === 'false') {
+    clauses.push('active = FALSE');
+  }
+  if (category) {
+    clauses.push(`category = $${idx++}`);
+    params.push(category);
+  }
+  const res = await pool.query(
+    `SELECT * FROM experiences_catalog WHERE ${clauses.join(' AND ')}
+     ORDER BY display_order ASC, name ASC`,
+    params
+  );
+  return res.rows;
+}
+
+async function getExperience(id, brandId = null) {
+  const params = [id];
+  let sql = 'SELECT * FROM experiences_catalog WHERE id = $1';
+  if (brandId != null) {
+    sql += ' AND brand_id = $2';
+    params.push(brandId);
+  }
+  const res = await pool.query(sql, params);
+  return res.rows[0] || null;
+}
+
+async function createExperience(data) {
+  const {
+    brand_id, key, name, description, category, coin_cost,
+    max_per_user_per_year, max_total_per_month, internal = true,
+    external_provider, external_cost_eur, requires_booking = true,
+    active = true, image_url, display_order = 100
+  } = data;
+  if (!brand_id || !key || !name || !category || coin_cost == null) {
+    throw new Error('brand_id, key, name, category e coin_cost sono obbligatori');
+  }
+  const res = await pool.query(
+    `INSERT INTO experiences_catalog (
+      brand_id, key, name, description, category, coin_cost, max_per_user_per_year,
+      max_total_per_month, internal, external_provider, external_cost_eur,
+      requires_booking, active, image_url, display_order
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+    RETURNING *`,
+    [
+      brand_id, key, name, description || null, category, coin_cost,
+      max_per_user_per_year ?? null, max_total_per_month ?? null, !!internal,
+      external_provider || null, external_cost_eur ?? null, !!requires_booking,
+      active !== false, image_url || null, display_order
+    ]
+  );
+  return res.rows[0];
+}
+
+const EXPERIENCE_MUTABLE = [
+  'name', 'description', 'category', 'coin_cost', 'max_per_user_per_year',
+  'max_total_per_month', 'internal', 'external_provider', 'external_cost_eur',
+  'requires_booking', 'active', 'image_url', 'display_order'
+];
+
+async function updateExperience(id, brandId, fields) {
+  const sets = [];
+  const params = [];
+  let idx = 1;
+  for (const key of EXPERIENCE_MUTABLE) {
+    if (fields[key] !== undefined) {
+      sets.push(`${key} = $${idx++}`);
+      params.push(fields[key]);
+    }
+  }
+  if (!sets.length) return getExperience(id, brandId);
+  params.push(id, brandId);
+  const res = await pool.query(
+    `UPDATE experiences_catalog SET ${sets.join(', ')}
+     WHERE id = $${idx++} AND brand_id = $${idx} RETURNING *`,
+    params
+  );
+  return res.rows[0] || null;
+}
+
+async function softDeleteExperience(id, brandId) {
+  return updateExperience(id, brandId, { active: false });
+}
+
+async function listExperienceBookings(experienceId, brandId, { status } = {}) {
+  const clauses = ['experience_id = $1', 'brand_id = $2'];
+  const params = [experienceId, brandId];
+  if (status) {
+    clauses.push('status = $3');
+    params.push(status);
+  }
+  const res = await pool.query(
+    `SELECT * FROM experience_bookings WHERE ${clauses.join(' AND ')}
+     ORDER BY created_at DESC`,
+    params
+  );
+  return res.rows;
+}
+
+async function updateExperienceBookingStatus(id, brandId, status) {
+  const allowed = new Set(['pending', 'confirmed', 'delivered', 'cancelled']);
+  if (!allowed.has(status)) throw new Error('status non valido');
+  const res = await pool.query(
+    `UPDATE experience_bookings SET status = $1, updated_at = NOW()
+     WHERE id = $2 AND brand_id = $3 RETURNING *`,
+    [status, id, brandId]
+  );
+  return res.rows[0] || null;
+}
+
+async function getEngagementAnalytics(brandId, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - Math.max(1, parseInt(days, 10) || 30));
+  const coinRes = await pool.query(
+    `SELECT
+       COALESCE(SUM(coin_amount) FILTER (WHERE coin_amount > 0), 0) AS coins_granted,
+       COALESCE(SUM(coin_amount) FILTER (WHERE coin_amount < 0), 0) AS coins_redeemed,
+       COUNT(*) FILTER (WHERE coin_amount > 0) AS grant_events,
+       COUNT(*) FILTER (WHERE coin_amount < 0) AS redemption_events
+     FROM coin_ledger
+     WHERE brand_id = $1 AND created_at >= $2`,
+    [brandId, since.toISOString()]
+  );
+  const topExp = await pool.query(
+    `SELECT e.name, COUNT(*)::int AS bookings
+     FROM experience_bookings b
+     JOIN experiences_catalog e ON e.id = b.experience_id
+     WHERE b.brand_id = $1 AND b.created_at >= $2
+     GROUP BY e.name
+     ORDER BY bookings DESC
+     LIMIT 10`,
+    [brandId, since.toISOString()]
+  );
+  const row = coinRes.rows[0] || {};
+  return {
+    days: Math.max(1, parseInt(days, 10) || 30),
+    coins_granted: Number(row.coins_granted || 0),
+    coins_redeemed: Math.abs(Number(row.coins_redeemed || 0)),
+    grant_events: Number(row.grant_events || 0),
+    redemption_events: Number(row.redemption_events || 0),
+    top_experiences: topExp.rows
+  };
+}
+
+async function hasCoinGrantToday(brandId, passSerial, actionKey) {
+  const res = await pool.query(
+    `SELECT 1 FROM coin_ledger
+     WHERE brand_id = $1 AND pass_serial = $2 AND action_key = $3
+       AND created_at >= CURRENT_DATE
+     LIMIT 1`,
+    [brandId, passSerial, actionKey]
+  );
+  return !!res.rows[0];
+}
+
+async function listMembersWithHireAnniversaryToday(years) {
+  const res = await pool.query(
+    `SELECT m.*, pi.serial_number AS pass_serial
+     FROM members m
+     INNER JOIN pass_instances pi ON pi.id = m.pass_id AND pi.status = 'active'
+     WHERE m.hire_date IS NOT NULL
+       AND EXTRACT(MONTH FROM m.hire_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+       AND EXTRACT(DAY FROM m.hire_date) = EXTRACT(DAY FROM CURRENT_DATE)
+       AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, m.hire_date)) = $1`,
+    [years]
+  );
+  return res.rows;
+}
+
+async function listMembersWithBirthdayToday() {
+  const res = await pool.query(
+    `SELECT m.*, pi.serial_number AS pass_serial
+     FROM members m
+     INNER JOIN pass_instances pi ON pi.id = m.pass_id AND pi.status = 'active'
+     WHERE m.birth_date IS NOT NULL
+       AND EXTRACT(MONTH FROM m.birth_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+       AND EXTRACT(DAY FROM m.birth_date) = EXTRACT(DAY FROM CURRENT_DATE)`
+  );
+  return res.rows;
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -3935,6 +4253,22 @@ module.exports = {
   insertCoinLedgerEntry,
   getPassCoinBalance,
   getPgaSettings,
+  upsertPgaSettings,
+  seedExperiencesCatalog,
+  seedCoinActionsConfig,
+  listCoinActions,
+  updateCoinAction,
+  listExperiences,
+  getExperience,
+  createExperience,
+  updateExperience,
+  softDeleteExperience,
+  listExperienceBookings,
+  updateExperienceBookingStatus,
+  getEngagementAnalytics,
+  hasCoinGrantToday,
+  listMembersWithHireAnniversaryToday,
+  listMembersWithBirthdayToday,
   // Employee portal (see src/db/portal.js)
   ...require('./portal')
 };
