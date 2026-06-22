@@ -1,6 +1,10 @@
 const PRIVACY_POLICY_VERSION = '1.0';
 const { signActivationToken, verifyActivationToken } = require('./activation-auth');
-const { sendActivationEmail, sendActivationReminderEmail } = require('./mailer');
+const {
+  sendActivationEmail,
+  sendActivationReminderEmail,
+  sendPassAccessEmail
+} = require('./mailer');
 const { employeesToFieldValues } = require('./member-import');
 const { upsertPassConsent, PORTAL_CONSENT_TYPES } = require('../db/portal');
 
@@ -373,6 +377,35 @@ async function runActivationReminders(db) {
   return { sent };
 }
 
+async function resendMemberActivationEmail(db, member, brand) {
+  if (!member?.email) throw new Error('Email mancante');
+
+  const status = member.activation_status || 'candidate';
+  if (status === 'activated') {
+    const token = signActivationToken(member.id);
+    const url = activationUrl(token);
+    await sendPassAccessEmail({
+      to: member.email,
+      firstName: member.first_name,
+      brandName: brand.name,
+      accessUrl: url,
+      dpoEmail: brand.dpo_email
+    });
+    return { url, kind: 'pass_access' };
+  }
+
+  const { url } = await issueMemberActivation(db, member, { source: 'manual_resend' });
+  const send = status === 'invited' ? sendActivationReminderEmail : sendActivationEmail;
+  await send({
+    to: member.email,
+    firstName: member.first_name,
+    brandName: brand.name,
+    activateUrl: url,
+    dpoEmail: brand.dpo_email
+  });
+  return { url, kind: status === 'invited' ? 'reminder' : 'activation' };
+}
+
 module.exports = {
   publicBaseUrl,
   activationUrl,
@@ -382,6 +415,7 @@ module.exports = {
   findBrandForPublicJoin,
   confirmMemberActivation,
   distributeActivationEmails,
+  resendMemberActivationEmail,
   publicJoinByEmail,
   runActivationReminders,
   domainAllowed

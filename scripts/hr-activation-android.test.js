@@ -29,3 +29,10 @@ test('activate API sets no-store cache headers', () => {
   assert.match(ROUTES_SOURCE, /activationApiCacheHeaders/);
   assert.match(ROUTES_SOURCE, /extractActivationTokenFromRequest/);
 });
+
+test('resend activation supports activated members without resetting status', () => {
+  assert.match(HR_SOURCE, /resendMemberActivationEmail/);
+  assert.match(HR_SOURCE, /sendPassAccessEmail/);
+  assert.match(HR_SOURCE, /kind: 'pass_access'/);
+  assert.match(HR_SOURCE, /if \(status === 'activated'\) \{[\s\S]*sendPassAccessEmail/);
+});

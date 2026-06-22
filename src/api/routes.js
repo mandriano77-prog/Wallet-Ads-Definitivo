@@ -1216,10 +1216,9 @@ const {
   getMemberForActivationToken,
   confirmMemberActivation,
   distributeActivationEmails,
-  issueMemberActivation,
+  resendMemberActivationEmail,
   joinUrl
 } = require('../engine/hr-activation');
-const { sendActivationEmail } = require('../engine/mailer');
 
 function hrActivationDb() {
   return {
@@ -4030,15 +4029,8 @@ router.post('/brands/:brand_id/members/:member_id/activation/resend', async (req
     const member = r.rows[0];
     if (!member) return res.status(404).json({ error: 'Dipendente non trovato' });
     if (!member.email) return res.status(400).json({ error: 'Email mancante' });
-    const { url } = await issueMemberActivation(hrActivationDb(), member, { source: 'manual_resend' });
-    await sendActivationEmail({
-      to: member.email,
-      firstName: member.first_name,
-      brandName: brand.name,
-      activateUrl: url,
-      dpoEmail: brand.dpo_email
-    });
-    res.json({ success: true, activation_url: url });
+    const { url, kind } = await resendMemberActivationEmail(hrActivationDb(), member, brand);
+    res.json({ success: true, activation_url: url, kind });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -777,6 +777,39 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
   }, { logLabel: 'activation reminder' });
 }
 
+async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEmail }) {
+  const name = firstName || 'Collega';
+  const brand = brandName || 'la tua azienda';
+  const fromEmail = getHrFromEmail();
+  const fromName = getHrFromName();
+  const support = dpoEmail || fromEmail;
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
+  <div style="background:#fff;border-radius:12px;padding:32px 24px;border:1px solid #e2e8f0;">
+    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">FiloDiretto.App</p>
+    <h1 style="color:#0f172a;font-size:22px;margin:0 0 16px;">Accedi al tuo pass ${brand}</h1>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Ciao <strong>${name}</strong>,</p>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 24px;">
+      usa il link qui sotto per scaricare di nuovo il pass o installarlo su un altro dispositivo.
+    </p>
+    <p style="text-align:center;margin:0 0 24px;">
+      <a href="${accessUrl}" style="display:inline-block;background:#8B5CF6;color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Apri il pass →</a>
+    </p>
+    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0;">Se hai bisogno di supporto, contatta ${support}.</p>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
+</div></body></html>`;
+
+  return sendViaResend({
+    from: `${fromName} <${fromEmail}>`,
+    to: [to],
+    subject: `FiloDiretto.App | Accedi al tuo pass ${brand}`,
+    html
+  }, { logLabel: 'pass access email' });
+}
+
 function formatPgaScheduledAt(value) {
   if (!value) return 'Da definire con HR';
   try {
@@ -892,6 +925,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendActivationEmail,
   sendActivationReminderEmail,
+  sendPassAccessEmail,
   sendPgaBookingHrNotification,
   sendPgaBookingEmployeeConfirmation
 };

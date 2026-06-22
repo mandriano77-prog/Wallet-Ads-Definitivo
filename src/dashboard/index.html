@@ -9758,7 +9758,7 @@ async function resendMemberActivation(memberId) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        toast('Email di attivazione inviata');
+        toast(data.kind === 'pass_access' ? 'Email con link al pass inviata' : 'Email di attivazione inviata');
         await loadLeads();
     } catch (e) {
         toast(e.message);
@@ -9880,8 +9880,8 @@ function renderLeadsTable(leads) {
                 : `<span style="display:inline-flex;gap:6px;align-items:center;"><input type="text" class="hr-inline-matricola" placeholder="Matricola" style="width:88px;padding:4px 8px;font-size:12px;"><button type="button" class="btn small" onclick="saveMemberMatricola('${l.id}', this)">Salva</button></span>`;
             const act = l.activation_status || 'candidate';
             const actBadge = act === 'activated' ? 'var(--accent)' : (act === 'invited' ? '#f5a623' : 'var(--text2)');
-            const resendBtn = l.player_email && act !== 'activated'
-                ? `<button type="button" class="btn small sec" onclick="resendMemberActivation('${l.id}')">Reinvia</button>`
+            const resendBtn = l.player_email
+                ? `<button type="button" class="btn small sec" onclick="resendMemberActivation('${l.id}')">Reinvia mail</button>`
                 : '';
             const deleteBtn = `<button type="button" class="btn small danger" onclick="deleteMemberContact('${l.id}')">Elimina</button>`;
             const actions = [resendBtn, deleteBtn].filter(Boolean).join(' ');
