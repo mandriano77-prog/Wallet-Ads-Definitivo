@@ -299,8 +299,9 @@
     try {
       if (global.brandIdentityState) global.brandIdentityState.dirty = false;
     } catch (_) {}
-    var bar = document.getElementById('fdBiStickyBar');
-    if (bar) bar.hidden = true;
+    if (typeof global.fdSyncBrandIdentitySectionSaves === 'function') {
+      global.fdSyncBrandIdentitySectionSaves();
+    }
     if (typeof global.a2wBiUpdateSaveStateBadge === 'function') {
       global.a2wBiUpdateSaveStateBadge('Salvato', '');
     }

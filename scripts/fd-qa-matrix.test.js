@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-studio-ux/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-studio-ux/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-section-save/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-section-save/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -200,20 +200,20 @@ for (const section of SECTION_MATRIX) {
   });
 }
 
-test('Filo brand identity uses bottom save bar and public landing URL', () => {
+test('Filo brand identity uses per-section save and public landing URL', () => {
   const dirty = readFd('fd-form-dirty.js');
   const bi = readFd('fd-brand-identity.js');
   const biCss = readFd('fd-brand-identity.css');
   const dirtyCss = readFd('fd-form-dirty.css');
   const html = read('src/dashboard/index.html');
-  assert.match(dirty, /brand-identity--fd-bottom-save/);
-  assert.match(dirty, /fd-bi-bottom-bar/);
-  assert.match(dirty, /fdBiStickyBar/);
-  assert.match(dirty, /relocateBrandSaveButton/);
-  assert.match(dirty, /a2wBiSaveBtn/);
-  assert.match(dirty, /bar\.hidden = false/);
-  assert.doesNotMatch(dirty, /id="fdBiStickySaveBtn"/);
-  assert.match(dirty, /showSavedFlash/);
+  assert.match(dirty, /fd-bi-section-save/);
+  assert.match(dirty, /saveBrandIdentitySection/);
+  assert.match(dirty, /fdBiSectionSaveBtn-/);
+  assert.match(dirty, /BI_SECTION_DEFS/);
+  assert.match(dirty, /removeBottomSaveBar/);
+  assert.doesNotMatch(dirty, /fd-bi-sticky-bar fd-bi-bottom-bar/);
+  assert.doesNotMatch(dirty, /ensureBrandIdentityStickyBar/);
+  assert.doesNotMatch(dirtyCss, /position:\s*fixed/);
   assert.match(bi, /summarySlugLink/);
   assert.match(bi, /fd-bi-slug-copy/);
   assert.match(bi, /a2w-bi-identity-summary__slug-link/);
@@ -224,7 +224,7 @@ test('Filo brand identity uses bottom save bar and public landing URL', () => {
   assert.match(biCss, /\.a2w-bi-identity-summary__slug-link/);
   assert.match(biCss, /\.fd-bi-aside-grid/);
   assert.match(biCss, /grid-template-columns: minmax\(0, 42%\)/);
-  assert.match(dirtyCss, /z-index: 50/);
+  assert.match(dirtyCss, /\.fd-bi-section-save/);
   assert.match(html, /getPublicLandingUrl/);
 });
 

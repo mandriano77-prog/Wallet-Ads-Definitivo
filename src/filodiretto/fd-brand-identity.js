@@ -665,7 +665,7 @@
       await orig.apply(this, arguments);
       enhanceBrandIdentityChrome();
       if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
-      if (typeof window.fdSyncBrandIdentityBottomBar === 'function') window.fdSyncBrandIdentityBottomBar();
+      if (typeof window.fdSyncBrandIdentitySectionSaves === 'function') window.fdSyncBrandIdentitySectionSaves();
     };
   }
 
