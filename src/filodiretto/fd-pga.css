@@ -230,19 +230,27 @@ html[data-app='filodiretto'] #pga-engagement .fd-pga-toolbar {
 }
 
 html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi-grid--loading .fd-pga-kpi__value {
-  color: transparent;
-  position: relative;
   min-height: 28px;
 }
 
-html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi-grid--loading .fd-pga-kpi__value::after {
-  content: '';
-  position: absolute;
-  inset: 4px 0 0;
+html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi__value-skeleton {
+  display: block;
+  width: 56%;
+  min-width: 48px;
+  height: 24px;
+  margin-top: 4px;
   border-radius: 6px;
   background: linear-gradient(90deg, var(--fd-color-bg-subtle, rgba(0,0,0,0.06)) 25%, rgba(0,0,0,0.1) 50%, var(--fd-color-bg-subtle, rgba(0,0,0,0.06)) 75%);
   background-size: 200% 100%;
   animation: fd-pga-kpi-shimmer 1.2s ease-in-out infinite;
+}
+
+html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi--error .fd-pga-kpi__value {
+  color: var(--fd-color-text-muted, var(--text2));
+}
+
+html[data-app='filodiretto'] #pga-engagement .fd-pga-kpi__value {
+  color: var(--fd-color-text-primary, var(--text-primary));
 }
 
 @keyframes fd-pga-kpi-shimmer {

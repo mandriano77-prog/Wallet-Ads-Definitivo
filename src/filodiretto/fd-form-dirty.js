@@ -177,7 +177,17 @@
   function relocateBrandSaveButton(bar) {
     var saveBtn = document.getElementById('a2wBiSaveBtn');
     var actions = bar.querySelector('.fd-bi-sticky-bar__actions');
-    if (!saveBtn || !actions || saveBtn.dataset.fdRelocated === '1') return;
+    if (!saveBtn || !actions) return;
+    var headerActions = document.querySelector('#brand-identity .a2w-bi-header__actions');
+    if (saveBtn.dataset.fdRelocated === '1') {
+      if (!actions.contains(saveBtn) && (!headerActions || !headerActions.contains(saveBtn))) {
+        delete saveBtn.dataset.fdRelocated;
+      } else if (headerActions && headerActions.contains(saveBtn)) {
+        delete saveBtn.dataset.fdRelocated;
+      } else {
+        return;
+      }
+    }
     saveBtn.dataset.fdRelocated = '1';
     saveBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-bi-bottom-save-btn');
     actions.appendChild(saveBtn);

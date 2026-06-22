@@ -109,6 +109,24 @@ html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-analytics-activi
 html[data-app='filodiretto'] #activity-log.activity-log--fd .pass-table-wrap.fd-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd #activityLogTable {
+  width: 100%;
+  min-width: 720px;
+  table-layout: fixed;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd #activityLogTable th:nth-child(5),
+html[data-app='filodiretto'] #activity-log.activity-log--fd #activityLogTable td.fd-activity-log-details {
+  width: 32%;
+  max-width: 0;
+}
+
+html[data-app='filodiretto'] #analytics #activity-log.activity-log--fd {
+  min-width: 0;
+  overflow: hidden;
 }
 
 html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-id-copy.is-copied {
@@ -123,9 +141,23 @@ html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-fil
   color: var(--fd-color-text-muted);
 }
 
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-details {
+    max-width: 240px;
+  }
+
+  html[data-app='filodiretto'] #activity-log.activity-log--fd #activityLogTable {
+    min-width: 640px;
+  }
+}
+
 @media (max-width: 767px) {
   html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-toolbar__actions {
     margin-left: 0;
     width: 100%;
+  }
+
+  html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-details {
+    max-width: 180px;
   }
 }

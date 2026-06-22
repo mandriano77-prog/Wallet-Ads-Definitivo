@@ -6293,7 +6293,17 @@
   function relocateBrandSaveButton(bar) {
     var saveBtn = document.getElementById('a2wBiSaveBtn');
     var actions = bar.querySelector('.fd-bi-sticky-bar__actions');
-    if (!saveBtn || !actions || saveBtn.dataset.fdRelocated === '1') return;
+    if (!saveBtn || !actions) return;
+    var headerActions = document.querySelector('#brand-identity .a2w-bi-header__actions');
+    if (saveBtn.dataset.fdRelocated === '1') {
+      if (!actions.contains(saveBtn) && (!headerActions || !headerActions.contains(saveBtn))) {
+        delete saveBtn.dataset.fdRelocated;
+      } else if (headerActions && headerActions.contains(saveBtn)) {
+        delete saveBtn.dataset.fdRelocated;
+      } else {
+        return;
+      }
+    }
     saveBtn.dataset.fdRelocated = '1';
     saveBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-bi-bottom-save-btn');
     actions.appendChild(saveBtn);
@@ -9356,16 +9366,30 @@
       'px;border-radius:var(--fd-radius-md,12px)"></span></div>'
     );
   }
+  function findAnalyticsTitleEl() {
+    return document.querySelector(
+      '#analytics h1.page-title, #analytics h1.sec-title, #analytics h1.page-header__title, #analytics .fd-page-header__title'
+    );
+  }
+  function resolveAnalyticsChromeTab(tab) {
+    if (tab === 'activity-log' || tab === 'metrics') return tab;
+    if (typeof window.getAnalyticsSectionTab === 'function') {
+      var detected = window.getAnalyticsSectionTab();
+      if (detected === 'activity-log' || detected === 'metrics') return detected;
+    }
+    var activeNav = document.querySelector('.nav-item.active[data-section-id="activity-log"]');
+    if (activeNav) return 'activity-log';
+    var path = String(window.location.pathname || '');
+    if (/\/analytics\/log\/?$/i.test(path)) return 'activity-log';
+    return 'metrics';
+  }
   function syncAnalyticsHrChrome(tab) {
     if (!isFiloAnalyticsApp()) return;
-    if (!tab && typeof window.getAnalyticsSectionTab === 'function') {
-      tab = window.getAnalyticsSectionTab();
-    }
-    tab = tab === 'activity-log' ? 'activity-log' : 'metrics';
+    tab = resolveAnalyticsChromeTab(tab);
     var tabsBar = document.getElementById('analyticsSectionTabs');
     if (tabsBar) tabsBar.hidden = true;
     var titleText = tab === 'activity-log' ? 'Log Attività' : 'Analytics';
-    var h1 = document.querySelector('#analytics h1.page-title, #analytics .fd-page-header__title');
+    var h1 = findAnalyticsTitleEl();
     if (h1) h1.textContent = titleText;
     var lead = document.querySelector('#analytics .fd-analytics-lead');
     if (lead) {
@@ -9380,7 +9404,7 @@
     if (!section || section.dataset.fdDsSection === '1') return;
     section.dataset.fdDsSection = '1';
     section.classList.add('analytics--fd-ds');
-    var title = section.querySelector('h1.page-title, h1.sec-title');
+    var title = findAnalyticsTitleEl();
     if (title && !title.closest('.fd-page-header')) {
       var header = document.createElement('header');
       header.className = 'fd-page-header fd-analytics-header';
@@ -9583,7 +9607,12 @@
     if (typeof orig !== 'function') return;
     window.FD_NAV.applyNavNaming = function () {
       var out = orig.apply(this, arguments);
-      if (isFiloAnalyticsApp()) syncAnalyticsHrChrome();
+      if (isFiloAnalyticsApp()) {
+        syncAnalyticsHrChrome();
+        requestAnimationFrame(function () {
+          syncAnalyticsHrChrome();
+        });
+      }
       return out;
     };
   }
@@ -11096,7 +11125,7 @@
       return (
         '<div class="fd-pga-kpi" aria-busy="true">' +
         '<div class="fd-pga-kpi__label">' + escapeHtml(label) + '</div>' +
-        '<div class="fd-pga-kpi__value">0</div>' +
+        '<div class="fd-pga-kpi__value"><span class="fd-pga-kpi__value-skeleton" aria-hidden="true"></span></div>' +
         '</div>'
       );
     }).join('');
@@ -11112,14 +11141,14 @@
       { label: 'Eventi assegnazione', value: a ? formatKpiNumber(a.grant_events) : '0', hint: 'Azioni che hanno generato coin' },
       { label: 'Eventi riscatto', value: a ? formatKpiNumber(a.redemption_events) : '0', hint: 'Prenotazioni o riscatti confermati' }
     ];
-    if (state.analyticsError) {
+    if (state.analyticsError && !a) {
       items.forEach(function (item) {
-        if (item.value === '0' && !a) item.value = '—';
+        item.value = '—';
       });
     }
     host.innerHTML = items.map(function (item) {
       return (
-        '<div class="fd-pga-kpi">' +
+        '<div class="fd-pga-kpi' + (state.analyticsError && !a ? ' fd-pga-kpi--error' : '') + '">' +
         '<div class="fd-pga-kpi__label">' + escapeHtml(item.label) + '</div>' +
         '<div class="fd-pga-kpi__value">' + escapeHtml(item.value) + '</div>' +
         (item.hint ? '<div class="fd-pga-kpi__hint">' + escapeHtml(item.hint) + '</div>' : '') +
@@ -11249,6 +11278,9 @@
       state.analyticsError = true;
       renderKpis();
       toast(err.message || 'Errore caricamento engagement');
+    } finally {
+      var host = document.getElementById('pgaEngagementKpis');
+      if (host) host.classList.remove('fd-pga-kpi-grid--loading');
     }
   }
   async function loadPgaEngagement() {

@@ -38,18 +38,34 @@
     );
   }
 
+  function findAnalyticsTitleEl() {
+    return document.querySelector(
+      '#analytics h1.page-title, #analytics h1.sec-title, #analytics h1.page-header__title, #analytics .fd-page-header__title'
+    );
+  }
+
+  function resolveAnalyticsChromeTab(tab) {
+    if (tab === 'activity-log' || tab === 'metrics') return tab;
+    if (typeof window.getAnalyticsSectionTab === 'function') {
+      var detected = window.getAnalyticsSectionTab();
+      if (detected === 'activity-log' || detected === 'metrics') return detected;
+    }
+    var activeNav = document.querySelector('.nav-item.active[data-section-id="activity-log"]');
+    if (activeNav) return 'activity-log';
+    var path = String(window.location.pathname || '');
+    if (/\/analytics\/log\/?$/i.test(path)) return 'activity-log';
+    return 'metrics';
+  }
+
   function syncAnalyticsHrChrome(tab) {
     if (!isFiloAnalyticsApp()) return;
-    if (!tab && typeof window.getAnalyticsSectionTab === 'function') {
-      tab = window.getAnalyticsSectionTab();
-    }
-    tab = tab === 'activity-log' ? 'activity-log' : 'metrics';
+    tab = resolveAnalyticsChromeTab(tab);
 
     var tabsBar = document.getElementById('analyticsSectionTabs');
     if (tabsBar) tabsBar.hidden = true;
 
     var titleText = tab === 'activity-log' ? 'Log Attività' : 'Analytics';
-    var h1 = document.querySelector('#analytics h1.page-title, #analytics .fd-page-header__title');
+    var h1 = findAnalyticsTitleEl();
     if (h1) h1.textContent = titleText;
 
     var lead = document.querySelector('#analytics .fd-analytics-lead');
@@ -67,7 +83,7 @@
     section.dataset.fdDsSection = '1';
     section.classList.add('analytics--fd-ds');
 
-    var title = section.querySelector('h1.page-title, h1.sec-title');
+    var title = findAnalyticsTitleEl();
     if (title && !title.closest('.fd-page-header')) {
       var header = document.createElement('header');
       header.className = 'fd-page-header fd-analytics-header';
@@ -289,7 +305,12 @@
     if (typeof orig !== 'function') return;
     window.FD_NAV.applyNavNaming = function () {
       var out = orig.apply(this, arguments);
-      if (isFiloAnalyticsApp()) syncAnalyticsHrChrome();
+      if (isFiloAnalyticsApp()) {
+        syncAnalyticsHrChrome();
+        requestAnimationFrame(function () {
+          syncAnalyticsHrChrome();
+        });
+      }
       return out;
     };
   }

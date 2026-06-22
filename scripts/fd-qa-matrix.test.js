@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-contacts-header/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-contacts-header/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-ux-checklist/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-ux-checklist/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -287,4 +287,21 @@ test('fd-empty-states and fd-form-a11y integrate with page states', () => {
   assert.match(empty, /role="status"/);
   assert.match(a11y, /fdEnhanceLoadingRegions/);
   assert.match(a11y, /fdGlobalAriaLive/);
+});
+
+test('Filo analytics H1 sync resolves page-header title and activity-log tab', () => {
+  const js = readFd('fd-analytics.js');
+  assert.match(js, /findAnalyticsTitleEl/);
+  assert.match(js, /page-header__title/);
+  assert.match(js, /resolveAnalyticsChromeTab/);
+  assert.match(js, /Log Attività/);
+});
+
+test('Filo engagement KPIs use visible skeleton and clear loading class', () => {
+  const js = readFd('fd-pga-engagement.js');
+  const css = readFd('fd-pga.css');
+  assert.match(js, /fd-pga-kpi__value-skeleton/);
+  assert.match(js, /classList\.remove\('fd-pga-kpi-grid--loading'\)/);
+  assert.doesNotMatch(css, /fd-pga-kpi-grid--loading[\s\S]*color:\s*transparent/);
+  assert.match(css, /fd-pga-kpi__value-skeleton/);
 });
