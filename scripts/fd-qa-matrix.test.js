@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-growth-insights-gw/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-growth-insights-gw/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-checkbox-fix/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-checkbox-fix/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -304,6 +304,16 @@ test('Filo engagement KPIs use visible skeleton and clear loading class', () => 
   assert.match(js, /classList\.remove\('fd-pga-kpi-grid--loading'\)/);
   assert.doesNotMatch(css, /fd-pga-kpi-grid--loading[\s\S]*color:\s*transparent/);
   assert.match(css, /fd-pga-kpi__value-skeleton/);
+});
+
+test('Filo checkbox and radio use native 16px sizing not full-width inputs', () => {
+  const html = read('src/dashboard/index.html');
+  const components = readFd('fd-components.css');
+  assert.match(html, /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/);
+  assert.match(html, /input\[type="checkbox"\]:not\(\.fd-switch__input\)/);
+  assert.match(html, /accent-color:\s*#7c3aed/);
+  assert.match(components, /input\[type='checkbox'\]:not\(\.fd-switch__input\)/);
+  assert.match(components, /label:has\(> input\[type='checkbox'\]/);
 });
 
 test('Push channel multi-select maps pairs to comma-separated API values', () => {

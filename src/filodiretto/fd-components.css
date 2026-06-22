@@ -386,6 +386,43 @@ html[data-app='filodiretto'] .fd-field--error .fd-field__control {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * Choice controls — checkbox/radio (exclude fd-switch visually-hidden input)
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] input[type='checkbox']:not(.fd-switch__input),
+html[data-app='filodiretto'] input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex: 0 0 auto;
+  appearance: auto;
+  -webkit-appearance: auto;
+  accent-color: var(--fd-color-primary-600, #7c3aed);
+  margin: 0;
+  padding: 0;
+  border: initial;
+  background: initial;
+  border-radius: initial;
+  box-shadow: none;
+}
+
+html[data-app='filodiretto'] label:has(> input[type='checkbox']:not(.fd-switch__input)),
+html[data-app='filodiretto'] label:has(> input[type='radio']) {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  cursor: pointer;
+}
+
+html[data-app='filodiretto'] .form-group label:has(> input[type='checkbox']:not(.fd-switch__input)),
+html[data-app='filodiretto'] .form-group label:has(> input[type='radio']) {
+  font-size: var(--fd-font-size-body, 14px);
+  font-weight: var(--fd-font-weight-normal, 400);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
  * fd-badge — stati e etichette
  *
  * <span class="fd-badge fd-badge--success">Pronto</span>
