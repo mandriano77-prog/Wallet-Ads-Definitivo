@@ -228,7 +228,33 @@ function classifyApiRoute(method, path) {
 
   if (/^\/campaigns(?:\/|$)/.test(p)) return { section: 'push', write };
 
+  // W.AI — classify so sender (push-only) is not blocked by the generic sender guard in requireWriteAccess
+  if (p === '/wai/history' && m === 'GET') return { section: 'push', write: false };
+  if (p === '/wai/ask' && m === 'POST') return { section: 'push', write: true };
+  if (p === '/wai/strip-save' && m === 'POST') return { section: 'push', write: true };
+  if (p === '/wai/execute' && m === 'POST') return { section: 'push', write: true };
+
   return null;
+}
+
+/** W.AI execute intents → RBAC section (strip flows count as push for HR senders). */
+const WAI_INTENT_SECTION = Object.freeze({
+  'push.schedule': 'push',
+  'push.send': 'push',
+  'strip.create': 'push',
+  'strip.generate': 'push',
+  'campaign.create': 'rewards',
+  'audience.create': 'audiences',
+});
+
+function waiIntentSection(intent) {
+  return WAI_INTENT_SECTION[String(intent || '').trim()] || 'push';
+}
+
+function canExecuteWaiIntent(role, intent) {
+  const r = normalizeRole(role);
+  if (r === 'admin') return true;
+  return canWrite(r, waiIntentSection(intent));
 }
 
 function enforceApiPermission(user, method, path) {
@@ -269,4 +295,7 @@ module.exports = {
   enforceApiPermission,
   rbacApiMiddleware,
   UI_SECTION_MAP,
+  WAI_INTENT_SECTION,
+  waiIntentSection,
+  canExecuteWaiIntent,
 };

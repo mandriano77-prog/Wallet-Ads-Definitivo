@@ -10,7 +10,7 @@ const {
 const { parseSinceDaysFromPrompt, todayInTimezone, TZ } = require('./audience-prompt');
 const { extractJSON } = require('./ai-copy');
 const { getAnthropicApiKey } = require('./env-ai');
-const { pickWaiModel, formatModelLabel } = require('./ai-models');
+const { pickWaiModel, formatModelLabel, getWaiModelFallbacks } = require('./ai-models');
 
 const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
@@ -201,12 +201,13 @@ function buildUserMessage(prompt, context, refinement = null) {
   return message;
 }
 
-async function callWai(systemPrompt, userMessage, model) {
-  const apiKey = getAnthropicApiKey();
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY non disponibile nel processo Node. Impostala nelle variabili del servizio (Railway) e ridistribuisci.');
-  }
+function isRetryableWaiModelError(message, status) {
+  const text = String(message || '').toLowerCase();
+  if (status === 404) return true;
+  return /not[_\s-]?found|invalid[_\s-]?model|model.*(?:not|unavailable|does not exist)/i.test(text);
+}
 
+async function callWaiOnce(systemPrompt, userMessage, model, apiKey) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -225,12 +226,37 @@ async function callWai(systemPrompt, userMessage, model) {
   const data = await res.json();
   if (!res.ok) {
     const message = data?.error?.message || `Anthropic error ${res.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
   }
 
   const text = data?.content?.[0]?.text;
   if (!text) throw new Error('Claude ha restituito una risposta vuota');
   return text;
+}
+
+async function callWai(systemPrompt, userMessage, model) {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY non disponibile nel processo Node. Impostala nelle variabili del servizio (Railway) e ridistribuisci.');
+  }
+
+  const candidates = [model, ...getWaiModelFallbacks(model)];
+  let lastError;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    try {
+      if (i > 0) console.warn(`[wai] retry with model ${candidate}`);
+      return await callWaiOnce(systemPrompt, userMessage, candidate, apiKey);
+    } catch (err) {
+      lastError = err;
+      const hasNext = i < candidates.length - 1;
+      if (!hasNext || !isRetryableWaiModelError(err.message, err.status)) throw err;
+      console.warn(`[wai] model ${candidate} failed: ${err.message}`);
+    }
+  }
+  throw lastError || new Error('Chiamata W.AI fallita');
 }
 
 function sanitizeStripPrompt(text) {

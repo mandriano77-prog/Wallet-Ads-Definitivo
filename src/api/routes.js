@@ -6,6 +6,7 @@ const {
   classifyApiRoute,
   enforceApiPermission,
   rbacApiMiddleware,
+  canExecuteWaiIntent,
 } = require('../engine/rbac');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -5118,6 +5119,9 @@ router.post('/wai/execute', async (req, res) => {
     const { intent, payload } = req.body;
     if (!intent || !payload) return res.status(400).json({ error: 'intent e payload richiesti' });
     if (!requireBrandId(req, res, payload.brand_id)) return;
+    if (!canExecuteWaiIntent(req.user?.role, intent)) {
+      return res.status(403).json({ error: 'Permessi insufficienti per questa operazione W.AI' });
+    }
     if (!EXECUTABLE_INTENTS.has(intent)) {
       return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
     }

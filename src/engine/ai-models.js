@@ -70,6 +70,15 @@ function formatModelLabel(model) {
   return `Claude ${family} ${match[2]}.${match[3]}`;
 }
 
+/** Ordered fallbacks when Anthropic rejects a model id (404 / not_found). */
+function getWaiModelFallbacks(model) {
+  const id = String(model || '').trim();
+  const chain = [];
+  if (id.includes('opus-4-7')) chain.push('claude-opus-4-6', DEFAULT_WAI_QUERY_MODEL);
+  else if (id.includes('opus-4-6')) chain.push(DEFAULT_WAI_QUERY_MODEL);
+  return chain.filter((m) => m && m !== id);
+}
+
 module.exports = {
   DEFAULT_WAI_QUERY_MODEL,
   DEFAULT_WAI_ACTION_MODEL,
@@ -77,5 +86,6 @@ module.exports = {
   getWaiQueryModel,
   getWaiActionModel,
   pickWaiModel,
-  formatModelLabel
+  formatModelLabel,
+  getWaiModelFallbacks
 };
