@@ -6,7 +6,11 @@
  */
 
 const { pool } = require('../db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+
+function uuidv4() {
+  return randomUUID();
+}
 
 const DECAY_POINTS = 10;
 const INACTIVITY_DAYS = 30;

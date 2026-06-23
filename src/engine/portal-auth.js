@@ -6,16 +6,19 @@ const {
   isPortalTokenActive,
   getPassInstance
 } = require('../db');
+const { isProduction, requiredSecret } = require('./security-config');
 
 const PORTAL_TOKEN_TTL_SEC = 24 * 60 * 60;
 
 function getPortalSecret() {
-  const secret = process.env.PORTAL_JWT_SECRET || process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('PORTAL_JWT_SECRET (or JWT_SECRET) is required for the employee portal');
-  }
+  const secret = process.env.PORTAL_JWT_SECRET
+    ? requiredSecret('PORTAL_JWT_SECRET')
+    : requiredSecret('JWT_SECRET', { allowFallbackInDev: !isProduction() });
   if (!process.env.PORTAL_JWT_SECRET) {
-    console.warn('[portal-auth] PORTAL_JWT_SECRET not set — falling back to JWT_SECRET');
+    if (isProduction()) {
+      throw new Error('PORTAL_JWT_SECRET must be set in production');
+    }
+    console.warn('[portal-auth] PORTAL_JWT_SECRET not set — falling back to JWT_SECRET in development');
   }
   return secret;
 }

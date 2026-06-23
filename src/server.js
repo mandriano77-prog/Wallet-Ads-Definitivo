@@ -19,6 +19,9 @@ const { startScheduler } = require('./engine/scheduler');
 const { runStripPromoCheck } = require('./engine/strip-promo');
 const { isAnthropicConfigured, isFalConfigured } = require('./engine/env-ai');
 const { resolveBaseUrlFromEnv } = require('./engine/base-url');
+const { assertProductionConfig, corsOptions, isProduction, requireDebugAccess } = require('./engine/security-config');
+
+assertProductionConfig();
 
 // Load certificates: prefer FILE-BASED certs (from repo), fallback to env vars
 function loadCerts() {
@@ -30,7 +33,7 @@ function loadCerts() {
   const wwdrFile = path.join(certDir, 'wwdr.pem');
 
   if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
-    console.log('✓ Certificates loaded from files (repo)');
+    console.log('✓ Certificates loaded from filesystem');
   } else if (process.env.SIGNER_CERT_BASE64) {
     fs.writeFileSync(certFile, Buffer.from(process.env.SIGNER_CERT_BASE64, 'base64'));
     fs.writeFileSync(keyFile, Buffer.from(process.env.SIGNER_KEY_BASE64, 'base64'));
@@ -38,6 +41,8 @@ function loadCerts() {
       fs.writeFileSync(wwdrFile, Buffer.from(process.env.WWDR_CERT_BASE64, 'base64'));
     }
     console.log('✓ Certificates loaded from environment variables');
+  } else if (isProduction()) {
+    throw new Error('Apple Wallet certificates missing. Set SIGNER_CERT_BASE64, SIGNER_KEY_BASE64 and WWDR_CERT_BASE64 or mount PEM files in ./certs.');
   } else {
     console.warn('⚠️ No certificates found — mock signing mode');
   }
@@ -61,7 +66,7 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions()));
 app.use(morgan('combined'));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -69,7 +74,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // Apple Wallet debug (public, no auth) — must be before debug router
-app.get('/debug/wallet-check', async (req, res) => {
+app.get('/debug/wallet-check', requireDebugAccess, async (req, res) => {
   try {
     const { pool } = require('./db');
     const deviceCount = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
