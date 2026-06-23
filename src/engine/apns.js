@@ -10,6 +10,13 @@ const APNS_INVALID_TOKEN_REASONS = new Set(['BadDeviceToken', 'DeviceTokenNotFor
 // Default to production — Apple Wallet passes with Distribution certs use production APNs
 const APNS_HOST = process.env.APNS_ENV === 'sandbox' ? APNS_SANDBOX : APNS_PRODUCTION;
 
+function loadPemCredential({ filePath, envName }) {
+  if (filePath && fs.existsSync(filePath)) return fs.readFileSync(filePath);
+  const encoded = String(process.env[envName] || '').trim();
+  if (!encoded) return null;
+  return Buffer.from(encoded, 'base64');
+}
+
 /**
  * Send a push notification to an Apple Wallet pass device.
  *
@@ -27,17 +34,16 @@ async function sendPushUpdate(pushToken, options = {}) {
     host = APNS_HOST
   } = options;
 
-  // Check if certs exist
-  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+  const cert = loadPemCredential({ filePath: certPath, envName: 'SIGNER_CERT_BASE64' });
+  const key = loadPemCredential({ filePath: keyPath, envName: 'SIGNER_KEY_BASE64' });
+
+  if (!cert || !key) {
     console.warn('⚠️ APNs: certificates not found, skipping push');
     return { success: false, reason: 'no_certs' };
   }
 
   return new Promise((resolve) => {
     try {
-      const cert = fs.readFileSync(certPath);
-      const key = fs.readFileSync(keyPath);
-
       const client = http2.connect(host, {
         cert,
         key,
@@ -152,5 +158,6 @@ async function pushUpdateToAllDevices(serialNumber, getDevicesForPass) {
 module.exports = {
   sendPushUpdate,
   pushUpdateToAllDevices,
-  shouldPruneApnsRegistration
+  shouldPruneApnsRegistration,
+  loadPemCredential
 };

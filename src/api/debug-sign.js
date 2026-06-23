@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
+const { requireDebugAccess } = require('../engine/security-config');
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ function cleanPem(pem) {
   return cleaned.join('\n');
 }
 
-router.get('/sign-test', (req, res) => {
+router.get('/sign-test', requireDebugAccess, (req, res) => {
   try {
     const certDir = path.join(__dirname, '../../certs');
     const certPath = path.join(certDir, 'signerCert.pem');

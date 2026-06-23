@@ -4,7 +4,11 @@
 const { execSync, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+
+function uuidv4() {
+  return randomUUID();
+}
 
 const VIDEO_FORMATS = {
   '1080x1920': { w: 1080, h: 1920, label: 'Story / Reel (9:16)', tier: 'social' },

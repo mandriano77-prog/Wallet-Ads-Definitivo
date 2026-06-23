@@ -2494,9 +2494,9 @@
                             <p style="margin:0 0 12px;"><button type="button" class="btn sec small" onclick="downloadEmployeeImportTemplate()">📥 Scarica template CSV</button></p>
                             <label class="import-dropzone" id="importDropzone" for="importFileInput">
                                 <span id="importDropzoneLabel">Trascina qui il file oppure clicca per scegliere</span>
-                                <span class="import-dropzone__hint">.csv · .xlsx · .xls — max ~5 MB</span>
+                                <span class="import-dropzone__hint">.csv · .txt — max ~5 MB</span>
                             </label>
-                            <input type="file" id="importFileInput" accept=".csv,.txt,.xlsx,.xls,.ods" style="display:none;" onchange="onImportFileSelected(event)">
+                            <input type="file" id="importFileInput" accept=".csv,.txt" style="display:none;" onchange="onImportFileSelected(event)">
                             <div class="form-group import-wizard__paste">
                                 <label class="import-wizard__field-label" for="importCsvPaste">Oppure incolla CSV</label>
                                 <textarea id="importCsvPaste" rows="4" placeholder="matricola,nome,cognome,email,reparto,sede&#10;4721,Mario,Rossi,mario.rossi@acme.it,..."></textarea>

@@ -1,5 +1,9 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+
+function uuidv4() {
+  return randomUUID();
+}
 const path = require('path');
 const fs = require('fs');
 const { createHash } = require('crypto');
