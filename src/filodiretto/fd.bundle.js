@@ -8145,7 +8145,46 @@
     if (!id) return {};
     if (kind === 'reward') return { instant_win_id: id };
     if (kind === 'challenge') return { gamification_id: id };
+    if (kind === 'convention') return { convention_id: id };
     return {};
+  }
+  function getHubAppBaseUrl() {
+    var host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.indexOf('studio.') === 0) {
+      return window.location.origin + '/hub';
+    }
+    return 'https://hub.filodiretto.app';
+  }
+  function resolveMerchantPushLink(merchant) {
+    var name = String((merchant && (merchant.name || merchant.title)) || 'Convenzione').trim();
+    var online = String((merchant && merchant.online_url) || '').trim();
+    if (merchant && merchant.online_enabled !== false && /^https:\/\//i.test(online)) {
+      return { label: name, url: online };
+    }
+    var params = new URLSearchParams();
+    if (window.currentBrandSlug) params.set('brand', window.currentBrandSlug);
+    var qs = params.toString();
+    var base = getHubAppBaseUrl().replace(/\/+$/, '');
+    return {
+      label: name,
+      url: base + '/conv/' + encodeURIComponent(merchant.id) + (qs ? '?' + qs : '')
+    };
+  }
+  function applyPushLinkedContentToBody(body, rawValue) {
+    var linked = parsePushLinkedContent(rawValue);
+    if (linked.instant_win_id) body.instant_win_id = linked.instant_win_id;
+    if (linked.gamification_id) body.gamification_id = linked.gamification_id;
+    if (linked.convention_id) {
+      var merchantsById = window.pushMerchantsById || {};
+      var merchant = merchantsById[linked.convention_id];
+      if (merchant) {
+        var link = resolveMerchantPushLink(merchant);
+        body.include_pass_link = true;
+        body.pass_link_url = link.url;
+        body.pass_link_label = link.label;
+      }
+    }
+    return linked;
   }
   function buildPushBody(extra) {
     extra = extra || {};
@@ -8167,9 +8206,6 @@
     };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId) body.campaign_id = campaignId;
-    var linked = parsePushLinkedContent(document.getElementById('pushLinkedContent')?.value);
-    if (linked.instant_win_id) body.instant_win_id = linked.instant_win_id;
-    if (linked.gamification_id) body.gamification_id = linked.gamification_id;
     if (document.getElementById('pushIncludePassLink')?.checked) {
       body.include_pass_link = true;
       body.pass_link_url = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
@@ -8177,6 +8213,7 @@
       var expLocal = document.getElementById('pushPassLinkExpires')?.value;
       if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
     }
+    applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
     if (updatePass && window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
     if (extra.test_pass_id) body.test_pass_id = extra.test_pass_id;
     return body;

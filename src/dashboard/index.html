@@ -27,8 +27,8 @@
                 var fdLegacyMediaHide = document.createElement('style');
                 fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
                 document.head.appendChild(fdLegacyMediaHide);
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-push-linked-content';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-push-linked-content';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-push-conventions';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-push-conventions';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -1707,7 +1707,7 @@
                             <select id="pushLinkedContent" aria-label="Collega contenuto">
                                 <option value="">— Nessuno —</option>
                             </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Reward o Challenge: il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Reward, Challenge o Convenzione: il link verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
                         <p class="push-send-error" id="pushSendError" role="alert" hidden></p>
                         <button type="button" class="btn" id="pushSendBtn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
@@ -7283,7 +7283,48 @@ function parsePushLinkedContent(raw) {
     if (!id) return {};
     if (kind === 'reward') return { instant_win_id: id };
     if (kind === 'challenge') return { gamification_id: id };
+    if (kind === 'convention') return { convention_id: id };
     return {};
+}
+
+function getHubAppBaseUrl() {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('studio.')) {
+        return `${window.location.origin}/hub`;
+    }
+    return 'https://hub.filodiretto.app';
+}
+
+function resolveMerchantPushLink(merchant) {
+    const name = String(merchant?.name || merchant?.title || 'Convenzione').trim();
+    const online = String(merchant?.online_url || '').trim();
+    if (merchant?.online_enabled !== false && /^https:\/\//i.test(online)) {
+        return { label: name, url: online };
+    }
+    const params = new URLSearchParams();
+    if (currentBrandSlug) params.set('brand', currentBrandSlug);
+    const qs = params.toString();
+    const base = getHubAppBaseUrl().replace(/\/+$/, '');
+    return {
+        label: name,
+        url: `${base}/conv/${encodeURIComponent(merchant.id)}${qs ? `?${qs}` : ''}`
+    };
+}
+
+function applyPushLinkedContentToBody(body, rawValue) {
+    const linked = parsePushLinkedContent(rawValue);
+    if (linked.instant_win_id) body.instant_win_id = linked.instant_win_id;
+    if (linked.gamification_id) body.gamification_id = linked.gamification_id;
+    if (linked.convention_id) {
+        const merchant = (window.pushMerchantsById || {})[linked.convention_id];
+        if (merchant) {
+            const link = resolveMerchantPushLink(merchant);
+            body.include_pass_link = true;
+            body.pass_link_url = link.url;
+            body.pass_link_label = link.label;
+        }
+    }
+    return linked;
 }
 
 async function loadPushLinkedContentSelect() {
@@ -7291,16 +7332,20 @@ async function loadPushLinkedContentSelect() {
     if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = '<option value="">— Nessuno —</option>';
+    window.pushMerchantsById = {};
     if (!brandId) return;
     try {
-        const [iwRes, gamRes] = await Promise.all([
+        const [iwRes, gamRes, merRes] = await Promise.all([
             fetch(`${API}/instant-win?brand_id=${brandId}`, { headers: getAuthHeaders() }),
-            fetch(`${API}/gamification/campaigns/${brandId}`, { headers: getAuthHeaders() })
+            fetch(`${API}/gamification/campaigns/${brandId}`, { headers: getAuthHeaders() }),
+            fetch(`${API}/merchants?brand_id=${brandId}`, { headers: getAuthHeaders() })
         ]);
         const rewardOg = document.createElement('optgroup');
         rewardOg.label = 'Reward';
         const challengeOg = document.createElement('optgroup');
         challengeOg.label = 'Challenge';
+        const conventionOg = document.createElement('optgroup');
+        conventionOg.label = 'Convenzioni';
         const iwLabels = { scratch: 'Scratch', wheel: 'Ruota', slots: 'Slot' };
         const gamLabels = { quiz: 'Quiz', memory: 'Memory', puzzle: 'Puzzle' };
         if (iwRes.ok) {
@@ -7321,8 +7366,21 @@ async function loadPushLinkedContentSelect() {
                 challengeOg.appendChild(o);
             });
         }
+        if (merRes.ok) {
+            const merchants = await merRes.json();
+            (Array.isArray(merchants) ? merchants : [])
+                .filter(m => m && m.id && m.active !== false)
+                .forEach(m => {
+                    window.pushMerchantsById[m.id] = m;
+                    const o = document.createElement('option');
+                    o.value = `convention:${m.id}`;
+                    o.textContent = m.name || m.title || 'Convenzione';
+                    conventionOg.appendChild(o);
+                });
+        }
         if (rewardOg.children.length) sel.appendChild(rewardOg);
         if (challengeOg.children.length) sel.appendChild(challengeOg);
+        if (conventionOg.children.length) sel.appendChild(conventionOg);
         if (cur) sel.value = cur;
     } catch (e) { console.error('loadPushLinkedContentSelect error:', e); }
 }
@@ -7526,16 +7584,15 @@ function buildImmediatePushBody() {
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
-    const linked = parsePushLinkedContent(document.getElementById('pushLinkedContent')?.value);
-    if (linked.instant_win_id) body.instant_win_id = linked.instant_win_id;
-    if (linked.gamification_id) body.gamification_id = linked.gamification_id;
     if (document.getElementById('pushIncludePassLink')?.checked) {
         body.include_pass_link = true;
         body.pass_link_url = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
         body.pass_link_label = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
         const expLocal = document.getElementById('pushPassLinkExpires')?.value;
         if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
-    } else if (!isHrDashboard()) {
+    }
+    applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
+    if (!isHrDashboard()) {
         const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
         if (backLinkUrl) {
             body.back_link_url = backLinkUrl;
