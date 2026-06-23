@@ -1,7 +1,6 @@
 const dns = require('dns');
 const { Pool } = require('pg');
-const { v4: uuidv4 } = require('uuid');
-const { randomBytes, createHash } = require('crypto');
+const { randomBytes, createHash, randomUUID } = require('crypto');
 
 // Railway private mesh: prefer IPv4 first (avoids ETIMEDOUT on broken IPv6 paths).
 if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
@@ -111,6 +110,10 @@ function logDatabaseConnectionInfo() {
 
 const databaseUrl = resolveDatabaseUrl();
 const dbTargetInfo = logDatabaseConnectionInfo();
+
+function uuidv4() {
+  return randomUUID();
+}
 
 /** Empty connectionString makes node-pg default to localhost:5432 — do not create a pool without a URL. */
 const pool = dbTargetInfo.ok

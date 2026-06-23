@@ -8,7 +8,7 @@ const {
   rbacApiMiddleware,
   canExecuteWaiIntent,
 } = require('../engine/rbac');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { createHash, randomBytes } = require('crypto');
@@ -100,6 +100,7 @@ const { generateLandingCopy, generateCreativeCopy } = require('../engine/ai-copy
 const { planScheduledPush } = require('../engine/push-assistant');
 const { askWai, EXECUTABLE_INTENTS, validateWaiResponse } = require('../engine/wai');
 const { resolveBaseUrl, getProductBrandName } = require('../engine/base-url');
+const { requiredSecret, requireDebugAccess } = require('../engine/security-config');
 const sharp = require('sharp');
 const jwt = require('jsonwebtoken');
 const { execFile } = require('child_process');
@@ -109,6 +110,10 @@ const router = express.Router();
 const { registerHubMerchantRoutes } = require('./hub-merchants');
 const { registerHubPwaRoutes } = require('./hub-pwa');
 const { registerPgaDashboardRoutes } = require('./pga-dashboard');
+
+function uuidv4() {
+  return randomUUID();
+}
 
 const DEPLOY_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
 /** When set (e.g. hr on hr.2wallet.app), API only exposes brands for that product line. */
@@ -292,7 +297,7 @@ async function notifySamsungSavedPasses(passes) {
   return samsungWallet.notifySavedPassesUpdates(passes);
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'nudj-secret-change-me-in-prod';
+const JWT_SECRET = requiredSecret('JWT_SECRET', { fallback: 'nudj-secret-change-me-in-prod' });
 const JWT_EXPIRES = '7d';
 
 
@@ -446,7 +451,7 @@ router.post('/auth/reset-password', async (req, res) => {
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Debug: Full push diagnostics ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
-router.get('/debug/push-diagnostics', async (req, res) => {
+router.get('/debug/push-diagnostics', requireDebugAccess, async (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
@@ -3853,7 +3858,7 @@ router.post('/brands/:brand_id/employees/import/preview', async (req, res) => {
     }
 
     const { previewImport } = require('../engine/member-import');
-    const preview = previewImport({ file_base64, filename, csv_text, mapping });
+    const preview = await previewImport({ file_base64, filename, csv_text, mapping });
     res.json(preview);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3890,7 +3895,7 @@ router.post('/brands/:brand_id/employees/import', async (req, res) => {
       if (!file_base64 && !csv_text) {
         return res.status(400).json({ error: 'Carica un file CSV/Excel o incolla testo CSV' });
       }
-      const { headers, rows } = parseImportFile({ file_base64, filename, csv_text });
+      const { headers, rows } = await parseImportFile({ file_base64, filename, csv_text });
       const evaluated = await evaluateImportRows({
         headers,
         rows,

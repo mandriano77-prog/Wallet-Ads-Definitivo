@@ -1,7 +1,11 @@
 /**
  * Employee portal — database layer (pass holder = pass_instances.id)
  */
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+
+function uuidv4() {
+  return randomUUID();
+}
 
 const PORTAL_CONSENT_TYPES = Object.freeze([
   'birthday',

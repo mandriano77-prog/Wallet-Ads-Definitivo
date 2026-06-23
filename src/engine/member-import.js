@@ -1,8 +1,7 @@
 /**
- * Smart employee / member import — CSV & Excel with column auto-mapping.
+ * Smart employee / member import — CSV/TXT with column auto-mapping.
  */
 
-const XLSX = require('xlsx');
 const { randomUUID } = require('crypto');
 
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -143,20 +142,7 @@ function parseCsvText(text) {
   return { headers, rows };
 }
 
-function parseWorkbookBuffer(buffer) {
-  const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetName = wb.SheetNames[0];
-  if (!sheetName) return { headers: [], rows: [] };
-  const sheet = wb.Sheets[sheetName];
-  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-  if (!matrix.length) return { headers: [], rows: [] };
-  const headers = (matrix[0] || []).map((c) => String(c ?? '').trim());
-  const rows = matrix.slice(1).filter((row) => row.some((c) => String(c ?? '').trim() !== ''))
-    .map((row) => headers.map((_, i) => String(row[i] ?? '').trim()));
-  return { headers, rows };
-}
-
-function parseImportFile({ file_base64, filename, csv_text }) {
+async function parseImportFile({ file_base64, filename, csv_text }) {
   if (csv_text) {
     if (Buffer.byteLength(String(csv_text), 'utf8') > MAX_IMPORT_BYTES) {
       throw new Error('File import troppo grande (max 5 MB)');
@@ -170,7 +156,7 @@ function parseImportFile({ file_base64, filename, csv_text }) {
   }
   const name = String(filename || '').toLowerCase();
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.ods')) {
-    return parseWorkbookBuffer(buf);
+    throw new Error('Formato non supportato in produzione: esporta il file in .csv o .txt');
   }
   return parseCsvText(buf.toString('utf8'));
 }
@@ -321,8 +307,8 @@ function buildImportPreview({ headers, rows, mapping }) {
   };
 }
 
-function previewImport({ file_base64, filename, csv_text, mapping }) {
-  const { headers, rows } = parseImportFile({ file_base64, filename, csv_text });
+async function previewImport({ file_base64, filename, csv_text, mapping }) {
+  const { headers, rows } = await parseImportFile({ file_base64, filename, csv_text });
   if (!headers.length) throw new Error('File vuoto o senza intestazioni');
   return buildImportPreview({ headers, rows, mapping });
 }

@@ -20,17 +20,13 @@ function getApnsMaterial(options = {}) {
   const passTypeIdentifier = options.passTypeIdentifier || process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj';
   const host = options.host || APNS_HOST;
 
-  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
-    return null;
-  }
+  const cert = loadPemCredential({ filePath: certPath, envName: 'SIGNER_CERT_BASE64' });
+  const key = loadPemCredential({ filePath: keyPath, envName: 'SIGNER_KEY_BASE64' });
+  if (!cert || !key) return null;
 
-  if (!cachedMaterial || cachedMaterial.certPath !== certPath || cachedMaterial.keyPath !== keyPath) {
-    cachedMaterial = {
-      certPath,
-      keyPath,
-      cert: fs.readFileSync(certPath),
-      key: fs.readFileSync(keyPath),
-    };
+  const cacheKey = `${certPath}:${keyPath}`;
+  if (!cachedMaterial || cachedMaterial.cacheKey !== cacheKey) {
+    cachedMaterial = { cacheKey, certPath, keyPath, cert, key };
   }
 
   return {
@@ -129,6 +125,13 @@ function sendPushOnSession(client, pushToken, passTypeIdentifier) {
     req.write('{}');
     req.end();
   });
+}
+
+function loadPemCredential({ filePath, envName }) {
+  if (filePath && fs.existsSync(filePath)) return fs.readFileSync(filePath);
+  const encoded = String(process.env[envName] || '').trim();
+  if (!encoded) return null;
+  return Buffer.from(encoded, 'base64');
 }
 
 /**
@@ -231,4 +234,5 @@ module.exports = {
   closeApnsSession,
   pushUpdateToAllDevices,
   shouldPruneApnsRegistration,
+  loadPemCredential,
 };
