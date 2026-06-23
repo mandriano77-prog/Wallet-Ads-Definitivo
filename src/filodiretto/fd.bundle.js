@@ -627,12 +627,17 @@
     rationalizeAudienceCopy();
     syncWaiLayoutState();
   }
+  function bindWaiTrigger(btn, handler) {
+    if (!btn || btn.dataset.fdWaiBound === '1') return;
+    btn.dataset.fdWaiBound = '1';
+    btn.removeAttribute('onclick');
+    btn.onclick = null;
+    btn.addEventListener('click', handler);
+  }
   function bindInlineWaiLinks(root) {
     if (!root) return;
-    root.querySelectorAll('[data-fd-wai-open]').forEach(function (btn) {
-      if (btn.dataset.fdWaiBound === '1') return;
-      btn.dataset.fdWaiBound = '1';
-      btn.addEventListener('click', function (e) {
+    root.querySelectorAll('[data-fd-wai-open], .fd-wai-inline-link').forEach(function (btn) {
+      bindWaiTrigger(btn, function (e) {
         e.preventDefault();
         var mode = btn.getAttribute('data-fd-wai-mode') || '';
         if (mode === 'audience' && typeof window.openWaiForAudience === 'function') {
@@ -649,11 +654,11 @@
     var section = document.getElementById('audiences');
     if (!section) return;
     var intro = section.querySelector('.audiences-panel__intro, p');
-    if (intro && !intro.querySelector('[onclick*="openWaiForAudience"]')) {
+    if (intro && !intro.querySelector('[data-fd-wai-open], [onclick*="openWaiForAudience"]')) {
       intro.innerHTML =
         'Segmentazione possessori pass, statistiche di apertura e clic sul retro, audience salvate. ' +
         'Per segmenti in linguaggio naturale usa l\'assistente ' +
-        '<button type="button" class="fd-wai-inline-link" onclick="openWaiForAudience()">W.AI</button>.';
+        '<button type="button" class="fd-wai-inline-link" data-fd-wai-open data-fd-wai-mode="audience">W.AI</button>.';
     }
     bindInlineWaiLinks(section);
   }
@@ -748,14 +753,12 @@
   }
   function bindWaiControls() {
     var fab = document.getElementById('waiBtn');
-    if (fab && fab.dataset.fdWaiBound !== '1') {
-      fab.dataset.fdWaiBound = '1';
-      fab.addEventListener('click', function (e) {
-        if (typeof window.toggleWaiOverlay !== 'function') return;
-        e.preventDefault();
-        window.toggleWaiOverlay();
-      });
-    }
+    if (!fab) return;
+    bindWaiTrigger(fab, function (e) {
+      if (typeof window.toggleWaiOverlay !== 'function') return;
+      e.preventDefault();
+      window.toggleWaiOverlay();
+    });
   }
   function initFdWai() {
     if (!isFiloWai()) return;
@@ -766,6 +769,7 @@
     bindNavClickClose();
     bindWaiControls();
     rationalizeAudienceCopy();
+    bindInlineWaiLinks(document);
     syncWaiLayoutState();
   }
   window.fdSyncWaiLayoutState = syncWaiLayoutState;
@@ -782,6 +786,7 @@
     if (!isFiloWai()) return;
     schedulePatchRetry();
     bindWaiControls();
+    bindInlineWaiLinks(document);
     syncWaiLayoutState();
   });
 })();

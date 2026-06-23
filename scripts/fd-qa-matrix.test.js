@@ -145,8 +145,8 @@ test('fd.bundle.css preserves calc() operator spacing (W.AI inset)', () => {
 
 test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260623-bi-accordion-align/);
-  assert.match(html, /fd\.bundle\.js\?v=20260623-bi-accordion-align/);
+  assert.match(html, /fd\.bundle\.css\?v=20260623-wai-single-handler/);
+  assert.match(html, /fd\.bundle\.js\?v=20260623-wai-single-handler/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -402,6 +402,17 @@ test('Google Wallet HR pass resolves hub links like passkit', () => {
   assert.match(gw, /hubUrl: hrOpts\.hubUrl/);
   assert.match(ep, /linkText \|\| s\.label/);
   assert.match(ep, /announcement_full/);
+});
+
+test('W.AI FAB uses single JS click handler without inline onclick', () => {
+  const html = read('src/dashboard/index.html');
+  const wai = readFd('fd-wai.js');
+  assert.doesNotMatch(html, /id="waiBtn"[^>]*onclick=/);
+  assert.match(wai, /function bindWaiTrigger/);
+  assert.match(wai, /removeAttribute\('onclick'\)/);
+  assert.match(wai, /bindWaiControls/);
+  assert.doesNotMatch(html, /fd-wai-inline-link[^>]*onclick="openWaiForAudience/);
+  assert.match(html, /data-fd-wai-open[^>]*data-fd-wai-mode="audience"/);
 });
 
 test('W.AI API calls include auth headers', () => {
