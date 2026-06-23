@@ -122,6 +122,11 @@ html[data-app='filodiretto'] #conventions .fd-conventions-card {
 
 html[data-app='filodiretto'] #conventions .fd-conventions-table-wrap {
   overflow-x: auto;
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-top10-card {
+  margin-top: 0;
 }
 
 html[data-app='filodiretto'] #conventions .fd-conventions-stats-cell {

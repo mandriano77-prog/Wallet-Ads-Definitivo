@@ -21,7 +21,7 @@
     settings: null,
     tab: 'merchants',
     filterCategory: '',
-    filterSearch: '',
+    filterMerchantId: '',
     editingId: null
   };
 
@@ -201,11 +201,7 @@
   function filteredMerchants() {
     return state.merchants.filter(function (m) {
       if (state.filterCategory && m.category !== state.filterCategory) return false;
-      if (state.filterSearch) {
-        var q = state.filterSearch.toLowerCase();
-        var hay = ((m.name || '') + ' ' + (m.description || '') + ' ' + (m.discount_label || '')).toLowerCase();
-        if (hay.indexOf(q) < 0) return false;
-      }
+      if (state.filterMerchantId && m.id !== state.filterMerchantId) return false;
       return true;
     });
   }
@@ -300,6 +296,28 @@
       opt.textContent = c.label;
       sel.appendChild(opt);
     });
+  }
+
+  function populateMerchantFilter() {
+    var sel = document.getElementById('hubMerchantFilter');
+    if (!sel) return;
+    var current = sel.value || state.filterMerchantId || '';
+    sel.innerHTML = '<option value="">Tutti i merchant</option>';
+    state.merchants.slice().sort(function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'it', { sensitivity: 'base' });
+    }).forEach(function (m) {
+      var opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name || m.id;
+      sel.appendChild(opt);
+    });
+    if (current && state.merchants.some(function (m) { return m.id === current; })) {
+      sel.value = current;
+      state.filterMerchantId = current;
+    } else {
+      sel.value = '';
+      state.filterMerchantId = '';
+    }
   }
 
   function populateMerchantFormCategories() {
@@ -521,6 +539,7 @@
       ]);
       state.merchants = results[0] || [];
       state.analytics = results[1];
+      populateMerchantFilter();
       renderAnalyticsKpis();
       renderTopMerchants();
       renderMerchantsTable();
@@ -568,10 +587,10 @@
       });
     }
 
-    var searchInput = document.getElementById('hubMerchantSearch');
-    if (searchInput) {
-      searchInput.addEventListener('input', function () {
-        state.filterSearch = searchInput.value.trim();
+    var merchantFilter = document.getElementById('hubMerchantFilter');
+    if (merchantFilter) {
+      merchantFilter.addEventListener('change', function () {
+        state.filterMerchantId = merchantFilter.value;
         renderMerchantsTable();
       });
     }
