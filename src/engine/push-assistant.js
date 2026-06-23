@@ -79,8 +79,9 @@ Tipi di scheduling:
 - Se ci sono esempi recenti del brand, mantieni coerenza di stile.
 
 ### channel
-- "apple" se il manager non specifica. "all" se dice "tutti" o "tutti i wallet".
-- "google" o "samsung" solo se esplicitamente richiesto.
+- "all" se il manager dice tutti, tutti i wallet, tutti i canali, a tutti, su tutti.
+- "apple" solo se esplicitamente richiesto o se non specifica alcun canale.
+- "google" o "samsung" solo se esplicitamente richiesti.
 
 ### update_pass
 - true di default. Metti false solo se il manager dice esplicitamente di non aggiornare il pass.
@@ -177,6 +178,33 @@ function inferCopy(text, brandName) {
   };
 }
 
+function inferPushChannelFromPrompt(prompt) {
+  const text = normalizeText(prompt);
+  if (!text) return null;
+  if (
+    /\ba\s+tutti\b/.test(text)
+    || /\bsu\s+tutti\b/.test(text)
+    || /\btutti\s+i\s+canal/.test(text)
+    || /\btutti\s+i\s+wallet/.test(text)
+    || /\btutti\s+i\s+pass/.test(text)
+    || (/\btutti\b/.test(text) && /\b(wallet|canal|pass|dispositiv|utent|member|dipendent)\b/.test(text))
+    || /\ball\s+wallet/.test(text)
+  ) {
+    return 'all';
+  }
+  if (/\bsamsung\b/.test(text) && !/\b(apple|google)\b/.test(text)) return 'samsung';
+  if (/\bgoogle\b/.test(text) && !/\b(apple|samsung)\b/.test(text)) return 'google';
+  if (/\bapple\b/.test(text) && !/\b(google|samsung)\b/.test(text)) return 'apple';
+  return null;
+}
+
+function resolvePushChannel(channel, prompt) {
+  const inferred = inferPushChannelFromPrompt(prompt);
+  if (inferred) return inferred;
+  if (VALID_CHANNELS.has(channel)) return channel;
+  return 'apple';
+}
+
 function heuristicPlan(prompt, brand) {
   const text = normalizeText(prompt);
   const schedule_type = inferScheduleType(text);
@@ -210,7 +238,7 @@ function heuristicPlan(prompt, brand) {
     date,
     title: copy.title,
     message: copy.message,
-    channel: 'apple',
+    channel: resolvePushChannel(null, prompt),
     update_pass: true,
     summary: 'Piano generato con regole di base.',
     warnings
@@ -234,10 +262,10 @@ function buildRecentExamples(scheduled = [], history = []) {
   return rows;
 }
 
-function normalizeProposal(raw, brand) {
+function normalizeProposal(raw, brand, prompt) {
   const proposal = { ...(raw || {}) };
   proposal.schedule_type = VALID_TYPES.has(proposal.schedule_type) ? proposal.schedule_type : 'weekly';
-  proposal.channel = VALID_CHANNELS.has(proposal.channel) ? proposal.channel : 'apple';
+  proposal.channel = resolvePushChannel(proposal.channel, prompt || proposal.summary || '');
   proposal.update_pass = proposal.update_pass !== false;
   proposal.title = String(proposal.title || '').trim().slice(0, 60);
   proposal.message = String(proposal.message || '').trim().slice(0, 180);
@@ -371,7 +399,7 @@ async function planScheduledPush({ brand, prompt, scheduled = [], history = [] }
     raw = heuristicPlan(trimmed, brand);
   }
 
-  const proposal = normalizeProposal(raw, brand);
+  const proposal = normalizeProposal(raw, brand, trimmed);
   const nextRun = computeInitialScheduledRun({
     schedule_type: proposal.schedule_type,
     schedule_time: proposal.schedule_time,
@@ -405,4 +433,10 @@ async function planScheduledPush({ brand, prompt, scheduled = [], history = [] }
   };
 }
 
-module.exports = { planScheduledPush, normalizeProposal, heuristicPlan };
+module.exports = {
+  planScheduledPush,
+  normalizeProposal,
+  heuristicPlan,
+  inferPushChannelFromPrompt,
+  resolvePushChannel
+};

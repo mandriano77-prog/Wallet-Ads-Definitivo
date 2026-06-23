@@ -12,6 +12,7 @@ const { extractJSON } = require('./ai-copy');
 const { getAnthropicApiKey } = require('./env-ai');
 const { pickWaiModel, formatModelLabel, getWaiModelFallbacks } = require('./ai-models');
 const { getProductBrandName, resolveBaseUrlFromEnv } = require('./base-url');
+const { resolvePushChannel } = require('./push-assistant');
 
 const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
@@ -101,7 +102,7 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - date: YYYY-MM-DD solo per once
 - title: max 60 char, incisivo, adatto a lock screen
 - message: max 180 char, completa il titolo, crea valore
-- channel: "apple" | "google" | "samsung" | "all" (default: apple)
+- channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
   Food: 11:30 o 18:00 | Retail: 10:00 o 17:00 | Generico: 10:00
@@ -594,7 +595,7 @@ function coerceWaiProposal(prompt, raw) {
   };
 }
 
-function validateWaiResponse(raw, brandId) {
+function validateWaiResponse(raw, brandId, userPrompt) {
   if (!raw || typeof raw !== 'object') {
     throw new Error('Risposta W.AI non valida');
   }
@@ -662,7 +663,10 @@ function validateWaiResponse(raw, brandId) {
     if (!payload.title || !payload.message) {
       throw new Error('Titolo e messaggio push obbligatori');
     }
-    payload.channel = ['apple', 'google', 'samsung', 'all'].includes(payload.channel) ? payload.channel : 'apple';
+    payload.channel = resolvePushChannel(
+      payload.channel || preview.details?.channel,
+      userPrompt || preview.summary || ''
+    );
     payload.update_pass = payload.update_pass !== false;
     const stripPrompt = sanitizeStripPrompt(
       payload.strip_prompt_en || preview.details?.strip_prompt_en || ''
@@ -768,7 +772,7 @@ async function askWai({ brandId, prompt, followup = '', previousProposal = null 
     modelChoice.model
   );
   const parsed = coerceWaiProposal(routingPrompt, coerceAudiencePlatformQuery(routingPrompt, extractJSON(text)));
-  const proposal = validateWaiResponse(parsed, brandId);
+  const proposal = validateWaiResponse(parsed, brandId, routingPrompt);
   return {
     ...proposal,
     model: modelChoice.model,
