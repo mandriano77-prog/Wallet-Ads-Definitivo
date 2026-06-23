@@ -23,13 +23,37 @@
     return !!(tbody && tbody.querySelector('tr td:not([colspan])'));
   }
 
+  function tableHasEmptyStateRow(tableId) {
+    var tbody = document.querySelector('#' + tableId + ' tbody');
+    return !!(tbody && tbody.querySelector('tr.table-empty-row'));
+  }
+
+  function getEngagementEmptyHost(tableId) {
+    if (tableId === 'gamTable') return document.getElementById('gamEmptyHost');
+    if (tableId === 'iwTable') return document.getElementById('iwEmptyHost');
+    return null;
+  }
+
+  function syncEngagementToolbarCta(tableId) {
+    var toolbarBtnId = tableId === 'iwTable' ? 'iwToolbarCreateBtn' : tableId === 'gamTable' ? 'gamToolbarCreateBtn' : null;
+    if (!toolbarBtnId) return;
+    var btn = document.getElementById(toolbarBtnId);
+    if (!btn) return;
+    var emptyHost = getEngagementEmptyHost(tableId);
+    var emptyHostVisible = !!(emptyHost && !emptyHost.hidden && emptyHost.innerHTML.trim());
+    var hasEmptyRow = isFilo() && tableHasEmptyStateRow(tableId);
+    var hasData = tableHasDataRows(tableId);
+    btn.hidden = !hasData && (emptyHostVisible || hasEmptyRow);
+  }
+
   function syncEngagementTableHead(tableId) {
+    syncEngagementToolbarCta(tableId);
     if (!isFilo()) return;
     var table = document.getElementById(tableId);
     if (!table) return;
     var thead = table.querySelector('thead');
     if (!thead) return;
-    var emptyHost = tableId === 'gamTable' ? document.getElementById('gamEmptyHost') : null;
+    var emptyHost = getEngagementEmptyHost(tableId);
     var emptyHostVisible = !!(emptyHost && !emptyHost.hidden && emptyHost.innerHTML.trim());
     var tableHidden = table.hidden === true;
     var hasData = !emptyHostVisible && !tableHidden && tableHasDataRows(tableId);

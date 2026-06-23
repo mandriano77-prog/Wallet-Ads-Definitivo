@@ -27,8 +27,8 @@
                 var fdLegacyMediaHide = document.createElement('style');
                 fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
                 document.head.appendChild(fdLegacyMediaHide);
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-section-flow-nav';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-section-flow-nav';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-engagement-cta';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-engagement-cta';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -2357,7 +2357,7 @@
 
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <div class="sec-title" style="font-size:18px;margin-bottom:0;">Campagne Reward</div>
-                    <button class="btn" data-requires-write="instant-win" onclick="openIwModal()">+ Nuova Campagna</button>
+                    <button class="btn" id="iwToolbarCreateBtn" data-requires-write="instant-win" onclick="openIwModal()">+ Nuova Campagna</button>
                 </div>
                 <div id="iwEmptyHost" hidden></div>
                 <table class="table" id="iwTable">
@@ -2411,7 +2411,7 @@
 
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <div class="sec-title" style="font-size:18px;margin-bottom:0;">Campagne Challenge</div>
-                    <button class="btn" data-requires-write="gamification" onclick="openGamModal()">+ Nuova Campagna</button>
+                    <button class="btn" id="gamToolbarCreateBtn" data-requires-write="gamification" onclick="openGamModal()">+ Nuova Campagna</button>
                 </div>
                 <div id="gamEmptyHost" hidden></div>
                 <table class="table" id="gamTable">
@@ -4991,10 +4991,10 @@ const PRODUCT_MENU_DEFAULTS = {
     challenge_page_blurb: 'Crea sfide interattive (quiz, memory, puzzle) per coinvolgere i possessori del pass e raccogliere punti.',
     reward_empty_title: 'Nessuna campagna Reward',
     reward_empty_desc: 'Lancia giochi istantanei (scratch, ruota, slot) collegati al pass Wallet e assegna premi ai tuoi contatti.',
-    reward_empty_cta: '+ Nuova campagna Reward',
+    reward_empty_cta: '+ Nuova Campagna',
     challenge_empty_title: 'Nessuna campagna Challenge',
     challenge_empty_desc: 'Organizza quiz, memory match o puzzle: i partecipanti guadagnano punti e premi in base ai risultati.',
-    challenge_empty_cta: '+ Nuova campagna Challenge',
+    challenge_empty_cta: '+ Nuova Campagna',
 };
 
 const PRODUCT_MENU_COPY = {
